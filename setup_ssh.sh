@@ -1,5 +1,7 @@
 #!/bin/bash
-# SSH Setup Script for GitHub Access
+# SSH Setup Script for GitHub Access (LEGACY)
+# This script is no longer required for public repository deployments
+# Only needed if the repository becomes private again
 # Run this on your Raspberry Pi to configure SSH keys for GitHub
 
 set -e
@@ -33,8 +35,10 @@ print_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
 }
 
-echo -e "${BLUE}🔑 SSH Key Setup for GitHub Access${NC}"
+echo -e "${BLUE}🔑 SSH Key Setup for GitHub Access (LEGACY)${NC}"
 echo "=================================================="
+echo -e "${YELLOW}⚠️  This script is no longer required for public repository deployments${NC}"
+echo -e "${YELLOW}⚠️  Only needed if the repository becomes private again${NC}"
 echo ""
 
 # Check if running as root

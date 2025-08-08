@@ -368,7 +368,7 @@ For automated updates, you need SSH access to GitHub:
    - Copy the public key: `cat ~/.ssh/id_ed25519.pub`
    - Add to GitHub: Settings → SSH and GPG keys → New SSH key
 
-3. **Test Connection**:
+3. **Test Connection** (optional - only for private repositories):
    ```bash
    ssh -T git@github.com
    ```
