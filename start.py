@@ -428,8 +428,8 @@ class MultiPropertyAnalyzer:
             self.logger.info(f"Step 3.7: Performing holiday analysis for {property_name}")
             holiday_start = time.time()
             
-                # Get state code for holiday analysis
-                state_code = self.rms_client.get_property_state_code(property_id)
+            # Get state code for holiday analysis
+            state_code = self.rms_client.get_property_state_code(property_id)
                 if not state_code:
                     self.logger.warning(f"Could not determine state code for {property_name} - skipping holiday analysis")
                     print("⚠️  Could not determine state code - skipping holiday analysis")
