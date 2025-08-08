@@ -23,9 +23,9 @@ This guide explains how to deploy updates from your development environment (Mac
    sudo nano /etc/bookingchart-defragmenter/config.env
    ```
 
-4. **Set up SSH authentication** (for future updates):
+4. **Verify installation**:
    ```bash
-   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   sudo /opt/bookingchart-defragmenter/health_check.sh
    ```
 
 5. **Start the service**:
@@ -41,6 +41,7 @@ The installation script automatically sets up:
 - ✅ Cron job for daily execution
 - ✅ Log directories and rotation
 - ✅ Health check and management scripts
+- ✅ Public repository access (no SSH keys required)
 
 ## Development → Production Workflow
 
@@ -190,10 +191,10 @@ sudo systemctl start bookingchart-defragmenter.service
 
 ### Common Issues:
 
-1. **SSH Authentication Errors**: 
-   - Run: `sudo /opt/bookingchart-defragmenter/setup_ssh.sh`
-   - Ensure SSH key is added to GitHub: https://github.com/settings/keys
-   - Test: `sudo -u defrag ssh -T git@github.com`
+1. **Network Connectivity Issues**: 
+   - Check internet connection: `ping github.com`
+   - Verify firewall allows HTTPS (port 443)
+   - Test: `curl -I https://github.com`
 
 2. **Permission Errors**: Ensure you run update commands with `sudo`
 3. **Network Issues**: Check internet connection for GitHub access
