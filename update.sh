@@ -235,39 +235,36 @@ fi
 print_info "Starting $SERVICE_NAME..."
 systemctl start $SERVICE_NAME
 
-# Step 11: Wait for service to complete (with timeout)
-print_info "Waiting for service to complete (timeout: 5 minutes)..."
-TIMEOUT=300  # 5 minutes
+# Step 11: Wait for service to start (much shorter timeout since it's just environment setup)
+print_info "Waiting for service to start (timeout: 30 seconds)..."
+TIMEOUT=30  # 30 seconds for environment setup
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
     SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
-    if [ "$SERVICE_STATUS" = "inactive" ]; then
+    if [ "$SERVICE_STATUS" = "active" ]; then
         break
     fi
-    sleep 10
-    ELAPSED=$((ELAPSED + 10))
-    print_info "Service still running... (${ELAPSED}s elapsed)"
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+    print_info "Waiting for service to start... (${ELAPSED}s elapsed)"
 done
 
-# Step 12: Verify service completed successfully
+# Step 12: Verify service started successfully
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
 EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
 
-if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
-    print_status "Service completed successfully (one-time execution)"
+if [ "$SERVICE_STATUS" = "active" ]; then
+    print_status "Service started successfully (environment ready)"
+    print_info "Service is now running and ready for scheduled analysis"
 elif [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" != "0" ]; then
-    print_error "Service failed. Status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
+    print_error "Service failed to start. Status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
     print_info "Checking service logs for errors..."
     echo ""
     echo -e "${BLUE}📝 Recent Service Logs:${NC}"
     journalctl -u $SERVICE_NAME --no-pager -n 20
     echo ""
-    print_error "Service failed. Check logs above for details."
+    print_error "Service failed to start. Check logs above for details."
     rollback
-elif [ "$SERVICE_STATUS" = "active" ]; then
-    print_warning "Service is still running after timeout. This may be normal for long-running analysis."
-    print_info "Service will continue running in the background."
-    print_status "Update completed successfully (service running)"
 else
     print_error "Unexpected service status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
     rollback
@@ -279,7 +276,7 @@ print_info "Performing final verification..."
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
 EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
 
-if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
+if [ "$SERVICE_STATUS" = "active" ]; then
     print_status "Update completed successfully!"
     
     # Show service status
@@ -290,7 +287,7 @@ if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
     # Show recent logs
     echo ""
     echo -e "${BLUE}📝 Recent Logs:${NC}"
-    journalctl -u $SERVICE_NAME --no-pager -n 20
+    journalctl -u $SERVICE_NAME --no-pager -n 10
     
     # Cleanup
     rm -rf $TEMP_DIR
@@ -298,22 +295,9 @@ if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
     
     echo ""
     print_status "✨ Update completed successfully! ✨"
+    print_info "Service is running and ready for scheduled analysis"
     echo -e "${BLUE}🔍 Monitor logs with: sudo journalctl -u $SERVICE_NAME -f${NC}"
-elif [ "$SERVICE_STATUS" = "active" ]; then
-    print_status "Update completed successfully! Service is running."
-    
-    # Show service status
-    echo ""
-    echo -e "${BLUE}📊 Service Status:${NC}"
-    systemctl status $SERVICE_NAME --no-pager -l
-    
-    # Cleanup
-    rm -rf $TEMP_DIR
-    rm -rf $BACKUP_DIR
-    
-    echo ""
-    print_status "✨ Update completed successfully! ✨"
-    echo -e "${BLUE}🔍 Monitor logs with: sudo journalctl -u $SERVICE_NAME -f${NC}"
+    echo -e "${BLUE}📅 Analysis runs via cron or manual execution${NC}"
 else
     print_error "Service is not running properly after update"
     rollback

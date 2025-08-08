@@ -130,7 +130,7 @@ Group=$SERVICE_GROUP
 WorkingDirectory=$INSTALL_DIR
 Environment=PATH=$INSTALL_DIR/venv/bin
 EnvironmentFile=/etc/bookingchart-defragmenter/config.env
-ExecStart=$INSTALL_DIR/run_defragmentation.sh
+ExecStart=$INSTALL_DIR/service_wrapper.sh
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
