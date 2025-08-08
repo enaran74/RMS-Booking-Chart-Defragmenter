@@ -9,7 +9,7 @@ import sys
 import argparse
 import time
 import os
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict, Optional
 import pandas as pd
 from rms_client import RMSClient
@@ -436,16 +436,15 @@ class MultiPropertyAnalyzer:
                 holiday_suggestions = []
                 holiday_data = {'holiday_periods': []}
             else:
-                # Fetch holiday periods
-                holiday_periods = self.holiday_client.get_holiday_periods(
-                    self.rms_client.constraint_start_date,
-                    self.rms_client.constraint_end_date,
-                    state_code
+                # Fetch holiday periods for 2-month forward analysis
+                holiday_periods = self.holiday_client.get_holiday_periods_2month_forward(
+                    state_code,
+                    date.today()  # Start from today
                 )
                 
                 if holiday_periods:
-                    # Perform holiday defragmentation analysis
-                    holiday_suggestions = self.defrag_analyzer.analyze_holiday_defragmentation(
+                    # Perform 2-month forward holiday defragmentation analysis
+                    holiday_suggestions = self.defrag_analyzer.analyze_holiday_defragmentation_2month_forward(
                         reservations_df,
                         inventory_df,
                         holiday_periods,
@@ -461,14 +460,14 @@ class MultiPropertyAnalyzer:
                         'state_code': state_code
                     }
                     
-                    print(f"🎄 Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
+                                            print(f"🎄 2-Month Forward Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
                     print(f"📋 Total Merged Suggestions: {len(merged_suggestions)} moves")
                     
                     # Update suggestions with merged list
                     suggestions = merged_suggestions
                 else:
-                    self.logger.info(f"No holiday periods found for {property_name} in {state_code}")
-                    print(f"📅 No holiday periods found for {state_code}")
+                    self.logger.info(f"No holiday periods found for {property_name} in {state_code} in 2-month forward window")
+                    print(f"📅 No holiday periods found for {state_code} in 2-month forward window")
                     holiday_suggestions = []
                     holiday_data = {'holiday_periods': []}
             
