@@ -7,8 +7,8 @@ Handles authentication and data retrieval from RMS API
 import requests
 import pandas as pd
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import datetime, timedelta, date
+from typing import Dict, List, Optional, Tuple
 from utils import get_logger
 
 class RMSClient:
@@ -51,6 +51,12 @@ class RMSClient:
         
         # Endpoint monitoring system
         self._endpoint_stats = {}  # property_id -> endpoint statistics
+        
+        # State code mapping for holiday integration
+        self.STATE_COUNTRY_MAPPING = {
+            'VIC': 'AU', 'TAS': 'AU', 'ACT': 'AU', 'NSW': 'AU',
+            'QLD': 'AU', 'NT': 'AU', 'SA': 'AU', 'WA': 'AU'
+        }
         
         self.logger.info(f"RMSClient initialized - Analysis period: {self.constraint_start_date} to {self.constraint_end_date}")
         self.logger.log_function_exit("RMSClient.__init__")
@@ -675,3 +681,88 @@ class RMSClient:
             elif isinstance(fixed_value, str):
                 return fixed_value.lower() in ['true', '1', 'yes']
         return False
+    
+    def extract_state_code(self, property_data: Dict) -> Optional[str]:
+        """
+        Extract state code from property data
+        
+        Args:
+            property_data: Property data dictionary from RMS API
+            
+        Returns:
+            State code (VIC, NSW, QLD, etc.) or None if not found
+        """
+        # Try multiple possible field names
+        state_fields = ['state', 'stateCode', 'region', 'location', 'address']
+        
+        for field in state_fields:
+            if field in property_data and property_data[field]:
+                state_code = str(property_data[field]).upper()
+                if state_code in self.STATE_COUNTRY_MAPPING:
+                    self.logger.debug(f"Found state code '{state_code}' in field '{field}'")
+                    return state_code
+        
+        # Fallback: extract from property name or code
+        property_name = property_data.get('name', '').upper()
+        property_code = property_data.get('code', '').upper()
+        
+        # Look for state abbreviations in name/code
+        for state_code in self.STATE_COUNTRY_MAPPING.keys():
+            if state_code in property_name or state_code in property_code:
+                self.logger.debug(f"Found state code '{state_code}' in property name/code")
+                return state_code
+        
+        self.logger.warning(f"Could not extract state code from property: {property_data.get('name', 'Unknown')}")
+        return None
+    
+    def get_property_with_state(self, property_id: int) -> Optional[Dict]:
+        """
+        Get property data with extracted state code
+        
+        Args:
+            property_id: Property ID to fetch
+            
+        Returns:
+            Property data with state_code field added, or None if not found
+        """
+        # Find property in all_properties
+        for property_data in self.all_properties:
+            if property_data.get('id') == property_id:
+                # Extract state code
+                state_code = self.extract_state_code(property_data)
+                property_data['state_code'] = state_code
+                return property_data
+        
+        self.logger.warning(f"Property {property_id} not found in all_properties")
+        return None
+    
+    def get_holiday_aware_date_range(self, property_state: str, holiday_client=None) -> Tuple[date, date]:
+        """
+        Calculate holiday-aware date range for a property
+        
+        Args:
+            property_state: State code for the property
+            holiday_client: Optional HolidayClient instance
+            
+        Returns:
+            Tuple of (start_date, end_date) for holiday-aware analysis
+        """
+        if not holiday_client:
+            self.logger.debug(f"No holiday client provided, using base date range for {property_state}")
+            return self.constraint_start_date, self.constraint_end_date
+        
+        try:
+            # Calculate holiday-aware date range
+            start_date, end_date = holiday_client.get_holiday_aware_date_range(
+                property_state, 
+                self.constraint_start_date, 
+                self.constraint_end_date
+            )
+            
+            self.logger.info(f"Holiday-aware date range for {property_state}: {start_date} to {end_date}")
+            return start_date, end_date
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating holiday-aware date range for {property_state}: {e}")
+            # Fallback to base date range
+            return self.constraint_start_date, self.constraint_end_date
