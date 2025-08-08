@@ -440,8 +440,8 @@ class MultiPropertyAnalyzer:
                 self.holiday_client.force_refresh_cache_for_state(state_code)
                 print(f"🗺️  Detected state code: {state_code} for {property_name}")
                 self.holiday_client.debug_cache_contents(state_code)
-                # Fetch holiday periods for 2-month forward analysis
-                holiday_periods = self.holiday_client.get_holiday_periods_2month_forward(
+                # Fetch combined holiday periods (public + school holidays) for 2-month forward analysis
+                holiday_periods = self.holiday_client.get_combined_holiday_periods_2month_forward(
                     state_code,
                     date.today()  # Start from today
                 )
@@ -464,7 +464,11 @@ class MultiPropertyAnalyzer:
                         'state_code': state_code
                     }
                     
-                    print(f"🎄 2-Month Forward Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
+                    # Count school vs public holidays
+                    school_holidays = [h for h in holiday_periods if h.get('is_school_holiday')]
+                    public_holidays = [h for h in holiday_periods if not h.get('is_school_holiday')]
+                    
+                    print(f"🎄 2-Month Forward Combined Holiday Analysis: {len(holiday_periods)} periods ({len(school_holidays)} school, {len(public_holidays)} public), {len(holiday_suggestions)} holiday moves")
                     print(f"📋 Total Merged Suggestions: {len(merged_suggestions)} moves")
                     
                     # Update suggestions with merged list

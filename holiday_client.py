@@ -9,6 +9,7 @@ import time
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Tuple
 from utils import get_logger
+from school_holiday_client import SchoolHolidayClient
 
 class HolidayClient:
     """Client for fetching and managing holiday data from Nager.Date API"""
@@ -26,6 +27,9 @@ class HolidayClient:
         self.cache_ttl = cache_ttl
         self.timeout = timeout
         self.logger = get_logger()
+        
+        # Initialize school holiday client
+        self.school_holiday_client = SchoolHolidayClient()
         
         # Australian state to country mapping
         self.STATE_COUNTRY_MAPPING = {
@@ -244,6 +248,43 @@ class HolidayClient:
         except Exception as e:
             self.logger.error(f"Unexpected error fetching holidays for {state_code} {year}: {e}")
             return []
+    
+    def get_combined_holiday_periods_2month_forward(self, state_code: str, base_date: date = None) -> List[Dict]:
+        """
+        Get combined holiday periods (public + school holidays) for a 2-month forward-looking window
+        
+        Args:
+            state_code: Australian state code (VIC, NSW, QLD, etc.)
+            base_date: Base date to start from (defaults to today)
+            
+        Returns:
+            List of combined holiday period dictionaries with extended dates
+        """
+        if base_date is None:
+            base_date = date.today()
+        
+        self.logger.info(f"Getting combined holiday periods for {state_code} in 2-month forward window")
+        
+        # Get public holidays
+        public_holidays = self.get_holiday_periods_2month_forward(state_code, base_date)
+        self.logger.info(f"Found {len(public_holidays)} public holiday periods for {state_code}")
+        
+        # Get school holidays
+        school_holidays = self.school_holiday_client.get_school_holiday_periods_2month_forward(state_code, base_date)
+        self.logger.info(f"Found {len(school_holidays)} school holiday periods for {state_code}")
+        
+        # Combine and sort by start date
+        combined_holidays = public_holidays + school_holidays
+        combined_holidays.sort(key=lambda x: x['start_date'])
+        
+        self.logger.info(f"Combined total: {len(combined_holidays)} holiday periods for {state_code}")
+        
+        # Log the combined holidays for debugging
+        for holiday in combined_holidays:
+            holiday_type = "School" if holiday.get('is_school_holiday') else "Public"
+            self.logger.debug(f"  {holiday_type} Holiday: {holiday['name']} ({holiday['start_date']} to {holiday['end_date']})")
+        
+        return combined_holidays
     
     def get_holiday_extended_dates(self, holiday_start: date, holiday_end: date, 
                                  extension_days: int = 7) -> Tuple[date, date]:
