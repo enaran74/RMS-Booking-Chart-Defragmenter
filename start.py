@@ -428,14 +428,18 @@ class MultiPropertyAnalyzer:
             self.logger.info(f"Step 3.7: Performing holiday analysis for {property_name}")
             holiday_start = time.time()
             
-            # Get state code for holiday analysis
-            state_code = self.rms_client.get_property_state_code(property_id)
-            if not state_code:
-                self.logger.warning(f"Could not determine state code for {property_name} - skipping holiday analysis")
-                print("⚠️  Could not determine state code - skipping holiday analysis")
-                holiday_suggestions = []
-                holiday_data = {'holiday_periods': []}
-            else:
+                # Get state code for holiday analysis
+                state_code = self.rms_client.get_property_state_code(property_id)
+                if not state_code:
+                    self.logger.warning(f"Could not determine state code for {property_name} - skipping holiday analysis")
+                    print("⚠️  Could not determine state code - skipping holiday analysis")
+                    holiday_suggestions = []
+                    holiday_data = {'holiday_periods': []}
+                else:
+                    # Debug: Clear cache for this state to ensure fresh data
+                    self.holiday_client.clear_cache_for_state(state_code)
+                    print(f"🗺️  Detected state code: {state_code} for {property_name}")
+                    self.holiday_client.debug_cache_contents(state_code)
                 # Fetch holiday periods for 2-month forward analysis
                 holiday_periods = self.holiday_client.get_holiday_periods_2month_forward(
                     state_code,
