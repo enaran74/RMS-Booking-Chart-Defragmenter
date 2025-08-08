@@ -234,17 +234,28 @@ fi
 # Step 10: Start the service
 print_info "Starting $SERVICE_NAME..."
 systemctl start $SERVICE_NAME
-sleep 10  # Give service time to run
 
-# Step 11: Verify service completed successfully
+# Step 11: Wait for service to complete (with timeout)
+print_info "Waiting for service to complete (timeout: 5 minutes)..."
+TIMEOUT=300  # 5 minutes
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
+    if [ "$SERVICE_STATUS" = "inactive" ]; then
+        break
+    fi
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+    print_info "Service still running... (${ELAPSED}s elapsed)"
+done
+
+# Step 12: Verify service completed successfully
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
 EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
 
 if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
     print_status "Service completed successfully (one-time execution)"
-elif [ "$SERVICE_STATUS" = "active" ]; then
-    print_status "Service is running (long-running mode)"
-else
+elif [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" != "0" ]; then
     print_error "Service failed. Status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
     print_info "Checking service logs for errors..."
     echo ""
@@ -253,11 +264,17 @@ else
     echo ""
     print_error "Service failed. Check logs above for details."
     rollback
+elif [ "$SERVICE_STATUS" = "active" ]; then
+    print_warning "Service is still running after timeout. This may be normal for long-running analysis."
+    print_info "Service will continue running in the background."
+    print_status "Update completed successfully (service running)"
+else
+    print_error "Unexpected service status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
+    rollback
 fi
 
-# Step 12: Final verification
+# Step 13: Final verification
 print_info "Performing final verification..."
-sleep 5  # Wait a bit more for service to stabilize
 
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
 EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
