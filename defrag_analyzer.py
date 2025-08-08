@@ -9,7 +9,7 @@ import numpy as np
 import time
 from datetime import datetime, timedelta
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import sys
 from utils import get_logger
 
@@ -307,7 +307,7 @@ class DefragmentationAnalyzer:
         return moveable
     
     def _find_best_move(self, moveable_reservations: List[Dict], units: List[str], dates: set, 
-                       current_occupancy: dict, current_score: float, constraint_end_date) -> tuple[Optional[Dict], int]:
+                       current_occupancy: dict, current_score: float, constraint_end_date) -> Tuple[Optional[Dict], int]:
         """Find the best move for current iteration"""
         
         best_move = None
