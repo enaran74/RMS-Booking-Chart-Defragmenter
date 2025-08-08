@@ -88,9 +88,13 @@ class HolidayClient:
                 holidays = response.json()
                 self.logger.info(f"Retrieved {len(holidays)} holidays for {state_code} {year}")
                 
-                # Debug: Show raw holiday names from API
+                # Debug: Show raw holiday data from API
                 raw_holiday_names = [h.get('name', 'Unknown') for h in holidays]
                 self.logger.info(f"Raw API holidays for {state_code} {year}: {raw_holiday_names}")
+                
+                # Debug: Show state information from API response
+                for holiday in holidays[:3]:  # Show first 3 holidays as example
+                    self.logger.info(f"Sample holiday data: {holiday.get('name')} - States: {holiday.get('states', 'N/A')}")
                 
                 # Process and filter holidays for this specific state
                 processed_holidays = self._process_holidays_for_state(holidays, state_code)
@@ -384,6 +388,7 @@ class HolidayClient:
     def _process_holidays_for_state(self, holidays: List[Dict], state_code: str) -> List[Dict]:
         """
         Process and filter raw holiday data from API for a specific state
+        Uses the actual state information from the API response instead of hardcoded mappings
         
         Args:
             holidays: Raw holiday data from API
@@ -394,129 +399,6 @@ class HolidayClient:
         """
         processed_holidays = []
         
-        # Define state-specific holiday mappings
-        state_holiday_mappings = {
-            'NSW': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True
-            },
-            'VIC': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True,
-                'Melbourne Cup Day': True
-            },
-            'QLD': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,  # Legacy name, API might still return this
-                'King\'s Birthday': True,   # New name, API should return this
-                'Easter Sunday': True,
-                'Easter Saturday': True
-            },
-            'WA': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True
-            },
-            'SA': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True,
-                'Adelaide Cup Day': True
-            },
-            'TAS': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True
-            },
-            'NT': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True,
-                'May Day': True,
-                'Picnic Day': True
-            },
-            'ACT': {
-                'Australia Day': True,
-                'New Year\'s Day': True,
-                'Christmas Day': True,
-                'Boxing Day': True,
-                'Good Friday': True,
-                'Easter Monday': True,
-                'ANZAC Day': True,
-                'Queen\'s Birthday': True,
-                'Labour Day': True,
-                'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True,
-                'Canberra Day': True
-            }
-        }
-        
-        # Get the holiday mapping for this state
-        state_holidays = state_holiday_mappings.get(state_code.upper(), {})
-        
         for holiday in holidays:
             # Parse date
             try:
@@ -525,11 +407,23 @@ class HolidayClient:
                 self.logger.warning(f"Invalid date format: {holiday['date']}")
                 continue
             
-            # Check if this holiday applies to this state
             holiday_name = holiday['name']
-            if holiday_name not in state_holidays:
-                self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code}, skipping")
-                continue
+            
+            # Check if this holiday applies to this state using API state information
+            holiday_states = holiday.get('states', [])
+            
+            # If no states specified, it's a national holiday (applies to all states)
+            if not holiday_states:
+                self.logger.debug(f"Holiday '{holiday_name}' is national (no states specified) - applying to {state_code}")
+                applies_to_state = True
+            else:
+                # Check if our state is in the list of states for this holiday
+                applies_to_state = state_code.upper() in [s.upper() for s in holiday_states]
+                if applies_to_state:
+                    self.logger.debug(f"Holiday '{holiday_name}' applies to {state_code} (states: {holiday_states})")
+                else:
+                    self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code} (states: {holiday_states}), skipping")
+                    continue
             
             # Special date-based filtering for King's Birthday (different states have different dates)
             if holiday_name == 'King\'s Birthday':
@@ -558,7 +452,8 @@ class HolidayClient:
                 'end_date': holiday_date,
                 'state_code': state_code,
                 'country_code': self.STATE_COUNTRY_MAPPING.get(state_code.upper(), 'AU'),
-                'api_data': holiday  # Keep original API data for reference
+                'api_data': holiday,  # Keep original API data for reference
+                'applies_to_states': holiday_states  # Keep state information for debugging
             }
             
             processed_holidays.append(processed_holiday)
