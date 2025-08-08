@@ -372,69 +372,57 @@ chmod -R 755 $INSTALL_DIR
 chmod 600 $INSTALL_DIR/uninstall.sh
 
 # Create README for Linux
-cat > $INSTALL_DIR/README_LINUX.md << EOF
-# BookingChartDefragmenter for Debian 12 Linux
+cat > $INSTALL_DIR/README.md << EOF
+# BookingChartDefragmenter for Linux
 
 ## Installation Complete
 
-The BookingChartDefragmenter has been successfully installed on your Debian 12 Linux server.
+The BookingChartDefragmenter has been successfully installed on your Linux server.
 
-## Configuration
+## Quick Start
 
-1. Edit the configuration file:
+1. **Configure the application**:
    \`\`\`bash
    sudo nano /etc/bookingchart-defragmenter/config.env
    \`\`\`
 
-2. Update the RMS API credentials and other settings as needed.
-
-3. Restart the service:
+2. **Start the service**:
    \`\`\`bash
-   sudo systemctl restart bookingchart-defragmenter.service
+   sudo systemctl start bookingchart-defragmenter.service
+   sudo systemctl enable bookingchart-defragmenter.service
    \`\`\`
 
-## Usage
+3. **Run health check**:
+   \`\`\`bash
+   sudo /opt/bookingchart-defragmenter/health_check.sh
+   \`\`\`
 
-### Manual Run
+## Service Management
+
 \`\`\`bash
-sudo /opt/bookingchart-defragmenter/run_defragmentation.sh
-\`\`\`
+# Start/stop/restart service
+sudo /opt/bookingchart-defragmenter/manage.sh start
+sudo /opt/bookingchart-defragmenter/manage.sh stop
+sudo /opt/bookingchart-defragmenter/manage.sh restart
 
-### Service Management
-\`\`\`bash
-# Start the service
-sudo systemctl start bookingchart-defragmenter.service
+# Check status and logs
+sudo /opt/bookingchart-defragmenter/manage.sh status
+sudo /opt/bookingchart-defragmenter/manage.sh logs
 
-# Stop the service
-sudo systemctl stop bookingchart-defragmenter.service
+# Run analysis manually
+sudo /opt/bookingchart-defragmenter/manage.sh run
 
-# Check status
-sudo systemctl status bookingchart-defragmenter.service
-
-# View logs
-sudo journalctl -u bookingchart-defragmenter.service -f
-\`\`\`
-
-### Health Check
-\`\`\`bash
-sudo /opt/bookingchart-defragmenter/health_check.sh
+# Update from GitHub
+sudo /opt/bookingchart-defragmenter/manage.sh update
 \`\`\`
 
 ## Automated Execution
 
-The system is configured to run automatically at 2:00 AM daily via cron.
+The system runs automatically at 2:00 AM daily via cron.
 
-## Logs
+## Documentation
 
-- Application logs: \`/var/log/bookingchart-defragmenter/\`
-- System logs: \`journalctl -u bookingchart-defragmenter.service\`
-
-## Uninstallation
-
-To uninstall the application:
-\`\`\`bash
-sudo /opt/bookingchart-defragmenter/uninstall.sh
-\`\`\`
+For complete documentation, visit: https://github.com/enaran74/RMS-Booking-Chart-Defragmenter
 
 ## Support
 
@@ -450,7 +438,7 @@ echo "3. Start the service: sudo systemctl start bookingchart-defragmenter.servi
 echo "4. Check the status: sudo systemctl status bookingchart-defragmenter.service"
 echo ""
 echo -e "${BLUE}📚 Documentation:${NC}"
-echo "See /opt/bookingchart-defragmenter/README_LINUX.md for detailed usage instructions"
+echo "See /opt/bookingchart-defragmenter/README.md for local usage instructions"
 echo ""
 echo -e "${BLUE}🔧 Health Check:${NC}"
 echo "Run: sudo /opt/bookingchart-defragmenter/health_check.sh"
