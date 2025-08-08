@@ -10,6 +10,12 @@ print_error() {
     echo -e "\033[0;31m❌ $1\033[0m"
 }
 
+# Check if help is requested - bypass credential check for help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    exec python3 start.py --help
+    exit 0
+fi
+
 # Check if required environment variables are set
 if [ -z "$AGENT_ID" ] || [ -z "$AGENT_PASSWORD" ] || [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_PASSWORD" ]; then
     print_error "Missing required RMS API credentials"
@@ -45,5 +51,10 @@ if [ "$USE_TRAINING_DB" = "true" ]; then
 fi
 
 # Run the application
-exec python3 start.py $ARGS
+# If arguments are passed to the script, use them; otherwise use the built ARGS
+if [ $# -gt 0 ]; then
+    exec python3 start.py "$@"
+else
+    exec python3 start.py $ARGS
+fi
 
