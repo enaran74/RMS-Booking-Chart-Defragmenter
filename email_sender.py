@@ -98,7 +98,7 @@ class EmailSender:
         msg = MIMEMultipart('alternative')
         msg['From'] = self.sender_email
         msg['To'] = recipient_email
-        msg['Subject'] = f"Defragmentation Analysis - {property_name} - {analysis_start_date.strftime('%d/%m/%Y')} to {analysis_end_date.strftime('%d/%m/%Y')}"
+        msg['Subject'] = f"RMS Booking Chart Fragmentation Report: {property_name}"
         
         # Create HTML content
         html_content = self._create_html_content(property_name, property_id, suggestions, 
@@ -169,7 +169,7 @@ class EmailSender:
         </head>
         <body>
             <div class="header">
-                <h1>RMS Booking Chart Defragmentation Analysis for:</h1>
+                <h1>RMS Booking Chart Fragmentation Report for:</h1>
                 <h1>{property_name}</h1>
             </div>
             
@@ -281,7 +281,7 @@ class EmailSender:
         msg = MIMEMultipart('alternative')
         msg['From'] = self.sender_email
         msg['To'] = recipient_email
-        msg['Subject'] = f"🎄 Holiday-Enhanced Defragmentation Analysis: {property_name}"
+        msg['Subject'] = f"RMS Booking Chart Fragmentation Report: {property_name}"
         
         # Create HTML content
         html_content = self._create_holiday_enhanced_html_content(
@@ -405,7 +405,7 @@ class EmailSender:
         </head>
         <body>
             <div class="header">
-                <h1>🎄 Holiday-Enhanced RMS Defragmentation Analysis for:</h1>
+                <h1>RMS Booking Chart Fragmentation Report for:</h1>
                 <h1>{property_name}</h1>
             </div>
             
