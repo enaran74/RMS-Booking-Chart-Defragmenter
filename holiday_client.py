@@ -66,7 +66,10 @@ class HolidayClient:
         # Check cache first
         if self._is_cache_valid(cache_key):
             self.logger.debug(f"Returning cached holidays for {state_code} {year}")
-            return self.cache[cache_key]['data']
+            cached_data = self.cache[cache_key]['data']
+            holiday_names = [h['name'] for h in cached_data]
+            self.logger.info(f"Returning {len(cached_data)} cached holidays for {state_code} {year}: {holiday_names}")
+            return cached_data
         
         # Get country code for state
         country_code = self.STATE_COUNTRY_MAPPING.get(state_code.upper())
@@ -575,6 +578,26 @@ class HolidayClient:
         """Clear all cached data"""
         self.cache.clear()
         self.logger.info("Holiday cache cleared")
+    
+    def clear_cache_for_state(self, state_code: str):
+        """Clear cached data for a specific state"""
+        keys_to_remove = [key for key in self.cache.keys() if key.startswith(f"{state_code}_")]
+        for key in keys_to_remove:
+            del self.cache[key]
+        self.logger.info(f"Cleared holiday cache for {state_code}: {len(keys_to_remove)} entries removed")
+    
+    def debug_cache_contents(self, state_code: str = None):
+        """Debug method to show cache contents"""
+        if state_code:
+            keys = [key for key in self.cache.keys() if key.startswith(f"{state_code}_")]
+        else:
+            keys = list(self.cache.keys())
+        
+        self.logger.info(f"Cache contents for {state_code or 'all states'}: {keys}")
+        for key in keys:
+            data = self.cache[key]['data']
+            holiday_names = [h['name'] for h in data]
+            self.logger.info(f"  {key}: {len(data)} holidays - {holiday_names}")
     
     def get_cache_stats(self) -> Dict:
         """Get cache statistics"""
