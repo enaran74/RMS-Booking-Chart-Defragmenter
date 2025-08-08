@@ -105,5 +105,5 @@ jobs:
     
     - name: Test Docker image
       run: |
-        # Test that the Docker image can run help command
-        docker run --rm booking-defragmenter:test python start.py --help
+        # Test that the Docker image can run help command through entrypoint
+        docker run --rm booking-defragmenter:test --help
