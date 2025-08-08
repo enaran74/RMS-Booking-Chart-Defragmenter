@@ -106,7 +106,7 @@ print_info "Executing defragmentation analysis..."
 print_info "This may take a while depending on the number of parks..."
 
 # Run the analysis and capture output
-if sudo -u defrag "$SCRIPT_DIR/venv/bin/python" "$SCRIPT_DIR/start.py" 2>&1 | tee -a "$LOG_FILE"; then
+if sudo -E -u defrag env AGENT_ID="$AGENT_ID" AGENT_PASSWORD="$AGENT_PASSWORD" CLIENT_ID="$CLIENT_ID" CLIENT_PASSWORD="$CLIENT_PASSWORD" "$SCRIPT_DIR/venv/bin/python" "$SCRIPT_DIR/start.py" 2>&1 | tee -a "$LOG_FILE"; then
     print_status "Analysis completed successfully!"
     log_message "Analysis completed successfully"
     
