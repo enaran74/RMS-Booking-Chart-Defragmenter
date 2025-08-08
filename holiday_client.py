@@ -85,8 +85,8 @@ class HolidayClient:
                 holidays = response.json()
                 self.logger.info(f"Retrieved {len(holidays)} holidays for {state_code} {year}")
                 
-                # Process and cache holidays
-                processed_holidays = self._process_holidays(holidays, state_code)
+                # Process and filter holidays for this specific state
+                processed_holidays = self._process_holidays_for_state(holidays, state_code)
                 self._cache_data(cache_key, processed_holidays)
                 
                 return processed_holidays
@@ -369,18 +369,142 @@ class HolidayClient:
         
         return final_start, final_end
     
-    def _process_holidays(self, holidays: List[Dict], state_code: str) -> List[Dict]:
+    def _process_holidays_for_state(self, holidays: List[Dict], state_code: str) -> List[Dict]:
         """
-        Process raw holiday data from API
+        Process and filter raw holiday data from API for a specific state
         
         Args:
             holidays: Raw holiday data from API
             state_code: Australian state code
             
         Returns:
-            Processed holiday data
+            Processed holiday data filtered for the specific state
         """
         processed_holidays = []
+        
+        # Define state-specific holiday mappings
+        state_holiday_mappings = {
+            'NSW': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True
+            },
+            'VIC': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True,
+                'Melbourne Cup Day': True
+            },
+            'QLD': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True
+            },
+            'WA': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True
+            },
+            'SA': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True,
+                'Adelaide Cup Day': True
+            },
+            'TAS': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True
+            },
+            'NT': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True,
+                'May Day': True,
+                'Picnic Day': True
+            },
+            'ACT': {
+                'Australia Day': True,
+                'New Year\'s Day': True,
+                'Christmas Day': True,
+                'Boxing Day': True,
+                'Good Friday': True,
+                'Easter Monday': True,
+                'ANZAC Day': True,
+                'Queen\'s Birthday': True,
+                'Labour Day': True,
+                'Easter Sunday': True,
+                'Easter Saturday': True,
+                'King\'s Birthday': True,
+                'Canberra Day': True
+            }
+        }
+        
+        # Get the holiday mapping for this state
+        state_holidays = state_holiday_mappings.get(state_code.upper(), {})
         
         for holiday in holidays:
             # Parse date
@@ -390,12 +514,18 @@ class HolidayClient:
                 self.logger.warning(f"Invalid date format: {holiday['date']}")
                 continue
             
+            # Check if this holiday applies to this state
+            holiday_name = holiday['name']
+            if holiday_name not in state_holidays:
+                self.logger.debug(f"Holiday '{holiday_name}' does not apply to {state_code}, skipping")
+                continue
+            
             # Determine importance
-            importance = self.HOLIDAY_IMPORTANCE_MAPPING.get(holiday['name'], 'Medium')
+            importance = self.HOLIDAY_IMPORTANCE_MAPPING.get(holiday_name, 'Medium')
             
             # Create processed holiday data
             processed_holiday = {
-                'name': holiday['name'],
+                'name': holiday_name,
                 'type': 'Public Holiday',
                 'importance': importance,
                 'start_date': holiday_date,
@@ -407,7 +537,21 @@ class HolidayClient:
             
             processed_holidays.append(processed_holiday)
         
+        self.logger.info(f"Filtered {len(processed_holidays)} holidays for {state_code} from {len(holidays)} total holidays")
         return processed_holidays
+    
+    def _process_holidays(self, holidays: List[Dict], state_code: str) -> List[Dict]:
+        """
+        Process raw holiday data from API (legacy method for backward compatibility)
+        
+        Args:
+            holidays: Raw holiday data from API
+            state_code: Australian state code
+            
+        Returns:
+            Processed holiday data
+        """
+        return self._process_holidays_for_state(holidays, state_code)
     
     def _is_cache_valid(self, cache_key: str) -> bool:
         """Check if cached data is still valid"""
