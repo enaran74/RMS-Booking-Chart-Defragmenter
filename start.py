@@ -368,12 +368,10 @@ class MultiPropertyAnalyzer:
         clean_property_code = property_code.rstrip('- _')
         
         # Generate output filename using cleaned property code (will overwrite existing files)
-        # Use output directory if it exists, otherwise fall back to current directory
+        # Create output directory if it doesn't exist
         output_dir = "output"
-        if os.path.exists(output_dir):
-            output_filename = os.path.join(output_dir, f"{clean_property_code}-Defragmentation-Analysis.xlsx")
-        else:
-            output_filename = f"{clean_property_code}-Defragmentation-Analysis.xlsx"
+        os.makedirs(output_dir, exist_ok=True)
+        output_filename = os.path.join(output_dir, f"{clean_property_code}-Defragmentation-Analysis.xlsx")
         
         # Log property analysis start
         self.logger.log_property_analysis_start(clean_property_code, property_id, property_name)
@@ -886,10 +884,8 @@ class MultiPropertyAnalyzer:
         
         # Save the file in output directory
         output_dir = "output"
-        if os.path.exists(output_dir):
-            output_filename = os.path.join(output_dir, "Full_Defragmentation_Analysis.xlsx")
-        else:
-            output_filename = "Full_Defragmentation_Analysis.xlsx"
+        os.makedirs(output_dir, exist_ok=True)
+        output_filename = os.path.join(output_dir, "Full_Defragmentation_Analysis.xlsx")
         wb.save(output_filename)
         
         print(f"✅ Consolidated Excel file created: {output_filename}")
