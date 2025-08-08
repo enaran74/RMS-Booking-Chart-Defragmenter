@@ -243,7 +243,7 @@ chmod +x $INSTALL_DIR/run_defragmentation.sh
 
 # Create cron job for automated runs
 print_status "Setting up cron job..."
-CRON_JOB="0 2 * * * $SERVICE_USER $INSTALL_DIR/run_defragmentation.sh >> $LOG_DIR/cron.log 2>&1"
+CRON_JOB="0 2 * * * $INSTALL_DIR/run_defragmentation.sh >> $LOG_DIR/cron.log 2>&1"
 (crontab -u $SERVICE_USER -l 2>/dev/null; echo "$CRON_JOB") | crontab -u $SERVICE_USER -
 
 # Reload systemd and enable service
