@@ -58,7 +58,17 @@ log_message "Starting defragmentation analysis"
 print_info "1. Checking configuration..."
 if [ -f "$CONFIG_FILE" ]; then
     print_status "Configuration file found"
-    source "$CONFIG_FILE"
+    # Load configuration variables safely, ignoring comments and empty lines
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ $line =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+        
+        # Export variables that look like assignments
+        if [[ $line =~ ^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            export "$line"
+        fi
+    done < "$CONFIG_FILE"
 else
     print_error "Configuration file not found at $CONFIG_FILE"
     log_message "ERROR: Configuration file not found"
