@@ -133,7 +133,35 @@ export TARGET_PROPERTIES=ALL
 python3 start.py
 ```
 
-### Service Management
+### Service Management (Recommended)
+
+```bash
+# Start the service (environment setup only)
+sudo /opt/bookingchart-defragmenter/manage.sh start
+
+# Stop the service
+sudo /opt/bookingchart-defragmenter/manage.sh stop
+
+# Restart the service
+sudo /opt/bookingchart-defragmenter/manage.sh restart
+
+# Check status
+sudo /opt/bookingchart-defragmenter/manage.sh status
+
+# View logs (live)
+sudo /opt/bookingchart-defragmenter/manage.sh logs
+
+# Run analysis manually (runs once and exits)
+sudo /opt/bookingchart-defragmenter/manage.sh run
+
+# Health check
+sudo /opt/bookingchart-defragmenter/manage.sh health
+
+# Update from GitHub
+sudo /opt/bookingchart-defragmenter/manage.sh update
+```
+
+### Legacy Service Management
 
 ```bash
 # Start the service
@@ -170,6 +198,29 @@ docker-compose restart
 # Update and rebuild
 docker-compose up -d --build
 ```
+
+## Service Architecture
+
+### Two-Tier Service Design
+
+The application uses a **two-tier service architecture** for optimal performance:
+
+1. **Service Wrapper** (`service_wrapper.sh`):
+   - ✅ Sets up environment and verifies configuration
+   - ✅ Does NOT run analysis automatically
+   - ✅ Stays running for systemd management
+   - ✅ Fast startup (~30 seconds)
+
+2. **Analysis Execution**:
+   - 📅 **Scheduled**: Daily at 2:00 AM via cron
+   - 🖱️ **Manual**: Run with `manage.sh run`
+   - ⚡ **Non-blocking**: Updates don't interfere with analysis
+
+### Benefits:
+- 🚀 **Fast Updates**: No more waiting for analysis to complete
+- 🔄 **Non-Blocking**: Updates don't interfere with scheduled analysis
+- 📊 **Resource Efficient**: Analysis only runs when needed
+- 🛡️ **Reliable**: Service stays running between analysis runs
 
 ## Automated Execution
 
@@ -291,6 +342,46 @@ tail -100 /var/log/bookingchart-defragmenter/defrag_analyzer.log
    - Firewall rules for outbound connections
    - HTTPS for API communications
    - SMTP over TLS for email
+
+## Updates and Maintenance
+
+### Automated Updates
+
+```bash
+# First time setup (SSH authentication)
+sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+
+# Update from GitHub
+sudo /opt/bookingchart-defragmenter/manage.sh update
+```
+
+### SSH Authentication Setup
+
+For automated updates, you need SSH access to GitHub:
+
+1. **Generate SSH Key** (if not already done):
+   ```bash
+   ssh-keygen -t ed25519 -C "your-email@example.com"
+   ```
+
+2. **Add to GitHub**:
+   - Copy the public key: `cat ~/.ssh/id_ed25519.pub`
+   - Add to GitHub: Settings → SSH and GPG keys → New SSH key
+
+3. **Test Connection**:
+   ```bash
+   ssh -T git@github.com
+   ```
+
+### Health Monitoring
+
+```bash
+# Comprehensive health check
+sudo /opt/bookingchart-defragmenter/health_check.sh
+
+# Service diagnostics
+sudo /opt/bookingchart-defragmenter/debug_service.sh
+```
 
 ## Backup and Recovery
 
