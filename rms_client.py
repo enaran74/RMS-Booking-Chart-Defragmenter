@@ -766,3 +766,31 @@ class RMSClient:
             self.logger.error(f"Error calculating holiday-aware date range for {property_state}: {e}")
             # Fallback to base date range
             return self.constraint_start_date, self.constraint_end_date
+    
+    def get_property_state_code(self, property_id: int) -> Optional[str]:
+        """
+        Get state code for a specific property
+        
+        Args:
+            property_id: Property ID
+            
+        Returns:
+            State code (e.g., 'NSW', 'VIC', etc.) or None if not found
+        """
+        try:
+            # Get property with state information
+            property_data = self.get_property_with_state(property_id)
+            if property_data and 'state_code' in property_data:
+                return property_data['state_code']
+            
+            # Fallback: search in all properties
+            for prop in self.all_properties:
+                if prop.get('id') == property_id:
+                    return self.extract_state_code(prop)
+            
+            self.logger.warning(f"Could not find state code for property ID {property_id}")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting state code for property {property_id}: {e}")
+            return None

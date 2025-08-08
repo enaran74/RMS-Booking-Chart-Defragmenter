@@ -100,6 +100,64 @@ class HolidayClient:
         except requests.exceptions.RequestException as e:
             self.logger.error(f"API request error for {state_code} {year}: {e}")
             return []
+    
+    def get_holiday_periods(self, start_date: date, end_date: date, state_code: str) -> List[Dict]:
+        """
+        Get holiday periods within a date range for a specific state
+        
+        Args:
+            start_date: Start date for analysis
+            end_date: End date for analysis
+            state_code: Australian state code (VIC, NSW, QLD, etc.)
+            
+        Returns:
+            List of holiday period dictionaries with extended dates
+        """
+        try:
+            # Get all holidays for the year(s) in the date range
+            years = set()
+            current_date = start_date
+            while current_date <= end_date:
+                years.add(current_date.year)
+                current_date += timedelta(days=365)
+            
+            all_holidays = []
+            for year in years:
+                holidays = self.get_holidays_for_state(state_code, year)
+                all_holidays.extend(holidays)
+            
+            # Filter holidays within the date range and create extended periods
+            holiday_periods = []
+            for holiday in all_holidays:
+                holiday_start = holiday['start_date']
+                holiday_end = holiday['end_date']
+                
+                # Check if holiday overlaps with analysis period
+                if (holiday_start <= end_date and holiday_end >= start_date):
+                    # Create extended period (±7 days around holiday)
+                    extended_start, extended_end = self.get_holiday_extended_dates(
+                        holiday_start, holiday_end, extension_days=7
+                    )
+                    
+                    holiday_period = {
+                        'name': holiday['name'],
+                        'type': holiday['type'],
+                        'importance': holiday['importance'],
+                        'start_date': holiday_start,
+                        'end_date': holiday_end,
+                        'extended_start': extended_start,
+                        'extended_end': extended_end,
+                        'state_code': state_code
+                    }
+                    
+                    holiday_periods.append(holiday_period)
+            
+            self.logger.info(f"Found {len(holiday_periods)} holiday periods for {state_code} in date range {start_date} to {end_date}")
+            return holiday_periods
+            
+        except Exception as e:
+            self.logger.error(f"Error getting holiday periods for {state_code}: {e}")
+            return []
         except Exception as e:
             self.logger.error(f"Unexpected error fetching holidays for {state_code} {year}: {e}")
             return []
