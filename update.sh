@@ -18,7 +18,7 @@ SERVICE_USER="defrag"
 LOG_DIR="/var/log/bookingchart-defragmenter"
 BACKUP_DIR="/opt/bookingchart-defragmenter-backup"
 TEMP_DIR="/tmp/bookingchart-defragmenter-update"
-GIT_REPO_URL="https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git"
+GIT_REPO_URL="git@github.com:enaran74/RMS-Booking-Chart-Defragmenter.git"
 BRANCH=${1:-main}  # Default to main branch, but allow override
 
 echo -e "${BLUE}🔄 BookingChartDefragmenter Update Script${NC}"
@@ -88,6 +88,38 @@ fi
 if [ ! -d "$INSTALL_DIR" ]; then
     print_error "Installation directory $INSTALL_DIR not found."
     exit 1
+fi
+
+# Check SSH key configuration for GitHub
+print_info "Checking SSH configuration for GitHub..."
+if ! ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    print_warning "SSH key not configured for GitHub. Attempting to configure..."
+    
+    # Check if SSH key exists
+    if [ -f "/home/$SERVICE_USER/.ssh/id_rsa" ]; then
+        print_info "SSH key found. Adding to SSH agent..."
+        eval "$(ssh-agent -s)"
+        ssh-add /home/$SERVICE_USER/.ssh/id_rsa
+        
+        # Test SSH connection again
+        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+            print_status "SSH authentication configured successfully"
+        else
+            print_error "SSH authentication failed. Please configure SSH keys manually:"
+            print_info "1. Generate SSH key: ssh-keygen -t rsa -b 4096 -C 'your_email@example.com'"
+            print_info "2. Add to GitHub: https://github.com/settings/keys"
+            print_info "3. Test: ssh -T git@github.com"
+            exit 1
+        fi
+    else
+        print_error "SSH key not found. Please configure SSH keys manually:"
+        print_info "1. Generate SSH key: ssh-keygen -t rsa -b 4096 -C 'your_email@example.com'"
+        print_info "2. Add to GitHub: https://github.com/settings/keys"
+        print_info "3. Test: ssh -T git@github.com"
+        exit 1
+    fi
+else
+    print_status "SSH authentication configured"
 fi
 
 # Step 1: Check current status
