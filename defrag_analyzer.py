@@ -731,3 +731,252 @@ class DefragmentationAnalyzer:
             category_importance[category] = strategic_score
         
         return category_importance
+    
+    def analyze_holiday_defragmentation(self, reservations_df: pd.DataFrame, inventory_df: pd.DataFrame,
+                                      holiday_periods: List[Dict], constraint_start_date, constraint_end_date) -> List[Dict]:
+        """
+        Analyze defragmentation specifically for holiday periods
+        
+        Args:
+            reservations_df: DataFrame of reservations
+            inventory_df: DataFrame of inventory units
+            holiday_periods: List of holiday period dictionaries
+            constraint_start_date: Start date for analysis
+            constraint_end_date: End date for analysis
+            
+        Returns:
+            List of holiday-specific move suggestions
+        """
+        start_time = time.time()
+        self.logger.log_function_entry("analyze_holiday_defragmentation", 
+                                     reservations_count=len(reservations_df),
+                                     inventory_count=len(inventory_df),
+                                     holiday_periods_count=len(holiday_periods))
+        
+        print(f"\n🎄 ANALYZING HOLIDAY DEFRAGMENTATION OPPORTUNITIES")
+        print("=" * 60)
+        print(f"📊 Data: {len(reservations_df)} reservations, {len(inventory_df)} units")
+        print(f"🎅 Holiday Periods: {len(holiday_periods)} periods")
+        
+        holiday_moves = []
+        
+        for i, holiday_period in enumerate(holiday_periods, 1):
+            holiday_name = holiday_period['name']
+            holiday_start = holiday_period['start_date']
+            holiday_end = holiday_period['end_date']
+            extended_start = holiday_period['extended_start']
+            extended_end = holiday_period['extended_end']
+            importance = holiday_period['importance']
+            
+            print(f"\n🎯 Analyzing Holiday {i}/{len(holiday_periods)}: {holiday_name}")
+            print(f"   📅 Period: {holiday_start} to {holiday_end}")
+            print(f"   📅 Extended: {extended_start} to {extended_end}")
+            print(f"   ⭐ Importance: {importance}")
+            
+            # Filter reservations for this extended period
+            holiday_reservations = self._filter_reservations_for_period(
+                reservations_df, extended_start, extended_end
+            )
+            
+            if len(holiday_reservations) == 0:
+                print(f"   ⚠️  No reservations found for {holiday_name} period")
+                continue
+            
+            print(f"   📋 Found {len(holiday_reservations)} reservations for analysis")
+            
+            # Run defragmentation analysis for this period
+            period_moves = self._suggest_moves(
+                holiday_reservations, inventory_df, extended_start, extended_end
+            )
+            
+            # Add holiday metadata to moves
+            for move in period_moves:
+                move.update({
+                    'holiday_period': holiday_name,
+                    'holiday_type': holiday_period['type'],
+                    'holiday_importance': importance,
+                    'holiday_start_date': holiday_start,
+                    'holiday_end_date': holiday_end,
+                    'extended_start_date': extended_start,
+                    'extended_end_date': extended_end,
+                    'is_holiday_move': True,
+                    'move_id': f"H{len(holiday_moves) + 1}.{move.get('move_id', '1')}"
+                })
+            
+            holiday_moves.extend(period_moves)
+            print(f"   ✅ Generated {len(period_moves)} moves for {holiday_name}")
+        
+        duration = time.time() - start_time
+        self.logger.log_performance_metric("Holiday defragmentation analysis", duration)
+        self.logger.log_data_summary("Holiday move suggestions generated", len(holiday_moves))
+        
+        if holiday_moves:
+            print(f"\n🎄 Generated {len(holiday_moves)} total holiday move suggestions")
+        else:
+            print(f"\n✅ No holiday moves found - reservations are already optimized for holiday periods!")
+        
+        self.logger.log_function_exit("analyze_holiday_defragmentation", len(holiday_moves))
+        return holiday_moves
+    
+    def deduplicate_moves(self, regular_moves: List[Dict], holiday_moves: List[Dict]) -> List[Dict]:
+        """
+        Remove duplicate moves between regular and holiday analysis
+        
+        Args:
+            regular_moves: List of regular move suggestions
+            holiday_moves: List of holiday move suggestions
+            
+        Returns:
+            List of deduplicated moves
+        """
+        self.logger.log_function_entry("deduplicate_moves", 
+                                     regular_moves_count=len(regular_moves),
+                                     holiday_moves_count=len(holiday_moves))
+        
+        print(f"\n🔄 DEDUPLICATING MOVES")
+        print("=" * 40)
+        print(f"📋 Regular moves: {len(regular_moves)}")
+        print(f"🎄 Holiday moves: {len(holiday_moves)}")
+        
+        all_moves = regular_moves.copy()
+        duplicates_found = 0
+        
+        for holiday_move in holiday_moves:
+            # Check if this move already exists in regular moves
+            is_duplicate = False
+            for regular_move in regular_moves:
+                if self._are_moves_duplicate(holiday_move, regular_move):
+                    is_duplicate = True
+                    duplicates_found += 1
+                    self.logger.debug(f"Duplicate found: {holiday_move.get('move_id', 'Unknown')} matches {regular_move.get('move_id', 'Unknown')}")
+                    break
+            
+            if not is_duplicate:
+                all_moves.append(holiday_move)
+        
+        print(f"🔄 Duplicates removed: {duplicates_found}")
+        print(f"📋 Final moves: {len(all_moves)}")
+        
+        self.logger.log_data_summary("Duplicates removed", duplicates_found)
+        self.logger.log_data_summary("Final moves after deduplication", len(all_moves))
+        self.logger.log_function_exit("deduplicate_moves", len(all_moves))
+        
+        return all_moves
+    
+    def _are_moves_duplicate(self, move1: Dict, move2: Dict) -> bool:
+        """
+        Check if two moves are duplicates based on key attributes
+        
+        Args:
+            move1: First move dictionary
+            move2: Second move dictionary
+            
+        Returns:
+            True if moves are duplicates, False otherwise
+        """
+        # Key attributes to compare for duplication
+        key_attributes = [
+            'property', 'from_unit', 'to_unit', 'from_date', 'to_date', 'guest_name'
+        ]
+        
+        for attr in key_attributes:
+            if move1.get(attr) != move2.get(attr):
+                return False
+        
+        return True
+    
+    def merge_move_lists(self, regular_moves: List[Dict], holiday_moves: List[Dict]) -> List[Dict]:
+        """
+        Merge regular and holiday moves with proper ordering
+        
+        Args:
+            regular_moves: List of regular move suggestions
+            holiday_moves: List of holiday move suggestions
+            
+        Returns:
+            List of merged moves with holiday moves prioritized
+        """
+        self.logger.log_function_entry("merge_move_lists", 
+                                     regular_moves_count=len(regular_moves),
+                                     holiday_moves_count=len(holiday_moves))
+        
+        # First deduplicate
+        deduplicated_moves = self.deduplicate_moves(regular_moves, holiday_moves)
+        
+        # Sort moves by priority: holiday moves first, then by improvement score
+        def sort_key(move):
+            # Holiday moves get priority
+            is_holiday = move.get('is_holiday_move', False)
+            importance = move.get('holiday_importance', 'Low')
+            improvement_score = move.get('improvement_score', 0.0)
+            
+            # Priority order: Holiday High > Holiday Medium > Regular High Score > Regular Low Score
+            if is_holiday and importance == 'High':
+                return (0, 1.0 - improvement_score)  # High priority, then by score (descending)
+            elif is_holiday and importance == 'Medium':
+                return (1, 1.0 - improvement_score)  # Medium priority, then by score (descending)
+            else:
+                return (2, 1.0 - improvement_score)  # Regular priority, then by score (descending)
+        
+        sorted_moves = sorted(deduplicated_moves, key=sort_key)
+        
+        # Update move IDs to reflect new order
+        holiday_count = 1
+        regular_count = 1
+        for move in sorted_moves:
+            if move.get('is_holiday_move', False):
+                move['move_id'] = f"H{holiday_count}"
+                holiday_count += 1
+            else:
+                move['move_id'] = f"R{regular_count}"
+                regular_count += 1
+        
+        self.logger.log_data_summary("Merged moves", len(sorted_moves))
+        self.logger.log_function_exit("merge_move_lists", len(sorted_moves))
+        
+        return sorted_moves
+    
+    def calculate_holiday_importance_score(self, holiday_data: Dict) -> float:
+        """
+        Calculate importance score for holiday period
+        
+        Args:
+            holiday_data: Holiday period data
+            
+        Returns:
+            Importance score (0.0 to 1.0)
+        """
+        importance_mapping = {
+            'High': 1.0,
+            'Medium': 0.7,
+            'Low': 0.4
+        }
+        
+        importance = holiday_data.get('importance', 'Medium')
+        return importance_mapping.get(importance, 0.5)
+    
+    def _filter_reservations_for_period(self, reservations_df: pd.DataFrame, 
+                                      start_date, end_date) -> pd.DataFrame:
+        """
+        Filter reservations for a specific date period
+        
+        Args:
+            reservations_df: DataFrame of reservations
+            start_date: Start date for filtering
+            end_date: End date for filtering
+            
+        Returns:
+            Filtered DataFrame of reservations
+        """
+        filtered_reservations = []
+        
+        for _, reservation in reservations_df.iterrows():
+            arrive_date = self._parse_date(reservation['Arrive'])
+            depart_date = self._parse_date(reservation['Depart'])
+            
+            if arrive_date and depart_date:
+                # Check if reservation overlaps with the period
+                if (arrive_date <= end_date and depart_date >= start_date):
+                    filtered_reservations.append(reservation)
+        
+        return pd.DataFrame(filtered_reservations) if filtered_reservations else pd.DataFrame()
