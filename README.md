@@ -1,0 +1,561 @@
+# BookingChartDefragmenter
+
+![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-active-success.svg)
+
+A sophisticated Python application designed to optimize accommodation bookings across multiple properties by analyzing reservation patterns and suggesting strategic moves to maximize revenue potential.
+
+## Table of Contents
+- [Quick Start](#quick-start)
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Docker Deployment](#docker-deployment)
+- [Contributing](#contributing)
+- [License](#license)
+
+**Developed by:** Mr Tim Curtis, Operations Systems Manager  
+**Organization:** Discovery Holiday Parks  
+**Date:** 2025
+
+## Quick Start
+
+### Prerequisites
+- Python 3.7+
+- RMS API access credentials
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/your-username/BookingChartDefragmenter.git
+cd BookingChartDefragmenter
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment variables
+cp env.example .env
+# Edit .env with your RMS credentials
+```
+
+### Basic Usage
+```bash
+# Analyze all properties
+python3 start.py --agent-id YOUR_ID --agent-password "YOUR_PASS" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASS" -p ALL
+
+# Analyze specific properties
+python3 start.py --agent-id YOUR_ID --agent-password "YOUR_PASS" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASS" -p PROP1,PROP2
+```
+
+## Overview
+
+The RMS Multi-Property Defragmentation Analyzer is a sophisticated Python application designed to optimize Discovery Holiday Parks' extensive network of holiday and caravan parks across Australia.
+
+This system analyzes reservation patterns and suggests strategic reservation moves to maximize revenue potential across our diverse property portfolio. The system connects to RMS (Reservation Management System) APIs to fetch real-time data and generates comprehensive Excel reports with visual charts and actionable recommendations for our operations teams.
+
+## Features
+
+### Core Functionality
+- **Flexible Property Selection**: Analyze specific properties, multiple properties, or all properties via command-line arguments
+- **Real-Time Data Integration**: Connects to RMS API to fetch live inventory and reservation data with comprehensive caching
+- **Defragmentation Analysis**: Identifies fragmented booking patterns and suggests optimal accommodation moves
+- **Revenue Optimization**: Helps maximize occupancy and revenue by consolidating available nights
+- **Visual Reporting**: Generates detailed Excel workbooks with interactive charts and move suggestions
+- **Optional Email Notifications**: Sends professional HTML emails with Excel attachments (configurable)
+- **Endpoint Monitoring**: Comprehensive tracking of API usage and limits across all properties
+- **Consolidated Analysis**: Creates summary Excel file with two sheets: daily move opportunities heatmap across all properties, and a comprehensive table of all suggested moves for potential ingestion into the Discovery Holiday Parks Data Lake.
+
+### Key Features
+
+#### 🔍 **Intelligent Defragmentation Algorithm**
+- Analyzes reservation patterns across all accommodation categories (cabins, sites, glamping, etc.)
+- Identifies fragmented availability (scattered single nights)
+- Suggests strategic moves to create longer contiguous availability blocks
+- Considers fixed reservations (cannot be moved) and reservation status
+- Uses sequential optimization to maximize overall property efficiency
+- **Category-Based Move Ordering**: Moves numbered by category (1.1, 1.2, 2.1, 2.2, etc.)
+
+#### 📊 **Comprehensive Data Analysis**
+- Fetches live inventory data (accommodation units, sites, categories)
+- Retrieves current reservations with status and guest information
+- Analyzes 31-day forward-looking periods
+- Filters by active categories and available units
+- Handles multiple reservation statuses (Confirmed, Unconfirmed, Arrived, Maintenance, Pencil, etc.)
+- **Active Data Filtering**: Only processes active properties, categories, and areas (excludes inactive items)
+
+#### 🎯 **Smart Move Suggestions**
+- Prioritizes moves by improvement score
+- Considers the impact of sequential moves
+- Excludes fixed reservations from suggestions
+- **Excludes Maintenance and Pencil bookings** (cannot be moved)
+- Provides detailed reasoning for each suggested move
+- Orders suggestions for optimal implementation
+
+#### 📧 **Email Notification System**
+- **Optional Email Sending**: Controlled via `-e` command-line flag
+- **Professional HTML Emails**: Branded with Discovery Parks styling
+- **Excel Attachments**: Automatically attaches generated analysis files
+- **Property-Specific Content**: Customized for each property with move recommendations
+- **Complete Move Lists**: Shows all optimization moves, not just top 3
+- **Implementation Guidance**: Clear instructions for applying recommendations
+- **Training Mode Support**: All training emails sent to operations@discoveryparks.com.au
+
+#### 📊 **Endpoint Monitoring & Caching**
+- **Comprehensive Caching**: Categories and areas cached to reduce API calls by ~50%
+- **Real-Time Monitoring**: Tracks API usage across all endpoints
+- **Limit Tracking**: Monitors when properties approach API limits
+- **Usage Statistics**: Detailed reporting of data volumes per property
+- **Performance Optimization**: Automatic cache invalidation and management
+
+#### 📈 **Visual Excel Reporting**
+- **Visual Chart Sheet**: Daily heatmap showing move opportunities and booking grid
+- **Move Suggestions Sheet**: Detailed table with all recommended moves
+- **Interactive Elements**: Hover tooltips with detailed information
+- **Color-Coded Status**: Different colors for various reservation statuses
+- **Implementation Guide**: Step-by-step instructions for applying moves
+- **Merged Cells**: Multi-night bookings displayed as horizontal blocks
+- **Directional Arrows**: ⬆️⬇️ indicators showing move direction in chart
+
+## Architecture
+
+### Core Components
+
+#### 1. **MultiPropertyAnalyzer** (`start.py`)
+- Main orchestration class
+- Handles multi-property processing
+- Manages authentication and property discovery
+- Provides progress tracking and user control
+- Coordinates the entire analysis workflow
+- Generates consolidated Excel summary
+
+#### 2. **RMSClient** (`rms_client.py`)
+- Handles RMS (Reservation Management System) API authentication and communication
+- Fetches live inventory and reservation data
+- Manages API sessions and token handling
+- Filters and validates property data
+- Converts API responses to standardized formats
+- Implements comprehensive caching system
+
+#### 3. **DefragmentationAnalyzer** (`defrag_analyzer.py`)
+- Core optimization algorithm
+- Builds occupancy matrices
+- Calculates fragmentation scores
+- Identifies optimal move sequences
+
+#### 4. **ExcelGenerator** (`excel_generator.py`)
+- Creates comprehensive Excel workbooks
+- Generates visual charts and heatmaps
+- Builds detailed move suggestions tables
+- Applies professional styling and formatting
+
+#### 5. **EmailSender** (`email_sender.py`)
+- Sends professional HTML email notifications
+- Handles Excel file attachments
+- Manages email templates and branding
+- Supports training mode email routing
+
+#### 6. **Logger** (`utils.py`)
+- **Comprehensive Logging System**: Detailed logging of all application activities
+- **Append Mode**: Log file grows with each run, preserving historical data
+- **Multiple Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **Performance Tracking**: Timing information for all major operations
+- **API Call Logging**: Detailed tracking of all RMS API interactions
+- **Error Context**: Rich error information with context for troubleshooting
+- **Data Summaries**: Counts and statistics for all data processing steps
+- **Function Entry/Exit**: Tracks function calls and return values
+- **Cache Operations**: Logs cache hits, misses, and operations
+- **Move Analysis**: Detailed logging of defragmentation analysis results
+- **Excel Generation**: Tracks Excel file creation and sheet generation
+- **Email Operations**: Logs email sending attempts and results
+- Handles move validation and simulation
+- Implements category-based move ordering
+
+#### 4. **ExcelGenerator** (`excel_generator.py`)
+- Creates comprehensive Excel workbooks
+- Generates visual charts and heatmaps
+- Builds detailed suggestion tables
+- Applies formatting and styling
+- Adds interactive elements and tooltips
+- Implements merged cells for multi-night bookings
+
+#### 5. **EmailSender** (`email_sender.py`)
+- Sends professional HTML emails
+- Handles Excel file attachments
+- Manages SMTP connections
+- Provides email statistics and error handling
+- Supports training mode email routing
+
+### Data Flow
+
+```
+1. Authentication → RMS API
+2. Property Discovery → Get all available properties
+3. For each property:
+   a. Fetch Inventory Data → Categories, Units, Availability
+   b. Fetch Reservation Data → Current bookings, status, guest info
+   c. Analyze Defragmentation → Identify optimization opportunities
+   d. Generate Excel Report → Visual charts + move suggestions
+   e. Send Email (if enabled) → Property-specific notifications
+4. Generate Consolidated Excel → Summary across all properties (daily heatmap + suggested moves table)
+5. Summary Report → Overall success metrics
+```
+
+## Key Algorithms
+
+### Defragmentation Scoring
+- **Fragmentation Score**: Calculates how fragmented availability is within each category
+- **Contiguous Availability**: Identifies blocks of available nights
+- **Move Impact Analysis**: Simulates the effect of each potential move
+- **Sequential Optimization**: Considers the cumulative effect of multiple moves
+
+### Move Validation
+- **Availability Check**: Ensures target accommodation unit is available for the entire stay
+- **Status Filtering**: Only moves confirmed/unconfirmed reservations
+- **Fixed Reservation Protection**: Excludes reservations marked as fixed
+- **Maintenance & Pencil Protection**: Excludes Maintenance and Pencil bookings (cannot be moved)
+- **Date Range Validation**: Only considers moves within analysis period
+
+### Data Filtering
+- **Active Properties Only**: Excludes properties marked as inactive (`inactive: false`)
+- **Active Categories Only**: Excludes categories marked as inactive (`inactive: false`) or not available for booking (`availableToIbe: false`)
+- **Active Areas Only**: Excludes areas marked as inactive (`inactive: false`) or with statistics disabled (`statisticsStatus: false`)
+- **Reservation-Area Alignment**: Excludes reservations associated with excluded areas to ensure data consistency
+
+### API Efficiency & Caching
+- **Comprehensive Caching System**: Categories and areas cached per property with 5-minute TTL
+- **API Call Reduction**: Reduces API calls by approximately 50% through intelligent caching
+- **Cache Management**: Automatic cache invalidation and property-specific cache clearing
+- **Performance Monitoring**: Real-time tracking of cache hit rates and API usage
+
+## Output Files
+
+### Individual Property Excel Files
+Each property generates an Excel file named: `{PropertyCode}-Defragmentation-Analysis.xlsx`
+
+**Note**: Files are overwritten on each run to maintain clean file management and ensure the latest analysis is always available.
+
+#### Sheet 1: Visual Chart
+- **Daily Heatmap**: Red gradient showing move opportunities for each day
+- **Move Count Row**: Number of available moves per day with color coding
+- **Category-Specific Importance Levels**: Individual rows for each accommodation category showing Low/Medium/High importance per day, based on fragmentation and availability patterns
+- **Booking Grid**: Visual representation of all reservations by accommodation unit and date
+- **Merged Cells**: Multi-night bookings are displayed as horizontal blocks spanning consecutive dates
+- **Category Headers**: Merged across entire chart width with left-justified text for better readability
+- **Compact Layout**: No blank rows between categories for efficient space usage
+- **Black Borders**: Clear boundaries around each reservation for easy visual separation
+- **Color-Coded Status**: Different colors for various reservation types (Confirmed, Unconfirmed, Arrived, Maintenance, Pencil)
+- **Fixed Bookings**: 🎯 Dart icon prefix indicates fixed reservations (cannot be moved)
+- **Move Indicators**: Red cells with directional arrows and numbers (⬆️ 1, ⬇️ 2) showing suggested moves
+- **Directional Arrows**: ⬆️ for moves up in chart, ⬇️ for moves down in chart (positioned before move number)
+- **Interactive Tooltips**: Detailed information on hover including span duration, importance levels, and category strategic weighting
+
+#### Sheet 2: Move Suggestions
+- **Category-Based Order**: Numbered moves by category (1.1, 1.2, 2.1, 2.2, etc.)
+- **Reservation Details**: Guest name, current accommodation unit, suggested unit
+- **Improvement Score**: Quantified benefit of each move
+- **Implementation Notes**: Detailed reasoning and instructions
+
+### Consolidated Excel File
+After processing all properties, generates: `Full_Defragmentation_Analysis.xlsx`
+
+#### Sheet 1: Consolidated Daily Moves
+- **Two Rows Per Property**: Each property has two rows - one for move counts and one for opportunity scores
+- **Move Counts Row**: Shows the number of moves available for each property/date (e.g., "QROC Moves")
+- **Move Scores Row**: Shows the total move opportunity score with heatmap coloring (e.g., "QROC Move Score")
+- **Daily Move Opportunities**: Columns show each day with both move counts and opportunity scores
+- **Red Heatmap**: Color intensity on Move Scores rows indicates opportunity density
+- **Interactive Tooltips**: Detailed information for each cell including moves available, total opportunity score, and average move value
+- **Legend**: Explains color coding for opportunity score levels
+- **Scoring Logic Explanation**: Detailed explanation of how Total Move Opportunity Score and Average Move Value are calculated
+
+#### Sheet 2: Suggested_Moves
+- **All Properties Combined**: Complete collection of suggested reservation moves across all analyzed parks
+- **Property Information**: PropertyId, PropertyCode, PropertyName columns for easy identification
+- **Move Details**: Reservation number, guest surname, current unit, suggested unit
+- **Categorization**: Category, status, arrival/departure dates, nights, improvement score
+- **Implementation Guidance**: Reason for each move and implementation notes
+- **Sorted by Property**: Organized by property code then move order for easy implementation
+
+## Usage
+
+### Prerequisites
+- Python 3.7+
+- RMS API access credentials
+- Required Python packages: `pandas`, `openpyxl`, `requests`, `numpy`
+
+## Installation
+
+### From Source
+```bash
+# Clone the repository
+git clone https://github.com/your-username/BookingChartDefragmenter.git
+cd BookingChartDefragmenter
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Manual Installation
+```bash
+pip install pandas openpyxl requests numpy
+```
+
+## Configuration
+The system requires RMS credentials to be provided as command-line arguments:
+- **Agent ID and Password** (MANDATORY)
+- **Client ID and Password** (MANDATORY)
+- API base URL (hardcoded)
+- Timezone settings (hardcoded)
+- Database selection (Live Production or Training via `-t` flag)
+
+**Security Note**: Credentials are no longer hardcoded in the source code and must be provided at runtime for better security.
+
+## Usage
+
+### Command Line Interface
+
+#### Basic Analysis (No Emails)
+```bash
+# Analyze specific properties
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE,QROC,TCRA
+
+# Analyze single property
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE
+
+# Analyze all properties
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p ALL
+```
+
+#### Analysis with Email Notifications
+```bash
+# Analyze all properties with email notifications
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p ALL
+
+# Analyze specific properties with email notifications
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE,QROC,TCRA
+
+# Analyze single property with email notification
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE
+```
+
+#### Training Database Analysis
+```bash
+# Analyze all properties using training database
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p ALL
+
+# Analyze specific properties using training database
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p SADE,QROC,TCRA
+
+# Analyze with training database and email notifications
+python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -e -p ALL
+# Note: Training mode emails are sent to operations@discoveryparks.com.au
+```
+
+**Note**: Replace the example credentials with your actual RMS credentials. All credential arguments are MANDATORY.
+
+#### Help and Examples
+```bash
+# Show help
+python3 start.py -h
+
+# If no arguments provided, shows usage examples
+python3 start.py
+```
+
+#### Command Line Arguments
+**MANDATORY Arguments:**
+- `--agent-id`: RMS Agent ID
+- `--agent-password`: RMS Agent Password
+- `--client-id`: RMS Client ID
+- `--client-password`: RMS Client Password
+
+**Optional Arguments:**
+- `-p, --properties`: Property codes to analyze (comma-separated) or ALL for all properties
+- `-e, --email`: Send email notifications with Excel attachments after each property analysis
+- `-t, --training`: Use training database instead of live production data (emails sent to operations@discoveryparks.com.au)
+
+### Analysis Process
+The system will:
+1. Authenticate with RMS API (Live Production or Training database)
+2. Discover and filter properties based on target codes
+3. Analyze each property sequentially with progress tracking
+4. Generate Excel reports for each property
+5. Send email notifications (if enabled)
+6. Generate consolidated Excel summary (two sheets: daily heatmap + suggested moves)
+7. Provide comprehensive summaries and endpoint usage statistics
+
+### Email Behavior
+- **Live Mode**: Emails are sent to each property's individual email address (e.g., `rockhampton@discoveryparks.com.au`)
+- **Training Mode**: All emails are sent to `operations@discoveryparks.com.au` for centralized review
+- **Contact Information**: All emails include contact details for the Operations Systems Manager
+
+## Business Value
+
+### Revenue Optimization
+- **Increased Occupancy**: Consolidates scattered availability into bookable blocks
+- **Higher ADR Potential**: Longer stays typically command higher rates
+- **Reduced Turnover**: Fewer single-night stays means less housekeeping and site maintenance costs
+- **Better Guest Experience**: Guests prefer longer stays in the same accommodation
+
+### Operational Efficiency
+- **Automated Analysis**: No manual review of booking patterns required
+- **Visual Decision Support**: Clear charts and recommendations
+- **Multi-Property Scalability**: Handles entire property portfolios with flexible selection
+- **Real-Time Data**: Always works with current reservation status
+- **API Efficiency**: Comprehensive caching reduces API calls by ~50%
+- **Progress Tracking**: Real-time progress indicators and comprehensive summaries
+- **Safe Testing**: Training database option for testing without affecting live data
+
+### Strategic Planning
+- **Forward-Looking Analysis**: 31-day optimization window
+- **Category-Level Optimization**: Considers accommodation type preferences (cabins, sites, glamping, etc.)
+- **Category-Based Implementation**: Ordered moves within each category for maximum impact
+- **Risk Management**: Respects fixed reservations, maintenance schedules, and guest preferences
+
+## Technical Specifications
+
+### API Integration
+- **RMS REST API**: Full integration with Reservation Management System
+- **Real-Time Data**: Live inventory and reservation information
+- **Authentication**: Secure token-based authentication
+- **Error Handling**: Robust error handling and retry logic
+
+### Data Processing
+- **Pandas DataFrames**: Efficient data manipulation and analysis
+- **Date Range Processing**: Handles complex date calculations
+- **Memory Optimization**: Processes large datasets efficiently
+- **Data Validation**: Comprehensive input validation and cleaning
+
+### Excel Generation
+- **OpenPyXL**: Professional Excel workbook creation
+- **Visual Styling**: Professional formatting and color schemes
+- **Interactive Elements**: Comments and tooltips for user guidance
+- **Multi-Sheet Workbooks**: Organized information presentation
+
+## Example Output
+
+### Excel Files
+The system generates files like:
+- `QROC-Defragmentation-Analysis.xlsx` (individual property)
+- `TCRA-Defragmentation-Analysis.xlsx` (individual property)
+- `Full_Defragmentation_Analysis.xlsx` (consolidated summary with two sheets)
+
+Each individual property file contains:
+- Visual booking charts with color-coded status
+- Daily heatmap showing move opportunities
+- Detailed move suggestion tables
+- Implementation instructions and legends
+
+The consolidated file (`Full_Defragmentation_Analysis.xlsx`) contains:
+- **Sheet 1: Consolidated Daily Moves** - Property-by-property heatmap of daily move opportunities with two rows per property:
+  - `{ParkCode} Moves` - Number of moves available for each day
+  - `{ParkCode} Move Importance` - Strategic importance level (High/Medium/Low/None) for each day based on category importance
+- **Sheet 2: Suggested_Moves** - Complete collection of all suggested moves across all properties in a single table
+
+### Email Notifications
+When enabled, sends professional HTML emails with:
+- Discovery Parks branded styling
+- Property-specific analysis summaries
+- Complete move recommendation tables
+- Excel file attachments
+- Implementation guidance
+
+### Console Output
+Comprehensive progress tracking and summaries:
+- Real-time progress bars for overall and individual property analysis
+- Cache performance statistics
+- Email sending status
+- Database mode indicator (Live Production or Training)
+- Endpoint usage summary table with limit monitoring
+- API efficiency metrics
+
+### Logging System
+The application maintains a comprehensive log file (`defrag_analyzer.log`) that captures all activities:
+- **Session Tracking**: Each run is clearly marked with session boundaries
+- **Performance Metrics**: Detailed timing for all major operations
+- **API Interactions**: Complete logging of all RMS API calls with status codes and response sizes
+- **Data Processing**: Counts and summaries of all data processing steps
+- **Error Tracking**: Detailed error information with context for troubleshooting
+- **Function Flow**: Entry and exit logging for all major functions
+- **Cache Operations**: Tracking of cache hits, misses, and operations
+- **Move Analysis**: Detailed results of defragmentation analysis
+- **Excel Generation**: File creation and sheet generation tracking
+- **Email Operations**: Success/failure logging for email sending
+
+**Log File Location**: `defrag_analyzer.log` (in the same directory as the script)
+**Log Format**: Timestamp - Logger Name - Level - Message
+**Append Mode**: Log file grows with each run, preserving historical data
+**Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+## Docker Deployment
+
+The project includes Docker support for easy deployment:
+
+```bash
+# Build the Docker image
+docker build -t booking-defragmenter .
+
+# Run with environment variables
+docker run -e AGENT_ID=your_id -e AGENT_PASSWORD=your_pass \
+           -e CLIENT_ID=your_client_id -e CLIENT_PASSWORD=your_client_pass \
+           -e TARGET_PROPERTIES=ALL \
+           booking-defragmenter
+
+# Or use docker-compose
+docker-compose up
+```
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+
+```bash
+# Clone your fork
+git clone https://github.com/your-username/BookingChartDefragmenter.git
+cd BookingChartDefragmenter
+
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run tests (if available)
+python -m pytest
+
+# Run the application in development mode
+python3 start.py --help
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support and Maintenance
+
+### Error Handling
+- Comprehensive error logging and reporting
+- Graceful handling of API failures
+- Data validation and sanitization
+- User-friendly error messages
+
+### Performance Optimization
+- Efficient algorithms for large datasets
+- Memory-conscious data processing
+- Progress tracking for long-running operations
+- Configurable analysis parameters
+- Comprehensive caching system reducing API calls by ~50%
+- Real-time endpoint monitoring and limit tracking
+
+### Documentation Maintenance
+- **README Updates**: This README file should be updated whenever code changes impact functionality, features, or business logic
+- **Version Control**: All documentation changes should be committed alongside code changes
+- **Change Tracking**: Significant updates to the system should be reflected in this documentation
