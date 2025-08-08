@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Validate configuration files
+      run: |
+        # Check that env.example is valid
+        python -c "
+        import os
+        with open('env.example', 'r') as f:
+            content = f.read()
+            assert 'AGENT_ID=' in content
+            assert 'CLIENT_ID=' in content
+            print('✅ env.example is valid')
+        "
+    
+    - name: Test import capabilities
+      run: |
+        # Test that all modules can be imported without errors
+        python -c "
+        try:
+            import start
+            import rms_client
+            import defrag_analyzer
+            import excel_generator
+            import email_sender
+            import utils
+            print('✅ All modules import successfully')
+        except ImportError as e:
+            print(f'❌ Import error: {e}')
+            exit(1)
+        "
+    
+    - name: Test help functionality
+      run: |
+        # Test that the help command works
+        python start.py --help
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+    
+    - name: Run security scan with bandit
+      run: |
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . --severity-level medium
+    
+    - name: Check for known vulnerabilities
+      run: |
+        pip install -r requirements.txt
+        safety check --json || true
+        safety check
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: |
+        docker build -t booking-defragmenter:test .
+    
+    - name: Test Docker image
+      run: |
+        # Test that the Docker image can run help command
+        docker run --rm booking-defragmenter:test python start.py --help
