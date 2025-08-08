@@ -10,12 +10,13 @@ import argparse
 import time
 import os
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Optional
 import pandas as pd
 from rms_client import RMSClient
 from defrag_analyzer import DefragmentationAnalyzer
 from excel_generator import ExcelGenerator
 from email_sender import EmailSender
+from holiday_client import HolidayClient
 from utils import setup_logging, get_logger
 
 class MultiPropertyAnalyzer:
@@ -49,6 +50,10 @@ class MultiPropertyAnalyzer:
         self.defrag_analyzer = DefragmentationAnalyzer()
         self.excel_generator = ExcelGenerator()
         self.email_sender = EmailSender()
+        
+        # Initialize holiday client
+        self.logger.info("Initializing holiday client")
+        self.holiday_client = HolidayClient()
         
         # Analysis state
         self.all_properties = []
@@ -421,15 +426,74 @@ class MultiPropertyAnalyzer:
             self.logger.debug(f"Collecting suggestions data for {property_name}")
             self._collect_suggestions_data(property_id, property_name, property_code, suggestions)
             
-            # Step 4: Create Excel output
-            self.logger.info(f"Step 4: Creating Excel output for {property_name}")
+            # Step 3.7: Perform holiday analysis
+            self.logger.info(f"Step 3.7: Performing holiday analysis for {property_name}")
+            holiday_start = time.time()
+            
+            # Get state code for holiday analysis
+            state_code = self.rms_client.get_property_state_code(property_id)
+            if not state_code:
+                self.logger.warning(f"Could not determine state code for {property_name} - skipping holiday analysis")
+                print("⚠️  Could not determine state code - skipping holiday analysis")
+                holiday_suggestions = []
+                holiday_data = {'holiday_periods': []}
+            else:
+                # Fetch holiday periods
+                holiday_periods = self.holiday_client.get_holiday_periods(
+                    self.rms_client.constraint_start_date,
+                    self.rms_client.constraint_end_date,
+                    state_code
+                )
+                
+                if holiday_periods:
+                    # Perform holiday defragmentation analysis
+                    holiday_suggestions = self.defrag_analyzer.analyze_holiday_defragmentation(
+                        reservations_df,
+                        inventory_df,
+                        holiday_periods,
+                        self.rms_client.constraint_start_date,
+                        self.rms_client.constraint_end_date
+                    )
+                    
+                    # Merge regular and holiday suggestions
+                    merged_suggestions = self.defrag_analyzer.merge_move_lists(suggestions, holiday_suggestions)
+                    
+                    holiday_data = {
+                        'holiday_periods': holiday_periods,
+                        'state_code': state_code
+                    }
+                    
+                    print(f"🎄 Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
+                    print(f"📋 Total Merged Suggestions: {len(merged_suggestions)} moves")
+                    
+                    # Update suggestions with merged list
+                    suggestions = merged_suggestions
+                else:
+                    self.logger.info(f"No holiday periods found for {property_name} in {state_code}")
+                    print(f"📅 No holiday periods found for {state_code}")
+                    holiday_suggestions = []
+                    holiday_data = {'holiday_periods': []}
+            
+            holiday_duration = time.time() - holiday_start
+            self.logger.log_performance_metric("Holiday analysis", holiday_duration, f"for {property_name}")
+            self.logger.log_data_summary("Holiday suggestions", len(holiday_suggestions), f"for {property_name}")
+            
+            # Step 4: Create holiday-enhanced Excel output
+            self.logger.info(f"Step 4: Creating holiday-enhanced Excel output for {property_name}")
             excel_start = time.time()
-            excel_success, category_importance_levels = self.excel_generator.create_excel_output(
+            
+            # Separate regular and holiday suggestions for Excel generation
+            regular_suggestions = [s for s in suggestions if not s.get('is_holiday_move', False)]
+            holiday_suggestions = [s for s in suggestions if s.get('is_holiday_move', False)]
+            
+            excel_success, category_importance_levels = self.excel_generator.create_holiday_enhanced_excel(
                 reservations_df, 
                 inventory_df,
-                suggestions, 
+                regular_suggestions,
+                holiday_suggestions,
                 property_id,
                 property_name,
+                holiday_data,
                 self.rms_client.constraint_start_date,
                 self.rms_client.constraint_end_date,
                 output_filename
@@ -449,11 +513,13 @@ class MultiPropertyAnalyzer:
                 # Get property's email address
                 property_email = self._get_property_email(property_id)
                 
-                email_success = self.email_sender.send_property_analysis_email(
+                email_success = self.email_sender.send_holiday_enhanced_email(
                     property_name,
                     property_id,
                     output_filename,
-                    suggestions,
+                    regular_suggestions,
+                    holiday_suggestions,
+                    holiday_data,
                     self.rms_client.constraint_start_date,
                     self.rms_client.constraint_end_date,
                     excel_success,
@@ -466,7 +532,7 @@ class MultiPropertyAnalyzer:
                 print(f"📧 Email notifications disabled - skipping email for {property_name}")
             
             # Step 6: Display results summary
-            self._display_property_summary(suggestions, excel_success, property_id, property_name, output_filename)
+            self._display_property_summary(suggestions, excel_success, property_id, property_name, output_filename, holiday_suggestions, holiday_data)
             
             # Show cache and email performance
             cache_stats = self.rms_client.get_cache_stats()
@@ -927,14 +993,29 @@ class MultiPropertyAnalyzer:
                 cell.font = normal_font
             ws.merge_cells(f'A{summary_start_row + i}:O{summary_start_row + i}')
     
-    def _display_property_summary(self, suggestions, excel_success: bool, property_id: int, property_name: str, output_filename: str):
-        """Display summary for single property"""
+    def _display_property_summary(self, suggestions, excel_success: bool, property_id: int, property_name: str, output_filename: str, holiday_suggestions: List[Dict] = None, holiday_data: Dict = None):
+        """Display summary for single property with holiday information"""
         print(f"\n📋 PROPERTY ANALYSIS SUMMARY")
         print("=" * 40)
         print(f"🏢 Property: {property_name} (ID: {property_id})")
         print(f"📅 Period: {self.rms_client.constraint_start_date} to {self.rms_client.constraint_end_date}")
         print(f"🔄 Data Source: {'🧪 Training' if self.use_training_db else '🌐 Live'} RMS API")
-        print(f"📊 Suggestions: {len(suggestions)} optimization moves")
+        
+        # Separate regular and holiday suggestions
+        regular_suggestions = [s for s in suggestions if not s.get('is_holiday_move', False)]
+        holiday_suggestions = holiday_suggestions or [s for s in suggestions if s.get('is_holiday_move', False)]
+        
+        print(f"📊 Regular Suggestions: {len(regular_suggestions)} optimization moves")
+        print(f"🎄 Holiday Suggestions: {len(holiday_suggestions)} holiday-specific moves")
+        print(f"📋 Total Suggestions: {len(suggestions)} moves")
+        
+        # Show holiday periods if available
+        if holiday_data and 'holiday_periods' in holiday_data and holiday_data['holiday_periods']:
+            print(f"📅 Holiday Periods: {len(holiday_data['holiday_periods'])} periods analyzed")
+            for period in holiday_data['holiday_periods'][:3]:  # Show first 3
+                print(f"   • {period['name']} ({period['importance']} importance)")
+            if len(holiday_data['holiday_periods']) > 3:
+                print(f"   • ... and {len(holiday_data['holiday_periods']) - 3} more")
         
         if excel_success:
             print(f"✅ Excel Report: {output_filename}")
@@ -944,15 +1025,17 @@ class MultiPropertyAnalyzer:
         if suggestions:
             print(f"\n🔝 TOP 3 MOVE RECOMMENDATIONS:")
             print("-" * 80)
-            print(f"{'Order':<8} {'Res No':<10} {'Guest':<12} {'From':<15} {'To':<15}")
+            print(f"{'Order':<8} {'Type':<6} {'Guest':<12} {'From':<15} {'To':<15}")
             print("-" * 80)
             
             for suggestion in suggestions[:3]:
-                print(f"{suggestion['Sequential_Order']:<8} "
-                      f"{suggestion['Reservation_No']:<10} "
-                      f"{suggestion['Surname'][:11]:<12} "
-                      f"{suggestion['Current_Unit'][:14]:<15} "
-                      f"{suggestion['Suggested_Unit'][:14]:<15}")
+                move_type = "🎄" if suggestion.get('is_holiday_move', False) else "📋"
+                order = suggestion.get('move_id', suggestion.get('Sequential_Order', ''))
+                guest = suggestion.get('guest_name', suggestion.get('Surname', ''))[:11]
+                from_unit = suggestion.get('from_unit', suggestion.get('Current_Unit', ''))[:14]
+                to_unit = suggestion.get('to_unit', suggestion.get('Suggested_Unit', ''))[:14]
+                
+                print(f"{order:<8} {move_type:<6} {guest:<12} {from_unit:<15} {to_unit:<15}")
         else:
             print(f"\n✅ No optimization needed - reservations are well organized!")
 
