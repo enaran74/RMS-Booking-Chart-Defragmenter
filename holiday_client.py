@@ -433,10 +433,10 @@ class HolidayClient:
                 'Good Friday': True,
                 'Easter Monday': True,
                 'ANZAC Day': True,
-                'Queen\'s Birthday': True,
+                'Queen\'s Birthday': True,  # Legacy name, API might still return this
+                'King\'s Birthday': True,   # New name, API should return this
                 'Easter Sunday': True,
-                'Easter Saturday': True,
-                'King\'s Birthday': True
+                'Easter Saturday': True
             },
             'WA': {
                 'Australia Day': True,
@@ -531,6 +531,21 @@ class HolidayClient:
                 self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code}, skipping")
                 continue
             
+            # Special date-based filtering for King's Birthday (different states have different dates)
+            if holiday_name == 'King\'s Birthday':
+                # QLD: King's Birthday is in October (first Monday)
+                # NSW/VIC/WA/SA/TAS: King's Birthday is in June (second Monday)
+                # NT: King's Birthday is in September
+                if state_code.upper() == 'QLD' and holiday_date.month != 10:
+                    self.logger.info(f"King's Birthday in {holiday_date.month} does not apply to QLD (should be October), skipping")
+                    continue
+                elif state_code.upper() in ['NSW', 'VIC', 'WA', 'SA', 'TAS'] and holiday_date.month != 6:
+                    self.logger.info(f"King's Birthday in {holiday_date.month} does not apply to {state_code} (should be June), skipping")
+                    continue
+                elif state_code.upper() == 'NT' and holiday_date.month != 9:
+                    self.logger.info(f"King's Birthday in {holiday_date.month} does not apply to NT (should be September), skipping")
+                    continue
+            
             # Determine importance
             importance = self.HOLIDAY_IMPORTANCE_MAPPING.get(holiday_name, 'Medium')
             
@@ -593,6 +608,11 @@ class HolidayClient:
         for key in keys_to_remove:
             del self.cache[key]
         self.logger.info(f"Cleared holiday cache for {state_code}: {len(keys_to_remove)} entries removed")
+    
+    def force_refresh_cache_for_state(self, state_code: str):
+        """Force refresh cache for a specific state by clearing and re-fetching"""
+        self.clear_cache_for_state(state_code)
+        self.logger.info(f"Forced cache refresh for {state_code} - will fetch fresh data from API")
     
     def debug_cache_contents(self, state_code: str = None):
         """Debug method to show cache contents"""

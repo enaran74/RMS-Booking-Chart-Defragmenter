@@ -436,8 +436,8 @@ class MultiPropertyAnalyzer:
                 holiday_suggestions = []
                 holiday_data = {'holiday_periods': []}
             else:
-                # Debug: Clear cache for this state to ensure fresh data
-                self.holiday_client.clear_cache_for_state(state_code)
+                # Debug: Force refresh cache for this state to ensure fresh data
+                self.holiday_client.force_refresh_cache_for_state(state_code)
                 print(f"🗺️  Detected state code: {state_code} for {property_name}")
                 self.holiday_client.debug_cache_contents(state_code)
                 # Fetch holiday periods for 2-month forward analysis
