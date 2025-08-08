@@ -158,6 +158,73 @@ class HolidayClient:
         except Exception as e:
             self.logger.error(f"Error getting holiday periods for {state_code}: {e}")
             return []
+    
+    def get_holiday_periods_2month_forward(self, state_code: str, base_date: date = None) -> List[Dict]:
+        """
+        Get holiday periods for a 2-month forward-looking window from a base date
+        
+        Args:
+            state_code: Australian state code (VIC, NSW, QLD, etc.)
+            base_date: Base date to start from (defaults to today)
+            
+        Returns:
+            List of holiday period dictionaries with extended dates
+        """
+        if base_date is None:
+            base_date = date.today()
+        
+        # Calculate 2-month forward window
+        start_date = base_date
+        end_date = base_date + timedelta(days=60)  # 2 months forward
+        
+        self.logger.info(f"Getting 2-month forward holiday periods for {state_code}: {start_date} to {end_date}")
+        
+        try:
+            # Get all holidays for the year(s) in the date range
+            years = set()
+            current_date = start_date
+            while current_date <= end_date:
+                years.add(current_date.year)
+                current_date += timedelta(days=365)
+            
+            all_holidays = []
+            for year in years:
+                holidays = self.get_holidays_for_state(state_code, year)
+                all_holidays.extend(holidays)
+            
+            # Filter holidays within the 2-month window and create extended periods
+            holiday_periods = []
+            for holiday in all_holidays:
+                holiday_start = holiday['start_date']
+                holiday_end = holiday['end_date']
+                
+                # Check if holiday falls within the 2-month window
+                if (holiday_start >= start_date and holiday_start <= end_date):
+                    # Create extended period (±7 days around holiday)
+                    extended_start, extended_end = self.get_holiday_extended_dates(
+                        holiday_start, holiday_end, extension_days=7
+                    )
+                    
+                    holiday_period = {
+                        'name': holiday['name'],
+                        'type': holiday['type'],
+                        'importance': holiday['importance'],
+                        'start_date': holiday_start,
+                        'end_date': holiday_end,
+                        'extended_start': extended_start,
+                        'extended_end': extended_end,
+                        'state_code': state_code,
+                        'analysis_window': '2month_forward'
+                    }
+                    
+                    holiday_periods.append(holiday_period)
+            
+            self.logger.info(f"Found {len(holiday_periods)} holiday periods for {state_code} in 2-month forward window {start_date} to {end_date}")
+            return holiday_periods
+            
+        except Exception as e:
+            self.logger.error(f"Error getting 2-month forward holiday periods for {state_code}: {e}")
+            return []
         except Exception as e:
             self.logger.error(f"Unexpected error fetching holidays for {state_code} {year}: {e}")
             return []

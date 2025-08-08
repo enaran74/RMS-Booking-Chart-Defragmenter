@@ -818,6 +818,106 @@ class DefragmentationAnalyzer:
         self.logger.log_function_exit("analyze_holiday_defragmentation", len(holiday_moves))
         return holiday_moves
     
+    def analyze_holiday_defragmentation_2month_forward(self, reservations_df: pd.DataFrame, inventory_df: pd.DataFrame,
+                                                     holiday_periods: List[Dict], regular_analysis_start_date, 
+                                                     regular_analysis_end_date) -> List[Dict]:
+        """
+        Analyze defragmentation for holiday periods in a 2-month forward window
+        This method focuses on early optimization for upcoming holidays
+        
+        Args:
+            reservations_df: DataFrame of reservations
+            inventory_df: DataFrame of inventory units
+            holiday_periods: List of holiday period dictionaries (2-month forward)
+            regular_analysis_start_date: Start date of regular analysis (for deduplication)
+            regular_analysis_end_date: End date of regular analysis (for deduplication)
+            
+        Returns:
+            List of holiday-specific move suggestions (avoiding duplicates with regular analysis)
+        """
+        start_time = time.time()
+        self.logger.log_function_entry("analyze_holiday_defragmentation_2month_forward", 
+                                     reservations_count=len(reservations_df),
+                                     inventory_count=len(inventory_df),
+                                     holiday_periods_count=len(holiday_periods))
+        
+        print(f"\n🎄 ANALYZING 2-MONTH FORWARD HOLIDAY DEFRAGMENTATION")
+        print("=" * 70)
+        print(f"📊 Data: {len(reservations_df)} reservations, {len(inventory_df)} units")
+        print(f"🎅 Holiday Periods: {len(holiday_periods)} periods")
+        print(f"📅 Regular Analysis Period: {regular_analysis_start_date} to {regular_analysis_end_date}")
+        
+        holiday_moves = []
+        
+        for i, holiday_period in enumerate(holiday_periods, 1):
+            holiday_name = holiday_period['name']
+            holiday_start = holiday_period['start_date']
+            holiday_end = holiday_period['end_date']
+            extended_start = holiday_period['extended_start']
+            extended_end = holiday_period['extended_end']
+            importance = holiday_period['importance']
+            
+            print(f"\n🎯 Analyzing Holiday {i}/{len(holiday_periods)}: {holiday_name}")
+            print(f"   📅 Period: {holiday_start} to {holiday_end}")
+            print(f"   📅 Extended: {extended_start} to {extended_end}")
+            print(f"   ⭐ Importance: {importance}")
+            
+            # Check if this holiday period overlaps with regular analysis
+            overlap_with_regular = (
+                extended_start <= regular_analysis_end_date and 
+                extended_end >= regular_analysis_start_date
+            )
+            
+            if overlap_with_regular:
+                print(f"   ⚠️  Holiday period overlaps with regular analysis - will deduplicate moves")
+            
+            # Filter reservations for this extended period
+            holiday_reservations = self._filter_reservations_for_period(
+                reservations_df, extended_start, extended_end
+            )
+            
+            if len(holiday_reservations) == 0:
+                print(f"   ⚠️  No reservations found for {holiday_name} period")
+                continue
+            
+            print(f"   📋 Found {len(holiday_reservations)} reservations for analysis")
+            
+            # Run defragmentation analysis for this period
+            period_moves = self._suggest_moves(
+                holiday_reservations, inventory_df, extended_start, extended_end
+            )
+            
+            # Add holiday metadata to moves
+            for move in period_moves:
+                move.update({
+                    'holiday_period': holiday_name,
+                    'holiday_type': holiday_period['type'],
+                    'holiday_importance': importance,
+                    'holiday_start_date': holiday_start,
+                    'holiday_end_date': holiday_end,
+                    'extended_start_date': extended_start,
+                    'extended_end_date': extended_end,
+                    'is_holiday_move': True,
+                    'analysis_window': '2month_forward',
+                    'overlaps_regular_analysis': overlap_with_regular,
+                    'move_id': f"H2M{len(holiday_moves) + 1}.{move.get('move_id', '1')}"
+                })
+            
+            holiday_moves.extend(period_moves)
+            print(f"   ✅ Generated {len(period_moves)} moves for {holiday_name}")
+        
+        duration = time.time() - start_time
+        self.logger.log_performance_metric("2-month forward holiday defragmentation analysis", duration)
+        self.logger.log_data_summary("2-month forward holiday move suggestions generated", len(holiday_moves))
+        
+        if holiday_moves:
+            print(f"\n🎄 Generated {len(holiday_moves)} total 2-month forward holiday move suggestions")
+        else:
+            print(f"\n✅ No 2-month forward holiday moves found!")
+        
+        self.logger.log_function_exit("analyze_holiday_defragmentation_2month_forward", len(holiday_moves))
+        return holiday_moves
+    
     def deduplicate_moves(self, regular_moves: List[Dict], holiday_moves: List[Dict]) -> List[Dict]:
         """
         Remove duplicate moves between regular and holiday analysis
@@ -840,24 +940,40 @@ class DefragmentationAnalyzer:
         
         all_moves = regular_moves.copy()
         duplicates_found = 0
+        overlapping_holiday_moves = 0
         
         for holiday_move in holiday_moves:
             # Check if this move already exists in regular moves
             is_duplicate = False
-            for regular_move in regular_moves:
-                if self._are_moves_duplicate(holiday_move, regular_move):
-                    is_duplicate = True
-                    duplicates_found += 1
-                    self.logger.debug(f"Duplicate found: {holiday_move.get('move_id', 'Unknown')} matches {regular_move.get('move_id', 'Unknown')}")
-                    break
+            overlaps_regular = holiday_move.get('overlaps_regular_analysis', False)
+            
+            if overlaps_regular:
+                overlapping_holiday_moves += 1
+                # More aggressive deduplication for overlapping periods
+                for regular_move in regular_moves:
+                    if self._are_moves_duplicate_enhanced(holiday_move, regular_move):
+                        is_duplicate = True
+                        duplicates_found += 1
+                        self.logger.debug(f"Overlapping duplicate found: {holiday_move.get('move_id', 'Unknown')} matches {regular_move.get('move_id', 'Unknown')}")
+                        break
+            else:
+                # Standard deduplication for non-overlapping periods
+                for regular_move in regular_moves:
+                    if self._are_moves_duplicate(holiday_move, regular_move):
+                        is_duplicate = True
+                        duplicates_found += 1
+                        self.logger.debug(f"Duplicate found: {holiday_move.get('move_id', 'Unknown')} matches {regular_move.get('move_id', 'Unknown')}")
+                        break
             
             if not is_duplicate:
                 all_moves.append(holiday_move)
         
         print(f"🔄 Duplicates removed: {duplicates_found}")
+        print(f"🎄 Overlapping holiday moves: {overlapping_holiday_moves}")
         print(f"📋 Final moves: {len(all_moves)}")
         
         self.logger.log_data_summary("Duplicates removed", duplicates_found)
+        self.logger.log_data_summary("Overlapping holiday moves", overlapping_holiday_moves)
         self.logger.log_data_summary("Final moves after deduplication", len(all_moves))
         self.logger.log_function_exit("deduplicate_moves", len(all_moves))
         
@@ -884,6 +1000,48 @@ class DefragmentationAnalyzer:
                 return False
         
         return True
+    
+    def _are_moves_duplicate_enhanced(self, holiday_move: Dict, regular_move: Dict) -> bool:
+        """
+        Enhanced duplicate detection for overlapping holiday and regular moves
+        More aggressive deduplication to avoid suggesting the same move twice
+        
+        Args:
+            holiday_move: Holiday move dictionary
+            regular_move: Regular move dictionary
+            
+        Returns:
+            True if moves are duplicates, False otherwise
+        """
+        # Basic attribute comparison
+        basic_attributes = [
+            'property', 'from_unit', 'to_unit', 'guest_name'
+        ]
+        
+        for attr in basic_attributes:
+            if holiday_move.get(attr) != regular_move.get(attr):
+                return False
+        
+        # Enhanced date range comparison for overlapping periods
+        holiday_start = holiday_move.get('from_date')
+        holiday_end = holiday_move.get('to_date')
+        regular_start = regular_move.get('from_date')
+        regular_end = regular_move.get('to_date')
+        
+        if holiday_start and holiday_end and regular_start and regular_end:
+            # Check if date ranges overlap significantly (more than 50% overlap)
+            overlap_start = max(holiday_start, regular_start)
+            overlap_end = min(holiday_end, regular_end)
+            
+            if overlap_start <= overlap_end:
+                holiday_duration = (holiday_end - holiday_start).days
+                overlap_duration = (overlap_end - overlap_start).days
+                
+                # If more than 50% overlap, consider it a duplicate
+                if holiday_duration > 0 and (overlap_duration / holiday_duration) > 0.5:
+                    return True
+        
+        return False
     
     def merge_move_lists(self, regular_moves: List[Dict], holiday_moves: List[Dict]) -> List[Dict]:
         """
