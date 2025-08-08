@@ -12,12 +12,17 @@ This guide explains how to deploy updates from your development environment (Mac
 
 ### On Raspberry Pi (Production Server):
 
-1. **Simple Update** (recommended):
+1. **First Time Setup** (SSH Authentication):
+   ```bash
+   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   ```
+
+2. **Simple Update** (recommended):
    ```bash
    sudo /opt/bookingchart-defragmenter/manage.sh update
    ```
 
-2. **Update from specific branch**:
+3. **Update from specific branch**:
    ```bash
    sudo /opt/bookingchart-defragmenter/manage.sh update develop
    ```
@@ -120,10 +125,15 @@ sudo systemctl start bookingchart-defragmenter.service
 
 ### Common Issues:
 
-1. **Permission Errors**: Ensure you run update commands with `sudo`
-2. **Network Issues**: Check internet connection for GitHub access
-3. **Service Won't Start**: Check logs and configuration files
-4. **Dependencies Failed**: May need to install system packages
+1. **SSH Authentication Errors**: 
+   - Run: `sudo /opt/bookingchart-defragmenter/setup_ssh.sh`
+   - Ensure SSH key is added to GitHub: https://github.com/settings/keys
+   - Test: `sudo -u defrag ssh -T git@github.com`
+
+2. **Permission Errors**: Ensure you run update commands with `sudo`
+3. **Network Issues**: Check internet connection for GitHub access
+4. **Service Won't Start**: Check logs and configuration files
+5. **Dependencies Failed**: May need to install system packages
 
 ### View Logs:
 ```bash
