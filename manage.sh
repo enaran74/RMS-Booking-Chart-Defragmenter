@@ -32,27 +32,29 @@ print_info() {
 }
 
 # Function to show usage
-show_usage() {
-    echo -e "${BLUE}🔧 BookingChartDefragmenter Service Manager${NC}"
-    echo "=================================================="
-    echo ""
-    echo "Usage: $0 {start|stop|restart|status|logs|health|update}"
-    echo ""
-    echo "Commands:"
-    echo "  start    - Start the service"
-    echo "  stop     - Stop the service"  
-    echo "  restart  - Restart the service"
-    echo "  status   - Show service status"
-    echo "  logs     - Show recent logs (follow mode)"
-    echo "  health   - Run health check"
-    echo "  update   - Update from GitHub (requires internet)"
-    echo ""
-    echo "Examples:"
-    echo "  sudo $0 restart"
-    echo "  sudo $0 logs"
-    echo "  sudo $0 update main    # Update from main branch"
-    echo ""
-}
+    show_usage() {
+        echo -e "${BLUE}🔧 BookingChartDefragmenter Service Manager${NC}"
+        echo "=================================================="
+        echo ""
+        echo "Usage: $0 {start|stop|restart|status|logs|health|update|run}"
+        echo ""
+        echo "Commands:"
+        echo "  start    - Start the service (environment setup)"
+        echo "  stop     - Stop the service"  
+        echo "  restart  - Restart the service"
+        echo "  status   - Show service status"
+        echo "  logs     - Show recent logs (follow mode)"
+        echo "  health   - Run health check"
+        echo "  update   - Update from GitHub (requires internet)"
+        echo "  run      - Run analysis manually (runs once and exits)"
+        echo ""
+        echo "Examples:"
+        echo "  sudo $0 restart"
+        echo "  sudo $0 logs"
+        echo "  sudo $0 update main    # Update from main branch"
+        echo "  sudo $0 run            # Run analysis manually"
+        echo ""
+    }
 
 # Function to check if running as root for commands that need it
 check_root() {
@@ -144,6 +146,19 @@ case "$1" in
         else
             print_error "Update script not found at $INSTALL_DIR/update.sh"
             print_info "Please ensure the update script is available or run the update manually"
+            exit 1
+        fi
+        ;;
+        
+    run)
+        check_root
+        if [ -f "$INSTALL_DIR/run_defragmentation.sh" ]; then
+            print_info "Running analysis manually..."
+            print_info "This will execute the full defragmentation analysis"
+            print_info "Press Ctrl+C to cancel if needed"
+            bash $INSTALL_DIR/run_defragmentation.sh
+        else
+            print_error "Analysis script not found at $INSTALL_DIR/run_defragmentation.sh"
             exit 1
         fi
         ;;

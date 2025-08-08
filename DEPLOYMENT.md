@@ -31,7 +31,7 @@ This guide explains how to deploy updates from your development environment (Mac
 
 ### Basic Commands:
 ```bash
-# Start the service
+# Start the service (environment setup only)
 sudo /opt/bookingchart-defragmenter/manage.sh start
 
 # Stop the service
@@ -48,7 +48,32 @@ sudo /opt/bookingchart-defragmenter/manage.sh logs
 
 # Health check
 sudo /opt/bookingchart-defragmenter/manage.sh health
+
+# Run analysis manually (runs once and exits)
+sudo /opt/bookingchart-defragmenter/manage.sh run
 ```
+
+## Service Architecture
+
+### New Service Design:
+The service now uses a **two-tier architecture**:
+
+1. **Service Wrapper** (`service_wrapper.sh`):
+   - ✅ Starts and keeps the environment ready
+   - ✅ Verifies configuration and dependencies
+   - ✅ Does NOT run analysis automatically
+   - ✅ Stays running for systemd management
+
+2. **Analysis Execution**:
+   - 📅 **Scheduled**: Runs via cron job (default: 2:00 AM daily)
+   - 🖱️ **Manual**: Run with `sudo /opt/bookingchart-defragmenter/manage.sh run`
+   - ⚡ **Fast Updates**: Service restarts in ~30 seconds instead of 45+ minutes
+
+### Benefits:
+- 🚀 **Fast Updates**: No more waiting for analysis to complete
+- 🔄 **Non-Blocking**: Updates don't interfere with scheduled analysis
+- 📊 **Resource Efficient**: Analysis only runs when needed
+- 🛡️ **Reliable**: Service stays running between analysis runs
 
 ## Update Process Details
 
