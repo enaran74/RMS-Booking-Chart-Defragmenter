@@ -1,6 +1,6 @@
 # BookingChartDefragmenter
 
-![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
@@ -13,6 +13,8 @@ A sophisticated Python application designed to optimize accommodation bookings a
 - [Installation](#installation)
 - [Usage](#usage)
 - [Configuration](#configuration)
+- [Service Management](#service-management)
+- [Deployment](#deployment)
 - [Docker Deployment](#docker-deployment)
 - [Contributing](#contributing)
 - [License](#license)
@@ -24,7 +26,7 @@ A sophisticated Python application designed to optimize accommodation bookings a
 ## Quick Start
 
 ### Prerequisites
-- Python 3.7+
+- Python 3.8+
 - RMS API access credentials
 
 ### Installation
@@ -68,6 +70,13 @@ This system analyzes reservation patterns and suggests strategic reservation mov
 - **Endpoint Monitoring**: Comprehensive tracking of API usage and limits across all properties
 - **Consolidated Analysis**: Creates summary Excel file with two sheets: daily move opportunities heatmap across all properties, and a comprehensive table of all suggested moves for potential ingestion into the Discovery Holiday Parks Data Lake.
 
+### Service Management
+- **Two-Tier Service Architecture**: Environment setup service + on-demand analysis execution
+- **Automated Scheduling**: Daily analysis via cron job (2:00 AM)
+- **Health Monitoring**: Comprehensive health checks and diagnostics
+- **Easy Updates**: Automated update process with rollback capability
+- **SSH Authentication**: Secure GitHub access for automated deployments
+
 ### Key Features
 
 #### 🔍 **Intelligent Defragmentation Algorithm**
@@ -98,26 +107,68 @@ This system analyzes reservation patterns and suggests strategic reservation mov
 - **Optional Email Sending**: Controlled via `-e` command-line flag
 - **Professional HTML Emails**: Branded with Discovery Parks styling
 - **Excel Attachments**: Automatically attaches generated analysis files
-- **Property-Specific Content**: Customized for each property with move recommendations
-- **Complete Move Lists**: Shows all optimization moves, not just top 3
-- **Implementation Guidance**: Clear instructions for applying recommendations
-- **Training Mode Support**: All training emails sent to operations@discoveryparks.com.au
 
-#### 📊 **Endpoint Monitoring & Caching**
-- **Comprehensive Caching**: Categories and areas cached to reduce API calls by ~50%
-- **Real-Time Monitoring**: Tracks API usage across all endpoints
-- **Limit Tracking**: Monitors when properties approach API limits
-- **Usage Statistics**: Detailed reporting of data volumes per property
-- **Performance Optimization**: Automatic cache invalidation and management
+## Service Management
 
-#### 📈 **Visual Excel Reporting**
-- **Visual Chart Sheet**: Daily heatmap showing move opportunities and booking grid
-- **Move Suggestions Sheet**: Detailed table with all recommended moves
-- **Interactive Elements**: Hover tooltips with detailed information
-- **Color-Coded Status**: Different colors for various reservation statuses
-- **Implementation Guide**: Step-by-step instructions for applying moves
-- **Merged Cells**: Multi-night bookings displayed as horizontal blocks
-- **Directional Arrows**: ⬆️⬇️ indicators showing move direction in chart
+### Management Commands (Linux Server)
+```bash
+# Service management
+sudo /opt/bookingchart-defragmenter/manage.sh start    # Start service (environment only)
+sudo /opt/bookingchart-defragmenter/manage.sh stop     # Stop service
+sudo /opt/bookingchart-defragmenter/manage.sh restart  # Restart service
+sudo /opt/bookingchart-defragmenter/manage.sh status   # Check service status
+sudo /opt/bookingchart-defragmenter/manage.sh logs     # View live logs
+
+# Analysis execution
+sudo /opt/bookingchart-defragmenter/manage.sh run      # Run analysis manually
+sudo /opt/bookingchart-defragmenter/manage.sh health   # Health check
+sudo /opt/bookingchart-defragmenter/manage.sh update   # Update from GitHub
+```
+
+### Service Architecture
+The application uses a **two-tier service architecture**:
+
+1. **Service Wrapper** (`service_wrapper.sh`):
+   - ✅ Sets up environment and verifies configuration
+   - ✅ Does NOT run analysis automatically
+   - ✅ Stays running for systemd management
+   - ✅ Fast startup (~30 seconds)
+
+2. **Analysis Execution**:
+   - 📅 **Scheduled**: Daily at 2:00 AM via cron
+   - 🖱️ **Manual**: Run with `manage.sh run`
+   - ⚡ **Non-blocking**: Updates don't interfere with analysis
+
+### Health Monitoring
+```bash
+# Comprehensive health check
+sudo /opt/bookingchart-defragmenter/health_check.sh
+
+# Service diagnostics
+sudo /opt/bookingchart-defragmenter/debug_service.sh
+```
+
+## Deployment
+
+### Development → Production Workflow
+```
+📱 Mac (Development) → 🌐 GitHub → 🥧 Raspberry Pi (Production)
+```
+
+### Automated Updates
+```bash
+# First time setup (SSH authentication)
+sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+
+# Update from GitHub
+sudo /opt/bookingchart-defragmenter/manage.sh update
+```
+
+### Safety Features
+- ✅ **Automatic Backup** - Previous version saved before update
+- ✅ **Configuration Preservation** - Credentials stay safe
+- ✅ **Auto-Rollback** - Reverts if update fails
+- ✅ **Health Verification** - Ensures service starts properly
 
 ## Architecture
 
