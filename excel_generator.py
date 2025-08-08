@@ -837,5 +837,295 @@ class ExcelGenerator:
             return "Low"
         elif strategic_score < 0.67:
             return "Medium"
+    
+    def _add_holiday_moves_sheet(self, workbook, holiday_moves: List[Dict], property_name: str):
+        """
+        Add holiday moves sheet to Excel workbook
+        
+        Args:
+            workbook: OpenPyXL workbook object
+            holiday_moves: List of holiday move suggestions
+            property_name: Name of the property
+        """
+        if not holiday_moves:
+            return
+        
+        self.logger.info(f"Adding holiday moves sheet with {len(holiday_moves)} moves")
+        
+        # Create holiday moves worksheet
+        ws = workbook.create_sheet("Holiday Move Suggestions")
+        
+        # Define styles
+        header_fill = PatternFill(start_color="8B4513", end_color="8B4513", fill_type="solid")  # Brown for holidays
+        header_font = Font(color="FFFFFF", bold=True)
+        normal_font = Font(color="000000")
+        holiday_font = Font(color="8B4513", bold=True)  # Brown text for holiday info
+        
+        # Headers for holiday moves
+        headers = [
+            'Move ID', 'Property', 'From Unit', 'To Unit', 'From Date', 'To Date',
+            'Guest Name', 'Improvement Score', 'Holiday Period', 'Holiday Type',
+            'Holiday Importance', 'Reasoning'
+        ]
+        
+        # Create headers
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        
+        # Add holiday moves data
+        for row, move in enumerate(holiday_moves, 2):
+            data = [
+                move.get('move_id', ''),
+                property_name,
+                move.get('from_unit', ''),
+                move.get('to_unit', ''),
+                move.get('from_date', ''),
+                move.get('to_date', ''),
+                move.get('guest_name', ''),
+                move.get('improvement_score', 0),
+                move.get('holiday_period', ''),
+                move.get('holiday_type', ''),
+                move.get('holiday_importance', ''),
+                move.get('reasoning', '')
+            ]
+            
+            for col, value in enumerate(data, 1):
+                cell = ws.cell(row=row, column=col, value=value)
+                
+                # Apply holiday styling to holiday-specific columns
+                if col in [9, 10, 11]:  # Holiday Period, Holiday Type, Holiday Importance
+                    cell.font = holiday_font
+                else:
+                    cell.font = normal_font
+                
+                # Center align numeric and date columns
+                if col in [1, 8, 5, 6]:  # Move ID, Improvement Score, From Date, To Date
+                    cell.alignment = Alignment(horizontal="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left")
+        
+        # Set column widths
+        column_widths = [12, 15, 15, 15, 12, 12, 20, 15, 25, 15, 15, 60]
+        for col, width in enumerate(column_widths, 1):
+            col_letter = get_column_letter(col)
+            ws.column_dimensions[col_letter].width = width
+        
+        # Add holiday summary section
+        summary_start_row = len(holiday_moves) + 4
+        summary_info = [
+            "HOLIDAY ANALYSIS SUMMARY:",
+            f"Property: {property_name}",
+            f"Total Holiday Moves: {len(holiday_moves)}",
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "HOLIDAY MOVE IMPLEMENTATION NOTES:",
+            "• Holiday moves are prioritized over regular moves",
+            "• High importance holidays (Australia Day, Christmas, etc.) are marked as 'High'",
+            "• Medium importance holidays (Queen's Birthday, Labour Day, etc.) are marked as 'Medium'",
+            "• Holiday moves consider extended periods (±7 days around holiday dates)",
+            "• Apply holiday moves first, then regular moves",
+            "• Holiday moves are identified by 'H' prefix in Move ID",
+            "• Real-time holiday data from Nager.Date API"
+        ]
+        
+        for i, info in enumerate(summary_info):
+            cell = ws.cell(row=summary_start_row + i, column=1, value=info)
+            if info.endswith(":"):
+                cell.font = Font(bold=True, color="8B4513")  # Brown bold for headers
+            else:
+                cell.font = normal_font
+            ws.merge_cells(f'A{summary_start_row + i}:L{summary_start_row + i}')
+    
+    def _create_holiday_summary_sheet(self, workbook, holiday_data: Dict, property_name: str):
+        """
+        Create holiday summary sheet with holiday periods and analysis info
+        
+        Args:
+            workbook: OpenPyXL workbook object
+            holiday_data: Dictionary containing holiday analysis data
+            property_name: Name of the property
+        """
+        self.logger.info("Creating holiday summary sheet")
+        
+        # Create holiday summary worksheet
+        ws = workbook.create_sheet("Holiday Summary")
+        
+        # Define styles
+        header_fill = PatternFill(start_color="8B4513", end_color="8B4513", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        normal_font = Font(color="000000")
+        holiday_font = Font(color="8B4513", bold=True)
+        
+        # Add title
+        ws.cell(row=1, column=1, value="HOLIDAY ANALYSIS SUMMARY").font = Font(size=16, bold=True, color="8B4513")
+        ws.merge_cells('A1:L1')
+        
+        # Add property info
+        ws.cell(row=3, column=1, value=f"Property: {property_name}").font = Font(bold=True)
+        ws.cell(row=4, column=1, value=f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}").font = normal_font
+        
+        # Add holiday periods table
+        if 'holiday_periods' in holiday_data:
+            holiday_periods = holiday_data['holiday_periods']
+            
+            # Headers
+            period_headers = ['Holiday Name', 'Type', 'Importance', 'Date', 'Extended Period', 'State']
+            for col, header in enumerate(period_headers, 1):
+                cell = ws.cell(row=7, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+            
+            # Holiday periods data
+            for row, period in enumerate(holiday_periods, 8):
+                data = [
+                    period.get('name', ''),
+                    period.get('type', ''),
+                    period.get('importance', ''),
+                    f"{period.get('start_date', '')}",
+                    f"{period.get('extended_start', '')} to {period.get('extended_end', '')}",
+                    period.get('state_code', '')
+                ]
+                
+                for col, value in enumerate(data, 1):
+                    cell = ws.cell(row=row, column=col, value=value)
+                    cell.font = normal_font
+                    cell.alignment = Alignment(horizontal="left")
+            
+            # Set column widths
+            column_widths = [25, 15, 12, 12, 30, 10]
+            for col, width in enumerate(column_widths, 1):
+                col_letter = get_column_letter(col)
+                ws.column_dimensions[col_letter].width = width
+        
+        # Add analysis notes
+        notes_start_row = 10 + len(holiday_data.get('holiday_periods', []))
+        notes = [
+            "",
+            "HOLIDAY ANALYSIS NOTES:",
+            "• Holiday periods are extended by ±7 days for comprehensive analysis",
+            "• High importance holidays include: Australia Day, Christmas Day, New Year's Day, etc.",
+            "• Medium importance holidays include: Queen's Birthday, Labour Day, etc.",
+            "• Holiday moves are prioritized in the final recommendations",
+            "• Holiday data is sourced from Nager.Date API for accuracy",
+            "• Analysis considers both the holiday period and surrounding dates"
+        ]
+        
+        for i, note in enumerate(notes):
+            cell = ws.cell(row=notes_start_row + i, column=1, value=note)
+            if note.endswith(":"):
+                cell.font = Font(bold=True, color="8B4513")
+            else:
+                cell.font = normal_font
+            ws.merge_cells(f'A{notes_start_row + i}:L{notes_start_row + i}')
+    
+    def create_holiday_enhanced_excel(self, reservations_df: pd.DataFrame, inventory_df: pd.DataFrame,
+                                    regular_suggestions: List[Dict], holiday_suggestions: List[Dict],
+                                    property_id: int, property_name: str, holiday_data: Dict,
+                                    constraint_start_date, constraint_end_date, output_filename: str):
+        """
+        Create enhanced Excel workbook with both regular and holiday moves
+        
+        Args:
+            reservations_df: DataFrame of reservations
+            inventory_df: DataFrame of inventory units
+            regular_suggestions: List of regular move suggestions
+            holiday_suggestions: List of holiday move suggestions
+            property_id: Property ID
+            property_name: Property name
+            holiday_data: Dictionary containing holiday analysis data
+            constraint_start_date: Start date for analysis
+            constraint_end_date: End date for analysis
+            output_filename: Output file path
+            
+        Returns:
+            Tuple of (success: bool, category_importance_levels: Dict)
+        """
+        start_time = time.time()
+        self.logger.log_function_entry("create_holiday_enhanced_excel", 
+                                     property_id=property_id, 
+                                     property_name=property_name,
+                                     regular_moves=len(regular_suggestions),
+                                     holiday_moves=len(holiday_suggestions))
+        
+        print(f"\n📊 CREATING HOLIDAY-ENHANCED EXCEL OUTPUT")
+        print("=" * 50)
+        print(f"📁 File: {output_filename}")
+        print(f"📋 Regular moves: {len(regular_suggestions)}")
+        print(f"🎄 Holiday moves: {len(holiday_suggestions)}")
+        
+        wb = Workbook()
+        
+        # Sheet 1: Visual Chart (same as before)
+        chart_sheet = wb.active
+        chart_sheet.title = "Visual Chart"
+        
+        # Sheet 2: Move Suggestions (regular moves)
+        suggestions_sheet = wb.create_sheet("Move Suggestions")
+        
+        # Sheet 3: Holiday Move Suggestions (new)
+        if holiday_suggestions:
+            self._add_holiday_moves_sheet(wb, holiday_suggestions, property_name)
+        
+        # Sheet 4: Holiday Summary (new)
+        if holiday_data:
+            self._create_holiday_summary_sheet(wb, holiday_data, property_name)
+        
+        # Create visual chart and regular suggestions
+        self.logger.info("Creating Visual Chart sheet")
+        category_importance_levels = self._create_visual_chart_sheet(
+            chart_sheet, reservations_df, inventory_df, regular_suggestions, 
+            constraint_start_date, constraint_end_date
+        )
+        
+        self.logger.info("Creating Move Suggestions sheet")
+        self._create_suggestions_table_sheet(
+            suggestions_sheet, regular_suggestions, property_id, property_name,
+            constraint_start_date, constraint_end_date
+        )
+        
+        try:
+            # Ensure output directory exists
+            output_dir = os.path.dirname(output_filename)
+            if output_dir and not os.path.exists(output_dir):
+                try:
+                    os.makedirs(output_dir, mode=0o755, exist_ok=True)
+                    self.logger.info(f"Created output directory: {output_dir}")
+                except PermissionError:
+                    self.logger.warning(f"Could not create output directory: {output_dir}, using current directory")
+                    output_filename = os.path.basename(output_filename)
+            
+            wb.save(output_filename)
+            duration = time.time() - start_time
+            self.logger.log_performance_metric("Holiday-enhanced Excel file creation", duration, f"for {property_name}")
+            
+            # Log sheet information
+            sheets = ["Visual Chart", "Move Suggestions"]
+            if holiday_suggestions:
+                sheets.append("Holiday Move Suggestions")
+            if holiday_data:
+                sheets.append("Holiday Summary")
+            
+            self.logger.log_excel_generation(output_filename, sheets)
+            
+            print(f"✅ Holiday-enhanced Excel workbook saved successfully!")
+            print(f"   📋 Sheet 1: Visual Chart - Daily heatmap + booking grid")
+            print(f"   📋 Sheet 2: Move Suggestions - Regular move recommendations")
+            if holiday_suggestions:
+                print(f"   🎄 Sheet 3: Holiday Move Suggestions - Holiday-specific moves")
+            if holiday_data:
+                print(f"   📅 Sheet 4: Holiday Summary - Holiday periods and analysis")
+            print(f"   📁 File location: {os.path.abspath(output_filename)}")
+            
+            self.logger.log_function_exit("create_holiday_enhanced_excel", True)
+            return True, category_importance_levels
+            
+        except Exception as e:
+            self.logger.log_error_with_context(e, f"Holiday-enhanced Excel file creation for {property_name}")
+            print(f"❌ Error saving holiday-enhanced Excel file: {e}")
+            return False, {}
         else:
             return "High"
