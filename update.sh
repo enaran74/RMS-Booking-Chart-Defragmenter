@@ -192,6 +192,12 @@ cp -r $TEMP_DIR/* $INSTALL_DIR/
 chown -R $SERVICE_USER:$SERVICE_USER $INSTALL_DIR
 chmod +x $INSTALL_DIR/*.sh 2>/dev/null || true
 
+# Ensure specific scripts are executable
+chmod +x $INSTALL_DIR/health_check.sh 2>/dev/null || true
+chmod +x $INSTALL_DIR/manage.sh 2>/dev/null || true
+chmod +x $INSTALL_DIR/update.sh 2>/dev/null || true
+chmod +x $INSTALL_DIR/setup_ssh.sh 2>/dev/null || true
+
 print_status "Application files updated"
 
 # Step 8: Update Python dependencies
@@ -213,6 +219,18 @@ else
     print_warning "Health check script not found, skipping..."
 fi
 
+# Step 9.5: Verify service configuration
+print_info "Verifying service configuration..."
+if [ -f "/etc/systemd/system/$SERVICE_NAME" ]; then
+    print_status "Service file exists"
+    # Reload systemd to pick up any changes
+    systemctl daemon-reload
+else
+    print_error "Service file not found at /etc/systemd/system/$SERVICE_NAME"
+    print_info "This might indicate the service wasn't properly installed."
+    rollback
+fi
+
 # Step 10: Start the service
 print_info "Starting $SERVICE_NAME..."
 systemctl start $SERVICE_NAME
@@ -224,6 +242,12 @@ if [ "$SERVICE_STATUS" = "active" ]; then
     print_status "Service started successfully"
 else
     print_error "Service failed to start. Status: $SERVICE_STATUS"
+    print_info "Checking service logs for errors..."
+    echo ""
+    echo -e "${BLUE}📝 Recent Service Logs:${NC}"
+    journalctl -u $SERVICE_NAME --no-pager -n 20
+    echo ""
+    print_error "Service failed to start. Check logs above for details."
     rollback
 fi
 
