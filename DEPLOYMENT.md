@@ -53,9 +53,10 @@ The installation script automatically sets up:
 
 ### On Raspberry Pi (Production Server):
 
-1. **First Time Setup** (SSH Authentication):
+1. **First Time Setup** (Installation):
    ```bash
-   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   sudo chmod +x install.sh
+   sudo ./install.sh
    ```
 
 2. **Simple Update** (recommended):

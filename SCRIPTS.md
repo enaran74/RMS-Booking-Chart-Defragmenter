@@ -280,7 +280,7 @@ sudo /opt/bookingchart-defragmenter/run_defragmentation.sh
 ├── update.sh              # Update script
 ├── health_check.sh        # Health monitoring
 ├── debug_service.sh       # Service diagnostics
-├── setup_ssh.sh          # SSH authentication setup
+├── setup_ssh.sh          # SSH authentication setup (legacy)
 ├── setup_cron.sh         # Cron job setup
 ├── service_wrapper.sh    # Service environment wrapper
 └── run_defragmentation.sh # Analysis execution
