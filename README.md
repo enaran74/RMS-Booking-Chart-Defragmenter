@@ -127,7 +127,7 @@ This system analyzes reservation patterns and suggests strategic reservation mov
 - **Automated Scheduling**: Daily analysis via cron job (2:00 AM)
 - **Health Monitoring**: Comprehensive health checks and diagnostics
 - **Easy Updates**: Automated update process with rollback capability
-- **SSH Authentication**: Secure GitHub access for automated deployments
+- **Public Repository**: No SSH keys required for updates
 
 ### Key Features
 
@@ -209,10 +209,7 @@ sudo /opt/bookingchart-defragmenter/debug_service.sh
 
 ### Automated Updates
 ```bash
-# First time setup (SSH authentication)
-sudo /opt/bookingchart-defragmenter/setup_ssh.sh
-
-# Update from GitHub
+# Update from GitHub (no authentication required)
 sudo /opt/bookingchart-defragmenter/manage.sh update
 ```
 
@@ -221,6 +218,7 @@ sudo /opt/bookingchart-defragmenter/manage.sh update
 - ✅ **Configuration Preservation** - Credentials stay safe
 - ✅ **Auto-Rollback** - Reverts if update fails
 - ✅ **Health Verification** - Ensures service starts properly
+- ✅ **Public Repository** - No authentication required for updates
 
 ## Architecture
 

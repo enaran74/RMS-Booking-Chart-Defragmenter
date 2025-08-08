@@ -48,9 +48,9 @@ sudo ./install.sh
    sudo systemctl enable bookingchart-defragmenter.service
    ```
 
-3. **Set up SSH authentication** (for updates):
+3. **Verify installation**:
    ```bash
-   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   sudo /opt/bookingchart-defragmenter/health_check.sh
    ```
 
 ### `uninstall.sh` - Cleanup Script
@@ -116,11 +116,12 @@ Handles the complete update process with backup and rollback capabilities.
 
 #### Features:
 - ✅ **Automatic Backup** - Creates backup before update
-- ✅ **Git Pull** - Downloads latest code from GitHub
+- ✅ **Git Pull** - Downloads latest code from GitHub (public repository)
 - ✅ **Dependency Update** - Updates Python packages
 - ✅ **Service Restart** - Restarts service with new version
 - ✅ **Auto-Rollback** - Reverts if update fails
 - ✅ **Health Verification** - Ensures service starts properly
+- ✅ **No Authentication Required** - Works with public repository
 
 #### Usage:
 ```bash
@@ -191,9 +192,11 @@ Advanced diagnostics for troubleshooting service issues.
 sudo /opt/bookingchart-defragmenter/debug_service.sh
 ```
 
-### `setup_ssh.sh` - SSH Authentication Setup
+### `setup_ssh.sh` - SSH Authentication Setup (Legacy)
 
-Guides you through setting up SSH authentication for GitHub access.
+**Note:** This script is no longer required for public repository deployments.
+
+Guides you through setting up SSH authentication for GitHub access (only needed for private repositories).
 
 #### Features:
 - 🔑 **SSH Key Generation** - Creates new SSH keys if needed
@@ -324,10 +327,10 @@ sudo /opt/bookingchart-defragmenter/run_defragmentation.sh
    sudo /opt/bookingchart-defragmenter/setup_cron.sh
    ```
 
-4. **SSH Authentication Failed**:
+4. **Network Connectivity Issues**:
    ```bash
-   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
-   ssh -T git@github.com
+   ping github.com
+   curl -I https://github.com
    ```
 
 ### Getting Help:
