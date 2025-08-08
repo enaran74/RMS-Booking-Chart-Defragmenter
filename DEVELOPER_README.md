@@ -12,13 +12,15 @@
 
 ## Project Overview
 
-The RMS Defragmentation Analyzer is a sophisticated system designed to optimize accommodation bookings across multiple properties by identifying and suggesting reservation moves that reduce fragmentation. The system analyzes current booking patterns and recommends strategic moves to consolidate scattered availability into bookable blocks, thereby maximizing revenue potential.
+The RMS Defragmentation Analyzer is a sophisticated system designed to optimize accommodation bookings across multiple properties by identifying and suggesting reservation moves that reduce fragmentation. The system analyzes current booking patterns and recommends strategic moves to consolidate scattered availability into bookable blocks, thereby maximizing revenue potential. **Now enhanced with holiday-aware analysis for optimal optimization during peak holiday periods.**
 
 ### Key Objectives
 - **Revenue Optimization**: Consolidate scattered availability into longer, more profitable stays
 - **Operational Efficiency**: Reduce single-night stays and associated housekeeping costs
 - **Guest Experience**: Improve guest satisfaction through longer, uninterrupted stays
 - **Multi-Property Scalability**: Handle entire property portfolios with flexible selection
+- **🎄 Holiday-Aware Optimization**: Optimize during peak holiday periods for maximum revenue
+- **State-Specific Analysis**: Provide holiday-aware analysis for all Australian states
 
 ## System Architecture
 
@@ -35,18 +37,55 @@ The system follows a modular architecture with clear separation of concerns:
 │excel_generator.py│    │  email_sender.py│    │    utils.py     │
 │  (Output Gen)   │    │  (Notifications)│    │   (Utilities)   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│holiday_client.py│    │  (Holiday Data) │    │  (State Codes)  │
+│  (Holiday API)  │◄──►│  (Nager.Date)   │◄──►│  (Property)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Module Responsibilities
 
 1. **start.py**: Main orchestrator, handles command-line arguments, coordinates analysis flow
-2. **rms_client.py**: RMS API integration, authentication, data retrieval, caching
-3. **defrag_analyzer.py**: Core defragmentation algorithm, occupancy analysis, move suggestions
-4. **excel_generator.py**: Excel report generation with visual charts and data tables
-5. **email_sender.py**: Email notifications with HTML formatting and file attachments
-6. **utils.py**: Common utility functions, data validation, formatting helpers, comprehensive logging system
+2. **rms_client.py**: RMS API integration, authentication, data retrieval, caching, state code detection
+3. **defrag_analyzer.py**: Core defragmentation algorithm, occupancy analysis, move suggestions, holiday analysis
+4. **excel_generator.py**: Excel report generation with visual charts and data tables, holiday-enhanced outputs
+5. **email_sender.py**: Email notifications with HTML formatting and file attachments, holiday-enhanced content
+6. **holiday_client.py**: Holiday data integration, Nager.Date API client, state-specific holiday analysis
+7. **utils.py**: Common utility functions, data validation, formatting helpers, comprehensive logging system
 
 ## RMS API Integration
+
+### Holiday API Integration
+
+The system now includes comprehensive holiday data integration through the Nager.Date API:
+
+#### **HolidayClient** (`holiday_client.py`)
+- **API Endpoint**: `https://date.nager.at/api/v3/PublicHolidays/{year}/{country}`
+- **State Mapping**: Australian states mapped to country code 'AU'
+- **Caching**: 24-hour cache for holiday data to reduce API calls
+- **Extended Analysis**: ±7 days around each holiday for comprehensive optimization
+
+#### **Holiday Data Structure**
+```python
+holiday_period = {
+    'name': 'Australia Day 2025',
+    'type': 'Public Holiday',
+    'importance': 'High',
+    'start_date': date(2025, 1, 27),
+    'end_date': date(2025, 1, 27),
+    'extended_start': date(2025, 1, 20),
+    'extended_end': date(2025, 2, 3),
+    'state_code': 'NSW'
+}
+```
+
+#### **State Code Detection**
+- **Automatic Detection**: Property state codes extracted from RMS property data
+- **Fallback Logic**: Multiple field names checked for state information
+- **Property Code Analysis**: State codes extracted from property codes (e.g., 'NSADE' → 'SA')
+- **Holiday Mapping**: State codes mapped to appropriate holiday data
 
 ### Authentication Flow
 
