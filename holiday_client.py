@@ -88,8 +88,17 @@ class HolidayClient:
                 holidays = response.json()
                 self.logger.info(f"Retrieved {len(holidays)} holidays for {state_code} {year}")
                 
+                # Debug: Show raw holiday names from API
+                raw_holiday_names = [h.get('name', 'Unknown') for h in holidays]
+                self.logger.info(f"Raw API holidays for {state_code} {year}: {raw_holiday_names}")
+                
                 # Process and filter holidays for this specific state
                 processed_holidays = self._process_holidays_for_state(holidays, state_code)
+                
+                # Debug: Show filtered holiday names
+                filtered_holiday_names = [h['name'] for h in processed_holidays]
+                self.logger.info(f"Filtered holidays for {state_code} {year}: {filtered_holiday_names}")
+                
                 self._cache_data(cache_key, processed_holidays)
                 
                 return processed_holidays
@@ -425,7 +434,6 @@ class HolidayClient:
                 'Easter Monday': True,
                 'ANZAC Day': True,
                 'Queen\'s Birthday': True,
-                'Labour Day': True,
                 'Easter Sunday': True,
                 'Easter Saturday': True,
                 'King\'s Birthday': True
@@ -520,7 +528,7 @@ class HolidayClient:
             # Check if this holiday applies to this state
             holiday_name = holiday['name']
             if holiday_name not in state_holidays:
-                self.logger.debug(f"Holiday '{holiday_name}' does not apply to {state_code}, skipping")
+                self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code}, skipping")
                 continue
             
             # Determine importance
