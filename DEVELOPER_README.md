@@ -59,13 +59,31 @@ The system follows a modular architecture with clear separation of concerns:
 
 ### Holiday API Integration
 
-The system now includes comprehensive holiday data integration through the Nager.Date API:
+The system now includes comprehensive holiday data integration with **2-month forward analysis** through the Nager.Date API:
+
+#### **Dual Analysis Architecture**
+The system implements two distinct analysis approaches:
+
+**📅 Regular 31-Day Analysis:**
+```python
+# Analysis period: today to today + 31 days
+constraint_start_date = date.today()
+constraint_end_date = date.today() + timedelta(days=31)
+```
+
+**🎄 2-Month Forward Holiday Analysis:**
+```python
+# Analysis period: today to today + 60 days
+holiday_start = date.today()
+holiday_end = date.today() + timedelta(days=60)
+```
 
 #### **HolidayClient** (`holiday_client.py`)
 - **API Endpoint**: `https://date.nager.at/api/v3/PublicHolidays/{year}/{country}`
 - **State Mapping**: Australian states mapped to country code 'AU'
 - **Caching**: 24-hour cache for holiday data to reduce API calls
 - **Extended Analysis**: ±7 days around each holiday for comprehensive optimization
+- **2-Month Forward Method**: `get_holiday_periods_2month_forward()` for extended planning
 
 #### **Holiday Data Structure**
 ```python
@@ -77,7 +95,8 @@ holiday_period = {
     'end_date': date(2025, 1, 27),
     'extended_start': date(2025, 1, 20),
     'extended_end': date(2025, 2, 3),
-    'state_code': 'NSW'
+    'state_code': 'NSW',
+    'analysis_window': '2month_forward'  # New field
 }
 ```
 
@@ -86,6 +105,34 @@ holiday_period = {
 - **Fallback Logic**: Multiple field names checked for state information
 - **Property Code Analysis**: State codes extracted from property codes (e.g., 'NSADE' → 'SA')
 - **Holiday Mapping**: State codes mapped to appropriate holiday data
+
+#### **Smart Deduplication System**
+```python
+# Enhanced duplicate detection for overlapping periods
+def _are_moves_duplicate_enhanced(self, holiday_move: Dict, regular_move: Dict) -> bool:
+    # Basic attribute comparison
+    basic_attributes = ['property', 'from_unit', 'to_unit', 'guest_name']
+    
+    # Enhanced date range comparison for overlapping periods
+    holiday_start = holiday_move.get('from_date')
+    holiday_end = holiday_move.get('to_date')
+    regular_start = regular_move.get('from_date')
+    regular_end = regular_move.get('to_date')
+    
+    # Check if date ranges overlap significantly (more than 50% overlap)
+    overlap_start = max(holiday_start, regular_start)
+    overlap_end = min(holiday_end, regular_end)
+    
+    if overlap_start <= overlap_end:
+        holiday_duration = (holiday_end - holiday_start).days
+        overlap_duration = (overlap_end - overlap_start).days
+        
+        # If more than 50% overlap, consider it a duplicate
+        if holiday_duration > 0 and (overlap_duration / holiday_duration) > 0.5:
+            return True
+    
+    return False
+```
 
 ### Authentication Flow
 
@@ -135,6 +182,67 @@ auth_payload = {
 - **Purpose**: Retrieve booking data for analysis period
 - **Parameters**: `propertyId={id}`, `startDate`, `endDate`, `categoryIds[]`
 - **Response**: Reservation details with guest info, dates, units
+
+### Analysis Flow and Deduplication Process
+
+#### **Step-by-Step Analysis Flow**
+```python
+# 1. Regular 31-Day Analysis
+regular_suggestions = defrag_analyzer.analyze_defragmentation(
+    reservations_df, inventory_df, 
+    constraint_start_date, constraint_end_date
+)
+
+# 2. 2-Month Forward Holiday Analysis
+holiday_periods = holiday_client.get_holiday_periods_2month_forward(state_code)
+holiday_suggestions = defrag_analyzer.analyze_holiday_defragmentation_2month_forward(
+    reservations_df, inventory_df, holiday_periods,
+    regular_analysis_start_date, regular_analysis_end_date
+)
+
+# 3. Smart Deduplication
+merged_suggestions = defrag_analyzer.merge_move_lists(regular_suggestions, holiday_suggestions)
+```
+
+#### **Deduplication Logic**
+```python
+# Overlap Detection
+overlap_with_regular = (
+    extended_start <= regular_analysis_end_date and 
+    extended_end >= regular_analysis_start_date
+)
+
+# Enhanced Deduplication for Overlapping Periods
+if overlaps_regular:
+    # More aggressive deduplication for overlapping periods
+    for regular_move in regular_moves:
+        if self._are_moves_duplicate_enhanced(holiday_move, regular_move):
+            is_duplicate = True
+            break
+else:
+    # Standard deduplication for non-overlapping periods
+    for regular_move in regular_moves:
+        if self._are_moves_duplicate(holiday_move, regular_move):
+            is_duplicate = True
+            break
+```
+
+#### **Move Priority System**
+```python
+def sort_key(move):
+    # Holiday moves get priority
+    is_holiday = move.get('is_holiday_move', False)
+    importance = move.get('holiday_importance', 'Low')
+    improvement_score = move.get('improvement_score', 0.0)
+    
+    # Priority order: Holiday High > Holiday Medium > Regular High Score > Regular Low Score
+    if is_holiday and importance == 'High':
+        return (0, 1.0 - improvement_score)  # High priority, then by score (descending)
+    elif is_holiday and importance == 'Medium':
+        return (1, 1.0 - improvement_score)  # Medium priority, then by score (descending)
+    else:
+        return (2, 1.0 - improvement_score)  # Regular priority, then by score (descending)
+```
 
 ### Data Relationships
 
