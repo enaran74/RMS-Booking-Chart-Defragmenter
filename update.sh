@@ -234,29 +234,35 @@ fi
 # Step 10: Start the service
 print_info "Starting $SERVICE_NAME..."
 systemctl start $SERVICE_NAME
-sleep 5  # Give service time to start
+sleep 10  # Give service time to run
 
-# Step 11: Verify service is running
+# Step 11: Verify service completed successfully
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
-if [ "$SERVICE_STATUS" = "active" ]; then
-    print_status "Service started successfully"
+EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
+
+if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
+    print_status "Service completed successfully (one-time execution)"
+elif [ "$SERVICE_STATUS" = "active" ]; then
+    print_status "Service is running (long-running mode)"
 else
-    print_error "Service failed to start. Status: $SERVICE_STATUS"
+    print_error "Service failed. Status: $SERVICE_STATUS, Exit Code: $EXIT_CODE"
     print_info "Checking service logs for errors..."
     echo ""
     echo -e "${BLUE}📝 Recent Service Logs:${NC}"
     journalctl -u $SERVICE_NAME --no-pager -n 20
     echo ""
-    print_error "Service failed to start. Check logs above for details."
+    print_error "Service failed. Check logs above for details."
     rollback
 fi
 
 # Step 12: Final verification
 print_info "Performing final verification..."
-sleep 10  # Wait a bit more for service to stabilize
+sleep 5  # Wait a bit more for service to stabilize
 
 SERVICE_STATUS=$(systemctl is-active $SERVICE_NAME)
-if [ "$SERVICE_STATUS" = "active" ]; then
+EXIT_CODE=$(systemctl show $SERVICE_NAME --property=ExecMainStatus --value)
+
+if [ "$SERVICE_STATUS" = "inactive" ] && [ "$EXIT_CODE" = "0" ]; then
     print_status "Update completed successfully!"
     
     # Show service status
@@ -268,6 +274,21 @@ if [ "$SERVICE_STATUS" = "active" ]; then
     echo ""
     echo -e "${BLUE}📝 Recent Logs:${NC}"
     journalctl -u $SERVICE_NAME --no-pager -n 20
+    
+    # Cleanup
+    rm -rf $TEMP_DIR
+    rm -rf $BACKUP_DIR
+    
+    echo ""
+    print_status "✨ Update completed successfully! ✨"
+    echo -e "${BLUE}🔍 Monitor logs with: sudo journalctl -u $SERVICE_NAME -f${NC}"
+elif [ "$SERVICE_STATUS" = "active" ]; then
+    print_status "Update completed successfully! Service is running."
+    
+    # Show service status
+    echo ""
+    echo -e "${BLUE}📊 Service Status:${NC}"
+    systemctl status $SERVICE_NAME --no-pager -l
     
     # Cleanup
     rm -rf $TEMP_DIR
