@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
-A sophisticated Python application designed to optimize accommodation bookings across multiple properties by analyzing reservation patterns and suggesting strategic moves to maximize revenue potential.
+A sophisticated Python application designed to optimize accommodation bookings across multiple properties by analyzing reservation patterns and suggesting strategic moves to maximize revenue potential. **Now enhanced with holiday-aware analysis for optimal booking optimization during peak holiday periods.**
 
 ## Table of Contents
 - [Quick Start](#quick-start)
@@ -116,6 +116,7 @@ This system analyzes reservation patterns and suggests strategic reservation mov
 - **Flexible Property Selection**: Analyze specific properties, multiple properties, or all properties via command-line arguments
 - **Real-Time Data Integration**: Connects to RMS API to fetch live inventory and reservation data with comprehensive caching
 - **Defragmentation Analysis**: Identifies fragmented booking patterns and suggests optimal accommodation moves
+- **🎄 Holiday-Aware Analysis**: Integrates holiday period data for state-specific optimization during peak periods
 - **Revenue Optimization**: Helps maximize occupancy and revenue by consolidating available nights
 - **Visual Reporting**: Generates detailed Excel workbooks with interactive charts and move suggestions
 - **Optional Email Notifications**: Sends professional HTML emails with Excel attachments (configurable)
@@ -258,7 +259,15 @@ sudo /opt/bookingchart-defragmenter/manage.sh update
 - Manages email templates and branding
 - Supports training mode email routing
 
-#### 6. **Logger** (`utils.py`)
+#### 6. **HolidayClient** (`holiday_client.py`)
+- **🎄 Holiday Data Integration**: Fetches holiday periods from Nager.Date API
+- **State-Specific Analysis**: Provides holiday data for all Australian states
+- **Extended Period Analysis**: Analyzes ±7 days around holiday periods for optimal optimization
+- **Importance-Based Prioritization**: Categorizes holidays by importance (High/Medium/Low)
+- **Caching System**: Efficient caching of holiday data to reduce API calls
+- **Date Range Calculation**: Provides holiday-aware date ranges for analysis
+
+#### 7. **Logger** (`utils.py`)
 - **Comprehensive Logging System**: Detailed logging of all application activities
 - **Append Mode**: Log file grows with each run, preserving historical data
 - **Multiple Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -271,6 +280,7 @@ sudo /opt/bookingchart-defragmenter/manage.sh update
 - **Move Analysis**: Detailed logging of defragmentation analysis results
 - **Excel Generation**: Tracks Excel file creation and sheet generation
 - **Email Operations**: Logs email sending attempts and results
+- **Holiday Analysis Logging**: Tracks holiday period detection and analysis
 - Handles move validation and simulation
 - Implements category-based move ordering
 
@@ -298,11 +308,35 @@ sudo /opt/bookingchart-defragmenter/manage.sh update
    a. Fetch Inventory Data → Categories, Units, Availability
    b. Fetch Reservation Data → Current bookings, status, guest info
    c. Analyze Defragmentation → Identify optimization opportunities
-   d. Generate Excel Report → Visual charts + move suggestions
-   e. Send Email (if enabled) → Property-specific notifications
+   d. 🎄 Holiday Analysis → Fetch holiday periods and perform holiday-aware optimization
+   e. Merge Move Suggestions → Combine regular and holiday moves with prioritization
+   f. Generate Excel Report → Visual charts + move suggestions + holiday information
+   g. Send Email (if enabled) → Property-specific notifications with holiday data
 4. Generate Consolidated Excel → Summary across all properties (daily heatmap + suggested moves table)
-5. Summary Report → Overall success metrics
+5. Summary Report → Overall success metrics with holiday analysis results
 ```
+
+### 🎄 Holiday Analysis System
+
+The system now includes comprehensive holiday-aware analysis for optimal booking optimization during peak holiday periods:
+
+#### **Holiday Data Integration**
+- **Nager.Date API**: Fetches real-time holiday data for all Australian states
+- **State-Specific Analysis**: Automatically detects property state and fetches relevant holidays
+- **Extended Period Analysis**: Analyzes ±7 days around each holiday for comprehensive optimization
+- **Importance-Based Prioritization**: Holidays categorized as High/Medium/Low importance
+
+#### **Holiday-Aware Optimization**
+- **Peak Period Focus**: Prioritizes optimization during holiday periods when demand is highest
+- **Extended Date Ranges**: Analyzes extended periods around holidays for better optimization
+- **State-Specific Holidays**: Considers state-specific holidays (e.g., Melbourne Cup Day in VIC)
+- **Move Prioritization**: Holiday moves are prioritized over regular moves in the final output
+
+#### **Enhanced Outputs**
+- **Holiday-Enhanced Excel Reports**: 4-sheet workbooks including holiday-specific information
+- **Holiday Move Suggestions**: Dedicated sheet for holiday-specific move recommendations
+- **Holiday Summary**: Comprehensive overview of holiday periods and analysis
+- **Enhanced Email Notifications**: Separate tables for regular and holiday moves
 
 ## Key Algorithms
 
@@ -358,6 +392,20 @@ Each property generates an Excel file named: `{PropertyCode}-Defragmentation-Ana
 - **Reservation Details**: Guest name, current accommodation unit, suggested unit
 - **Improvement Score**: Quantified benefit of each move
 - **Implementation Notes**: Detailed reasoning and instructions
+
+#### Sheet 3: Holiday Move Suggestions 🎄
+- **Holiday-Specific Moves**: Dedicated sheet for moves optimized for holiday periods
+- **Holiday Period Information**: Shows which holiday period each move is optimized for
+- **Importance Levels**: Holiday importance (High/Medium/Low) for each move
+- **Extended Period Analysis**: Moves optimized for ±7 days around holiday periods
+- **Priority Indicators**: Holiday moves are clearly marked and prioritized
+
+#### Sheet 4: Holiday Summary 📅
+- **Holiday Periods Overview**: Complete list of holidays detected for the property's state
+- **Analysis Periods**: Extended periods analyzed around each holiday
+- **Importance Classification**: Holiday importance levels and reasoning
+- **State Information**: Property state and holiday data source
+- **Implementation Notes**: Guidance for holiday-specific optimization
 
 ### Consolidated Excel File
 After processing all properties, generates: `Full_Defragmentation_Analysis.xlsx`
@@ -500,6 +548,9 @@ The system will:
 - **Higher ADR Potential**: Longer stays typically command higher rates
 - **Reduced Turnover**: Fewer single-night stays means less housekeeping and site maintenance costs
 - **Better Guest Experience**: Guests prefer longer stays in the same accommodation
+- **🎄 Peak Period Optimization**: Maximizes revenue during high-demand holiday periods
+- **Holiday Rate Optimization**: Better positioning for premium holiday pricing
+- **Extended Stay Opportunities**: Creates longer booking blocks during peak periods
 
 ### Operational Efficiency
 - **Automated Analysis**: No manual review of booking patterns required
@@ -509,12 +560,19 @@ The system will:
 - **API Efficiency**: Comprehensive caching reduces API calls by ~50%
 - **Progress Tracking**: Real-time progress indicators and comprehensive summaries
 - **Safe Testing**: Training database option for testing without affecting live data
+- **🎄 Holiday-Aware Automation**: Automatic holiday period detection and analysis
+- **State-Specific Optimization**: Automatic property state detection for holiday analysis
+- **Holiday Period Intelligence**: No manual holiday calendar management required
 
 ### Strategic Planning
 - **Forward-Looking Analysis**: 31-day optimization window
 - **Category-Level Optimization**: Considers accommodation type preferences (cabins, sites, glamping, etc.)
 - **Category-Based Implementation**: Ordered moves within each category for maximum impact
 - **Risk Management**: Respects fixed reservations, maintenance schedules, and guest preferences
+- **🎄 Holiday Period Planning**: Strategic optimization during peak demand periods
+- **State-Specific Strategy**: Considers state-specific holidays and peak periods
+- **Extended Period Analysis**: ±7 days around holidays for comprehensive optimization
+- **Holiday Priority Management**: Prioritizes moves during high-importance holiday periods
 
 ## Technical Specifications
 
@@ -560,18 +618,25 @@ The consolidated file (`Full_Defragmentation_Analysis.xlsx`) contains:
 When enabled, sends professional HTML emails with:
 - Discovery Parks branded styling
 - Property-specific analysis summaries
+- **🎄 Holiday-Enhanced Content**: Separate tables for regular and holiday moves
+- **Holiday Summary Section**: Overview of holiday periods and analysis
 - Complete move recommendation tables
 - Excel file attachments
 - Implementation guidance
+- **Holiday-Specific Subject Lines**: Clear identification of holiday-enhanced analysis
 
 ### Console Output
 Comprehensive progress tracking and summaries:
 - Real-time progress bars for overall and individual property analysis
+- **🎄 Holiday Analysis Status**: Holiday period detection and analysis progress
+- **State Code Detection**: Automatic property state identification for holiday analysis
+- **Holiday Move Counts**: Separate counts for regular and holiday moves
 - Cache performance statistics
 - Email sending status
 - Database mode indicator (Live Production or Training)
 - Endpoint usage summary table with limit monitoring
 - API efficiency metrics
+- **Holiday Summary**: Overview of holiday periods found and analyzed
 
 ### Logging System
 The application maintains a comprehensive log file (`defrag_analyzer.log`) that captures all activities:
@@ -583,6 +648,9 @@ The application maintains a comprehensive log file (`defrag_analyzer.log`) that 
 - **Function Flow**: Entry and exit logging for all major functions
 - **Cache Operations**: Tracking of cache hits, misses, and operations
 - **Move Analysis**: Detailed results of defragmentation analysis
+- **🎄 Holiday Analysis Logging**: Complete tracking of holiday period detection, API calls, and analysis results
+- **State Code Detection**: Logging of property state identification for holiday analysis
+- **Holiday Move Merging**: Detailed logging of move deduplication and prioritization
 - **Excel Generation**: File creation and sheet generation tracking
 - **Email Operations**: Success/failure logging for email sending
 
