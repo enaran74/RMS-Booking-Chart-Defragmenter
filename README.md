@@ -29,7 +29,12 @@ A sophisticated Python application designed to optimize accommodation bookings a
 - Python 3.8+
 - RMS API access credentials
 
-### Installation
+## Installation
+
+### Option 1: Development Installation (Mac/Linux)
+
+For development and testing on your local machine:
+
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/BookingChartDefragmenter.git
@@ -41,6 +46,53 @@ pip install -r requirements.txt
 # Configure environment variables
 cp env.example .env
 # Edit .env with your RMS credentials
+```
+
+### Option 2: Production Installation (Linux Server)
+
+For production deployment on Linux servers (Debian/Ubuntu):
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/BookingChartDefragmenter.git
+cd BookingChartDefragmenter
+
+# Run the automated installation script
+sudo chmod +x install.sh
+sudo ./install.sh
+
+# Configure the application
+sudo nano /etc/bookingchart-defragmenter/config.env
+
+# Start the service
+sudo systemctl start bookingchart-defragmenter.service
+sudo systemctl enable bookingchart-defragmenter.service
+```
+
+The installation script automatically:
+- ✅ Creates service user (`defrag`)
+- ✅ Sets up Python virtual environment
+- ✅ Installs system dependencies
+- ✅ Configures systemd service
+- ✅ Sets up cron job (daily at 2:00 AM)
+- ✅ Creates log directories and permissions
+- ✅ Generates configuration template
+
+### Option 3: Docker Deployment
+
+For containerized deployment:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/BookingChartDefragmenter.git
+cd BookingChartDefragmenter
+
+# Prepare environment file
+cp env.example .env
+# Edit .env with your RMS credentials
+
+# Build and run with Docker Compose
+docker-compose up -d
 ```
 
 ### Basic Usage

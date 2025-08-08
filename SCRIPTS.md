@@ -2,6 +2,75 @@
 
 This document provides detailed information about all the management and utility scripts in the BookingChartDefragmenter project.
 
+## Installation Scripts
+
+### `install.sh` - Automated Installation Script
+
+The main installation script for setting up the application on Linux servers.
+
+#### Features:
+- ✅ **System Dependencies** - Installs Python, pip, git, cron, systemd
+- ✅ **Service User Creation** - Creates `defrag` user and group
+- ✅ **Python Environment** - Sets up virtual environment with dependencies
+- ✅ **Systemd Service** - Configures and enables systemd service
+- ✅ **Cron Job Setup** - Configures daily execution at 2:00 AM
+- ✅ **Log Configuration** - Sets up logrotate and log directories
+- ✅ **File Permissions** - Sets proper ownership and permissions
+- ✅ **Configuration Template** - Creates config.env template
+- ✅ **Health Check Script** - Installs health monitoring
+- ✅ **Uninstall Script** - Creates uninstall.sh for cleanup
+
+#### Usage:
+```bash
+# Make executable and run
+sudo chmod +x install.sh
+sudo ./install.sh
+```
+
+#### What It Installs:
+```
+/opt/bookingchart-defragmenter/          # Application directory
+/etc/bookingchart-defragmenter/config.env # Configuration file
+/etc/systemd/system/bookingchart-defragmenter.service # Systemd service
+/var/log/bookingchart-defragmenter/      # Log directory
+/etc/logrotate.d/bookingchart-defragmenter # Log rotation
+```
+
+#### Post-Installation Steps:
+1. **Configure credentials**:
+   ```bash
+   sudo nano /etc/bookingchart-defragmenter/config.env
+   ```
+
+2. **Start the service**:
+   ```bash
+   sudo systemctl start bookingchart-defragmenter.service
+   sudo systemctl enable bookingchart-defragmenter.service
+   ```
+
+3. **Set up SSH authentication** (for updates):
+   ```bash
+   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   ```
+
+### `uninstall.sh` - Cleanup Script
+
+Removes the application and all associated files.
+
+#### Usage:
+```bash
+sudo /opt/bookingchart-defragmenter/uninstall.sh
+```
+
+#### What It Removes:
+- ✅ Stops and disables systemd service
+- ✅ Removes service file and logrotate config
+- ✅ Removes cron jobs
+- ✅ Deletes application directory
+- ✅ Removes log and config directories
+- ✅ Removes service user and group
+- ✅ Reloads systemd daemon
+
 ## Management Scripts
 
 ### `manage.sh` - Main Management Script

@@ -2,6 +2,46 @@
 
 This guide explains how to deploy updates from your development environment (Mac) to your production Raspberry Pi.
 
+## Initial Installation
+
+### First-Time Setup on Raspberry Pi:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
+   cd RMS-Booking-Chart-Defragmenter
+   ```
+
+2. **Run the installation script**:
+   ```bash
+   sudo chmod +x install.sh
+   sudo ./install.sh
+   ```
+
+3. **Configure the application**:
+   ```bash
+   sudo nano /etc/bookingchart-defragmenter/config.env
+   ```
+
+4. **Set up SSH authentication** (for future updates):
+   ```bash
+   sudo /opt/bookingchart-defragmenter/setup_ssh.sh
+   ```
+
+5. **Start the service**:
+   ```bash
+   sudo systemctl start bookingchart-defragmenter.service
+   sudo systemctl enable bookingchart-defragmenter.service
+   ```
+
+The installation script automatically sets up:
+- ✅ Service user and permissions
+- ✅ Python virtual environment
+- ✅ Systemd service configuration
+- ✅ Cron job for daily execution
+- ✅ Log directories and rotation
+- ✅ Health check and management scripts
+
 ## Development → Production Workflow
 
 ```
