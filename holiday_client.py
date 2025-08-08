@@ -92,9 +92,9 @@ class HolidayClient:
                 raw_holiday_names = [h.get('name', 'Unknown') for h in holidays]
                 self.logger.info(f"Raw API holidays for {state_code} {year}: {raw_holiday_names}")
                 
-                # Debug: Show state information from API response
+                # Debug: Show counties information from API response
                 for holiday in holidays[:3]:  # Show first 3 holidays as example
-                    self.logger.info(f"Sample holiday data: {holiday.get('name')} - States: {holiday.get('states', 'N/A')}")
+                    self.logger.info(f"Sample holiday data: {holiday.get('name')} - Counties: {holiday.get('counties', 'N/A')}")
                 
                 # Process and filter holidays for this specific state
                 processed_holidays = self._process_holidays_for_state(holidays, state_code)
@@ -409,20 +409,34 @@ class HolidayClient:
             
             holiday_name = holiday['name']
             
-            # Check if this holiday applies to this state using API state information
-            holiday_states = holiday.get('states', [])
+            # Check if this holiday applies to this state using API counties information
+            holiday_counties = holiday.get('counties', [])
             
-            # If no states specified, it's a national holiday (applies to all states)
-            if not holiday_states:
-                self.logger.debug(f"Holiday '{holiday_name}' is national (no states specified) - applying to {state_code}")
+            # Map state codes to county codes
+            state_to_county_mapping = {
+                'NSW': 'AU-NSW',
+                'VIC': 'AU-VIC', 
+                'QLD': 'AU-QLD',
+                'WA': 'AU-WA',
+                'SA': 'AU-SA',
+                'TAS': 'AU-TAS',
+                'NT': 'AU-NT',
+                'ACT': 'AU-ACT'
+            }
+            
+            target_county = state_to_county_mapping.get(state_code.upper())
+            
+            # If no counties specified, it's a national holiday (applies to all states)
+            if not holiday_counties:
+                self.logger.debug(f"Holiday '{holiday_name}' is national (no counties specified) - applying to {state_code}")
                 applies_to_state = True
             else:
-                # Check if our state is in the list of states for this holiday
-                applies_to_state = state_code.upper() in [s.upper() for s in holiday_states]
+                # Check if our state's county is in the list of counties for this holiday
+                applies_to_state = target_county in holiday_counties
                 if applies_to_state:
-                    self.logger.debug(f"Holiday '{holiday_name}' applies to {state_code} (states: {holiday_states})")
+                    self.logger.debug(f"Holiday '{holiday_name}' applies to {state_code} (counties: {holiday_counties})")
                 else:
-                    self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code} (states: {holiday_states}), skipping")
+                    self.logger.info(f"Holiday '{holiday_name}' does not apply to {state_code} (counties: {holiday_counties}), skipping")
                     continue
             
             # Special date-based filtering for King's Birthday (different states have different dates)
@@ -453,7 +467,7 @@ class HolidayClient:
                 'state_code': state_code,
                 'country_code': self.STATE_COUNTRY_MAPPING.get(state_code.upper(), 'AU'),
                 'api_data': holiday,  # Keep original API data for reference
-                'applies_to_states': holiday_states  # Keep state information for debugging
+                'applies_to_counties': holiday_counties  # Keep counties information for debugging
             }
             
             processed_holidays.append(processed_holiday)
