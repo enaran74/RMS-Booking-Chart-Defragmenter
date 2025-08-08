@@ -460,7 +460,7 @@ class MultiPropertyAnalyzer:
                         'state_code': state_code
                     }
                     
-                                            print(f"🎄 2-Month Forward Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
+                        print(f"🎄 2-Month Forward Holiday Analysis: {len(holiday_periods)} periods, {len(holiday_suggestions)} holiday moves")
                     print(f"📋 Total Merged Suggestions: {len(merged_suggestions)} moves")
                     
                     # Update suggestions with merged list
