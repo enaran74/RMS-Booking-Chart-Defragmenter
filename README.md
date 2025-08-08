@@ -660,3 +660,131 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **README Updates**: This README file should be updated whenever code changes impact functionality, features, or business logic
 - **Version Control**: All documentation changes should be committed alongside code changes
 - **Change Tracking**: Significant updates to the system should be reflected in this documentation
+
+## Troubleshooting
+
+### Common Issues:
+
+1. **Authentication Failed**
+   - Verify RMS API credentials
+   - Check network connectivity
+   - Ensure credentials are properly escaped in config
+
+2. **Permission Denied**
+   - Check file permissions: `ls -la /opt/bookingchart-defragmenter/`
+   - Verify service user: `id defrag`
+   - Fix permissions: `sudo chown -R defrag:defrag /opt/bookingchart-defragmenter/`
+
+3. **Service Won't Start**
+   - Check service status: `sudo systemctl status bookingchart-defragmenter.service`
+   - View logs: `sudo journalctl -u bookingchart-defragmenter.service`
+   - Verify configuration: `sudo cat /etc/bookingchart-defragmenter/config.env`
+
+4. **Network Connectivity Issues** (for updates)
+   - Check internet connection: `ping github.com`
+   - Verify firewall allows HTTPS (port 443)
+   - Test: `curl -I https://github.com`
+
+5. **Docker Issues**
+   - Check container logs: `docker-compose logs bookingchart-defragmenter`
+   - Verify environment variables: `docker-compose config`
+   - Rebuild container: `docker-compose up -d --build`
+
+### If Update Fails:
+The script automatically rolls back, but you can check:
+
+```bash
+# Check service status
+sudo /opt/bookingchart-defragmenter/manage.sh status
+
+# View recent logs
+sudo /opt/bookingchart-defragmenter/manage.sh logs
+
+# Manual rollback (if needed)
+sudo systemctl stop bookingchart-defragmenter.service
+sudo mv /opt/bookingchart-defragmenter-backup /opt/bookingchart-defragmenter
+sudo systemctl start bookingchart-defragmenter.service
+```
+
+### Log Analysis
+
+```bash
+# Search for errors
+grep -i error /var/log/bookingchart-defragmenter/defrag_analyzer.log
+
+# Search for specific property
+grep "SADE" /var/log/bookingchart-defragmenter/defrag_analyzer.log
+
+# View recent activity
+tail -100 /var/log/bookingchart-defragmenter/defrag_analyzer.log
+
+# Live logs
+sudo /opt/bookingchart-defragmenter/manage.sh logs
+
+# Historical logs
+sudo journalctl -u bookingchart-defragmenter.service -n 100
+```
+
+### Performance Monitoring
+
+```bash
+# Check disk usage
+df -h /var/log/bookingchart-defragmenter
+
+# Check memory usage
+free -h
+
+# Check process status
+ps aux | grep python3
+```
+
+## File Locations
+
+- **Application**: `/opt/bookingchart-defragmenter/`
+- **Configuration**: `/etc/bookingchart-defragmenter/config.env`
+- **Logs**: `/var/log/bookingchart-defragmenter/`
+- **Service**: `/etc/systemd/system/bookingchart-defragmenter.service`
+- **Backups**: `/opt/bookingchart-defragmenter-backup/` (temporary)
+
+## Security Notes
+
+- 🔒 **Credentials Never Change** - Update preserves all API credentials
+- 🔒 **Service User** - Runs as non-root `defrag` user
+- 🔒 **File Permissions** - Maintained during updates
+- 🔒 **Configuration Files** - Protected and preserved
+
+## Advanced Usage
+
+### Branch Strategy
+
+- **`main`** - Production-ready code (default for updates)
+- **`develop`** - Development/testing code
+- **Feature branches** - For experimental features
+
+### Update from different branches:
+```bash
+# Production updates (stable)
+sudo /opt/bookingchart-defragmenter/manage.sh update main
+
+# Test new features
+sudo /opt/bookingchart-defragmenter/manage.sh update develop
+```
+
+### Manual Git Update (if needed):
+```bash
+cd /opt/bookingchart-defragmenter
+sudo git pull origin main
+sudo systemctl restart bookingchart-defragmenter.service
+```
+
+### Check Current Version:
+```bash
+cd /opt/bookingchart-defragmenter
+git log --oneline -1
+```
+
+### Configuration Changes:
+```bash
+sudo nano /etc/bookingchart-defragmenter/config.env
+sudo /opt/bookingchart-defragmenter/manage.sh restart
+```
