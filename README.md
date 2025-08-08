@@ -307,36 +307,61 @@ sudo /opt/bookingchart-defragmenter/manage.sh update
 3. For each property:
    a. Fetch Inventory Data → Categories, Units, Availability
    b. Fetch Reservation Data → Current bookings, status, guest info
-   c. Analyze Defragmentation → Identify optimization opportunities
-   d. 🎄 Holiday Analysis → Fetch holiday periods and perform holiday-aware optimization
-   e. Merge Move Suggestions → Combine regular and holiday moves with prioritization
-   f. Generate Excel Report → Visual charts + move suggestions + holiday information
-   g. Send Email (if enabled) → Property-specific notifications with holiday data
+   c. 📅 Regular Analysis → Analyze 31-day defragmentation opportunities
+   d. 🎄 Holiday Analysis → Fetch 2-month forward holiday periods and perform holiday-aware optimization
+   e. 🔄 Smart Deduplication → Remove duplicate moves between regular and holiday analysis
+   f. Merge Move Suggestions → Combine regular and holiday moves with prioritization
+   g. Generate Excel Report → Visual charts + move suggestions + holiday information
+   h. Send Email (if enabled) → Property-specific notifications with holiday data
 4. Generate Consolidated Excel → Summary across all properties (daily heatmap + suggested moves table)
 5. Summary Report → Overall success metrics with holiday analysis results
 ```
 
 ### 🎄 Holiday Analysis System
 
-The system now includes comprehensive holiday-aware analysis for optimal booking optimization during peak holiday periods:
+The system now includes comprehensive holiday-aware analysis with **2-month forward planning** for optimal booking optimization during peak holiday periods:
+
+#### **Dual Analysis Approach**
+The system performs two distinct types of analysis:
+
+**📅 Regular 31-Day Analysis:**
+- **Period**: Next 31 days from today
+- **Purpose**: Immediate optimization for current bookings
+- **Scope**: All reservations within the 31-day window
+- **Frequency**: Daily analysis for ongoing optimization
+
+**🎄 2-Month Forward Holiday Analysis:**
+- **Period**: Next 60 days from today (2 months forward)
+- **Purpose**: Early optimization for upcoming holiday periods
+- **Scope**: Holiday periods only, with ±7 days extension around each holiday
+- **Frequency**: Daily analysis to catch holidays as they approach
 
 #### **Holiday Data Integration**
 - **Nager.Date API**: Fetches real-time holiday data for all Australian states
 - **State-Specific Analysis**: Automatically detects property state and fetches relevant holidays
+- **2-Month Forward Window**: Analyzes holidays in a 60-day forward-looking window
 - **Extended Period Analysis**: Analyzes ±7 days around each holiday for comprehensive optimization
 - **Importance-Based Prioritization**: Holidays categorized as High/Medium/Low importance
+
+#### **Smart Deduplication System**
+- **Overlap Detection**: Automatically detects when holiday periods overlap with regular 31-day analysis
+- **Enhanced Deduplication**: Removes duplicate move suggestions between holiday and regular analysis
+- **50% Overlap Threshold**: Considers moves duplicate if date ranges overlap by more than 50%
+- **Priority Preservation**: Holiday moves are prioritized over regular moves in final output
 
 #### **Holiday-Aware Optimization**
 - **Peak Period Focus**: Prioritizes optimization during holiday periods when demand is highest
 - **Extended Date Ranges**: Analyzes extended periods around holidays for better optimization
 - **State-Specific Holidays**: Considers state-specific holidays (e.g., Melbourne Cup Day in VIC)
 - **Move Prioritization**: Holiday moves are prioritized over regular moves in the final output
+- **Early Planning**: 2-month advance notice allows for strategic holiday optimization
 
 #### **Enhanced Outputs**
 - **Holiday-Enhanced Excel Reports**: 4-sheet workbooks including holiday-specific information
 - **Holiday Move Suggestions**: Dedicated sheet for holiday-specific move recommendations
 - **Holiday Summary**: Comprehensive overview of holiday periods and analysis
 - **Enhanced Email Notifications**: Separate tables for regular and holiday moves
+- **Overlap Indicators**: Clear marking of moves that overlap with regular analysis periods
 
 ## Key Algorithms
 
@@ -352,6 +377,14 @@ The system now includes comprehensive holiday-aware analysis for optimal booking
 - **Fixed Reservation Protection**: Excludes reservations marked as fixed
 - **Maintenance & Pencil Protection**: Excludes Maintenance and Pencil bookings (cannot be moved)
 - **Date Range Validation**: Only considers moves within analysis period
+
+### Smart Deduplication Logic
+- **Overlap Detection**: Automatically identifies when holiday periods overlap with regular 31-day analysis
+- **Enhanced Duplicate Detection**: Uses advanced logic to identify duplicate moves between holiday and regular analysis
+- **50% Overlap Threshold**: Considers moves duplicate if their date ranges overlap by more than 50%
+- **Priority-Based Deduplication**: Holiday moves are preserved over regular moves when duplicates are found
+- **Move ID Tracking**: Unique identifiers for holiday moves (H2M{number}.{subnumber}) vs regular moves
+- **Overlap Flagging**: Moves are marked with `overlaps_regular_analysis` flag for transparency
 
 ### Data Filtering
 - **Active Properties Only**: Excludes properties marked as inactive (`inactive: false`)
@@ -551,6 +584,8 @@ The system will:
 - **🎄 Peak Period Optimization**: Maximizes revenue during high-demand holiday periods
 - **Holiday Rate Optimization**: Better positioning for premium holiday pricing
 - **Extended Stay Opportunities**: Creates longer booking blocks during peak periods
+- **🔄 Strategic Planning**: 2-month advance notice for holiday optimization
+- **No Duplicate Suggestions**: Smart deduplication prevents redundant move recommendations
 
 ### Operational Efficiency
 - **Automated Analysis**: No manual review of booking patterns required
@@ -596,6 +631,37 @@ The system will:
 
 ## Example Output
 
+### **📅 Dual Analysis Example**
+
+**Current Date:** January 15, 2025  
+**Property:** SADE (South Australia)
+
+**📅 Regular 31-Day Analysis:**
+- **Period:** January 15, 2025 → February 15, 2025
+- **Moves Generated:** 12 regular optimization moves
+- **Focus:** Immediate optimization for current bookings
+
+**🎄 2-Month Forward Holiday Analysis:**
+- **Period:** January 15, 2025 → March 16, 2025
+- **Holidays Found:** Australia Day (Jan 27, 2025)
+- **Overlap Detection:** Australia Day period overlaps with regular analysis
+- **Moves Generated:** 3 holiday-specific moves
+- **Deduplication:** 1 duplicate move removed (same move suggested by both analyses)
+
+**🔄 Final Result:**
+- **Total Moves:** 14 unique moves (12 regular + 2 holiday after deduplication)
+- **Priority Order:** Holiday moves first, then regular moves by improvement score
+- **No Duplicates:** Smart deduplication prevents redundant suggestions
+
+### **Console Output Example:**
+```
+🎄 2-Month Forward Holiday Analysis: 1 periods, 3 holiday moves
+📋 Total Merged Suggestions: 14 moves
+🔄 Duplicates removed: 1
+🎄 Overlapping holiday moves: 1
+⚠️  Holiday period overlaps with regular analysis - will deduplicate moves
+```
+
 ### Excel Files
 The system generates files like:
 - `QROC-Defragmentation-Analysis.xlsx` (individual property)
@@ -628,15 +694,18 @@ When enabled, sends professional HTML emails with:
 ### Console Output
 Comprehensive progress tracking and summaries:
 - Real-time progress bars for overall and individual property analysis
-- **🎄 Holiday Analysis Status**: Holiday period detection and analysis progress
+- **📅 Regular Analysis Status**: 31-day defragmentation analysis progress
+- **🎄 2-Month Forward Holiday Analysis Status**: Holiday period detection and analysis progress
 - **State Code Detection**: Automatic property state identification for holiday analysis
 - **Holiday Move Counts**: Separate counts for regular and holiday moves
+- **🔄 Deduplication Status**: Overlap detection and duplicate removal statistics
+- **Overlap Indicators**: Clear marking of holiday periods that overlap with regular analysis
 - Cache performance statistics
 - Email sending status
 - Database mode indicator (Live Production or Training)
 - Endpoint usage summary table with limit monitoring
 - API efficiency metrics
-- **Holiday Summary**: Overview of holiday periods found and analyzed
+- **Holiday Summary**: Overview of holiday periods found and analyzed in 2-month window
 
 ### Logging System
 The application maintains a comprehensive log file (`defrag_analyzer.log`) that captures all activities:
@@ -648,8 +717,10 @@ The application maintains a comprehensive log file (`defrag_analyzer.log`) that 
 - **Function Flow**: Entry and exit logging for all major functions
 - **Cache Operations**: Tracking of cache hits, misses, and operations
 - **Move Analysis**: Detailed results of defragmentation analysis
-- **🎄 Holiday Analysis Logging**: Complete tracking of holiday period detection, API calls, and analysis results
+- **📅 Regular Analysis Logging**: Complete tracking of 31-day defragmentation analysis
+- **🎄 2-Month Forward Holiday Analysis Logging**: Complete tracking of holiday period detection, API calls, and analysis results
 - **State Code Detection**: Logging of property state identification for holiday analysis
+- **🔄 Deduplication Logging**: Detailed tracking of overlap detection and duplicate removal
 - **Holiday Move Merging**: Detailed logging of move deduplication and prioritization
 - **Excel Generation**: File creation and sheet generation tracking
 - **Email Operations**: Success/failure logging for email sending
