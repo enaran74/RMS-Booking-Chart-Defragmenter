@@ -52,7 +52,7 @@ print_info() {
         echo "  sudo $0 restart"
         echo "  sudo $0 logs"
         echo "  sudo $0 update main    # Update from main branch"
-        echo "  sudo $0 run            # Run analysis manually"
+        echo "  $0 run                 # Run analysis manually (no sudo needed)"
         echo ""
     }
 
@@ -151,11 +151,11 @@ case "$1" in
         ;;
         
     run)
-        check_root
         if [ -f "$INSTALL_DIR/run_defragmentation.sh" ]; then
             print_info "Running analysis manually..."
             print_info "This will execute the full defragmentation analysis"
             print_info "Press Ctrl+C to cancel if needed"
+            print_info "Note: Running as user $(whoami)"
             bash $INSTALL_DIR/run_defragmentation.sh
         else
             print_error "Analysis script not found at $INSTALL_DIR/run_defragmentation.sh"

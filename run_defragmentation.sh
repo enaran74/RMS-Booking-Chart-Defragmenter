@@ -41,15 +41,40 @@ echo -e "${BLUE}🚀 Starting Defragmentation Analysis${NC}"
 echo "=========================================="
 echo ""
 
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   print_error "This script should be run as root (use sudo)"
-   exit 1
+# Validate directory permissions and access
+print_info "Validating directory permissions..."
+
+# Create log directory if it doesn't exist and test write access
+if ! mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null; then
+    print_error "Cannot create log directory: $(dirname "$LOG_FILE")"
+    print_error "Please ensure the current user has write access to this location"
+    exit 1
 fi
 
-# Create log directory if it doesn't exist
-mkdir -p "$(dirname "$LOG_FILE")"
-mkdir -p "$OUTPUT_DIR"
+# Test write access to log file
+if ! touch "$LOG_FILE" 2>/dev/null; then
+    print_error "Cannot write to log file: $LOG_FILE"
+    print_error "Please ensure the current user has write access to this file"
+    exit 1
+fi
+
+# Create output directory if it doesn't exist and test write access
+if ! mkdir -p "$OUTPUT_DIR" 2>/dev/null; then
+    print_error "Cannot create output directory: $OUTPUT_DIR"
+    print_error "Please ensure the current user has write access to this location"
+    exit 1
+fi
+
+# Test write access to output directory
+if ! touch "$OUTPUT_DIR/.test_write" 2>/dev/null; then
+    print_error "Cannot write to output directory: $OUTPUT_DIR"
+    print_error "Please ensure the current user has write access to this directory"
+    exit 1
+else
+    rm -f "$OUTPUT_DIR/.test_write" 2>/dev/null
+fi
+
+print_status "Directory permissions validated successfully"
 
 # Log start of analysis
 log_message "Starting defragmentation analysis"
@@ -106,7 +131,7 @@ print_info "Executing defragmentation analysis..."
 print_info "This may take a while depending on the number of parks..."
 
 # Run the analysis and capture output
-if sudo -E -u defrag env AGENT_ID="$AGENT_ID" AGENT_PASSWORD="$AGENT_PASSWORD" CLIENT_ID="$CLIENT_ID" CLIENT_PASSWORD="$CLIENT_PASSWORD" "$SCRIPT_DIR/venv/bin/python" "$SCRIPT_DIR/start.py" 2>&1 | tee -a "$LOG_FILE"; then
+if env AGENT_ID="$AGENT_ID" AGENT_PASSWORD="$AGENT_PASSWORD" CLIENT_ID="$CLIENT_ID" CLIENT_PASSWORD="$CLIENT_PASSWORD" "$SCRIPT_DIR/venv/bin/python" "$SCRIPT_DIR/start.py" 2>&1 | tee -a "$LOG_FILE"; then
     print_status "Analysis completed successfully!"
     log_message "Analysis completed successfully"
     
