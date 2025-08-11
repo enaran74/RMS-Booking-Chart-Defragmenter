@@ -25,6 +25,9 @@ class EmailSender:
         self.sender_email = os.environ.get('SENDER_EMAIL', "***REMOVED***")
         self.app_password = os.environ.get('APP_PASSWORD')
         
+        # Custom display name for the sender (optional)
+        self.sender_display_name = os.environ.get('SENDER_DISPLAY_NAME', "DHP Systems")
+        
         # Test recipient (for testing purposes)
         self.test_recipient = os.environ.get('TEST_RECIPIENT', "***REMOVED***")
         
@@ -34,7 +37,7 @@ class EmailSender:
         self.email_errors = []
         
         print(f"📧 Email Sender initialized")
-        print(f"   📤 From: {self.sender_email}")
+        print(f"   📤 From: \"{self.sender_display_name}\" <{self.sender_email}>")
         print(f"   📥 Test To: {self.test_recipient}")
         print(f"   🔧 SMTP: {self.smtp_server}:{self.smtp_port}")
 
@@ -96,7 +99,7 @@ class EmailSender:
         """Create the email message with HTML content"""
         
         msg = MIMEMultipart('alternative')
-        msg['From'] = self.sender_email
+        msg['From'] = f'"{self.sender_display_name}" <{self.sender_email}>'
         msg['To'] = recipient_email
         msg['Subject'] = f"RMS Booking Chart Fragmentation Report: {property_name}"
         
@@ -279,7 +282,7 @@ class EmailSender:
         """Create the holiday-enhanced email message with HTML content"""
         
         msg = MIMEMultipart('alternative')
-        msg['From'] = self.sender_email
+        msg['From'] = f'"{self.sender_display_name}" <{self.sender_email}>'
         msg['To'] = recipient_email
         msg['Subject'] = f"RMS Booking Chart Fragmentation Report: {property_name}"
         
