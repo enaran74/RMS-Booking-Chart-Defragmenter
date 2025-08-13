@@ -365,18 +365,20 @@ def _find_best_move(self, moveable_reservations, units, dates,
 
 ### 4. EmailSender (email_sender.py)
 
-**Purpose**: Sends property-specific analysis reports via email
+**Purpose**: Sends property-specific and consolidated analysis reports via email
 
 **Features**:
 - **HTML Formatting**: Professional email templates
 - **File Attachments**: Excel reports included
 - **Training Mode**: Centralized email delivery for testing
+- **Consolidated Reports**: Multi-property summary emails to operations team
 - **Error Handling**: Comprehensive failure tracking
 
 **Design Rationale**:
 - **Automated Delivery**: Reduces manual report distribution
 - **Professional Presentation**: HTML formatting for business context
 - **Flexible Recipients**: Supports both property-specific and centralized delivery
+- **Operations Coordination**: Consolidated reports enable cross-property optimization
 - **Error Tracking**: Maintains delivery statistics and failure logs
 
 ### 5. Utils (utils.py)

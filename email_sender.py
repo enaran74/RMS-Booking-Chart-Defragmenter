@@ -465,6 +465,162 @@ class EmailSender:
         
         return html_content
 
+    def send_consolidated_report_email(self, excel_file_path: str, property_count: int, 
+                                     analysis_start_date, analysis_end_date, 
+                                     total_suggestions: int, total_moves: int,
+                                     excel_success: bool) -> bool:
+        """Send consolidated analysis report email with Excel attachment"""
+        
+        print(f"\n📧 SENDING CONSOLIDATED ANALYSIS REPORT EMAIL")
+        print("=" * 60)
+        print(f"📁 Excel File: {excel_file_path}")
+        print(f"🏢 Properties Analyzed: {property_count}")
+        print(f"📊 Total Suggestions: {total_suggestions}")
+        print(f"🔄 Total Moves: {total_moves}")
+        
+        try:
+            # Create email message
+            msg = self._create_consolidated_report_email_message(
+                excel_file_path, property_count, analysis_start_date, 
+                analysis_end_date, total_suggestions, total_moves, excel_success
+            )
+            
+            # Add Excel attachment if file exists and was created successfully
+            if excel_success and os.path.exists(excel_file_path):
+                self._add_excel_attachment(msg, excel_file_path)
+                print(f"✅ Excel file attached: {os.path.basename(excel_file_path)}")
+            else:
+                print(f"⚠️  No Excel file to attach (success: {excel_success}, exists: {os.path.exists(excel_file_path) if excel_file_path else False})")
+            
+            # Send email
+            success = self._send_email(msg)
+            
+            if success:
+                self.emails_sent += 1
+                print(f"✅ Consolidated report email sent successfully")
+            else:
+                self.emails_failed += 1
+                print(f"❌ Consolidated report email failed to send")
+            
+            return success
+            
+        except Exception as e:
+            self.emails_failed += 1
+            error_msg = f"Consolidated report email error: {str(e)}"
+            self.email_errors.append(error_msg)
+            print(f"💥 {error_msg}")
+            return False
+
+    def _create_consolidated_report_email_message(self, excel_file_path: str, property_count: int,
+                                                analysis_start_date, analysis_end_date, 
+                                                total_suggestions: int, total_moves: int,
+                                                excel_success: bool) -> MIMEMultipart:
+        """Create the consolidated report email message with HTML content"""
+        
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f'"{self.sender_display_name}" <{self.sender_email}>'
+        msg['To'] = "operations@discoveryparks.com.au"
+        msg['Subject'] = f"RMS Multi-Property Defragmentation Analysis Report - {analysis_start_date.strftime('%d/%m/%Y')} to {analysis_end_date.strftime('%d/%m/%Y')}"
+        
+        # Create HTML content
+        html_content = self._create_consolidated_report_html_content(
+            excel_file_path, property_count, analysis_start_date, 
+            analysis_end_date, total_suggestions, total_moves, excel_success
+        )
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        return msg
+
+    def _create_consolidated_report_html_content(self, excel_file_path: str, property_count: int,
+                                               analysis_start_date, analysis_end_date, 
+                                               total_suggestions: int, total_moves: int,
+                                               excel_success: bool) -> str:
+        """Create HTML content for consolidated report email"""
+        
+        # Format dates
+        start_date_str = analysis_start_date.strftime('%d/%m/%Y')
+        end_date_str = analysis_end_date.strftime('%d/%m/%Y')
+        current_time = datetime.now().strftime('%d/%m/%Y %H:%M')
+        
+        # Create HTML email
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .header {{ background-color: #F47425; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 20px; }}
+                .summary-box {{ background-color: #f8f9fa; border-left: 4px solid #F47425; padding: 15px; margin: 15px 0; }}
+                .success {{ color: #28a745; }}
+                .warning {{ color: #ffc107; }}
+                .error {{ color: #dc3545; }}
+                .footer {{ background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>RMS Multi-Property Defragmentation Analysis Report</h1>
+                <h2>Consolidated Summary</h2>
+            </div>
+            
+            <div class="content">
+                <div class="summary-box">
+                    <h3>📋 Analysis Summary</h3>
+                    <p><strong>Analysis Period:</strong> {start_date_str} to {end_date_str}</p>
+                    <p><strong>Properties Analyzed:</strong> {property_count}</p>
+                    <p><strong>Total Move Suggestions:</strong> {total_suggestions}</p>
+                    <p><strong>Total Daily Moves:</strong> {total_moves}</p>
+                    <p><strong>Excel Report:</strong> {'✅ Generated successfully' if excel_success else '❌ Generation failed'}</p>
+                    <p><strong>Analysis Time:</strong> {current_time}</p>
+                </div>
+                
+                <div class="summary-box">
+                    <h3>📊 Report Contents</h3>
+                    <p><strong>Sheet 1: Consolidated Daily Moves</strong></p>
+                    <ul>
+                        <li>Daily heatmap showing move opportunities for each property</li>
+                        <li>Move counts and strategic importance levels</li>
+                        <li>Row and column totals for easy analysis</li>
+                        <li>Color-coded importance levels (High/Medium/Low/None)</li>
+                    </ul>
+                    
+                    <p><strong>Sheet 2: Suggested Moves</strong></p>
+                    <ul>
+                        <li>Complete list of all suggested moves across all properties</li>
+                        <li>Sorted by property code and move order</li>
+                        <li>Detailed implementation guidance</li>
+                    </ul>
+                </div>
+                
+                <div class="summary-box">
+                    <h3>🎯 Implementation Notes</h3>
+                    <ul>
+                        <li>Review the daily heatmap to identify high-priority dates</li>
+                        <li>Focus on properties with High/Medium importance moves</li>
+                        <li>Implement moves in category-based order within each property</li>
+                        <li>Consider the cumulative effect of multiple moves</li>
+                    </ul>
+                </div>
+                
+                <div class="summary-box">
+                    <h3>📧 Contact Information</h3>
+                    <p><strong>Operations Systems Manager:</strong> Mr Tim Curtis</p>
+                    <p><strong>Email:</strong> operations@discoveryparks.com.au</p>
+                    <p><strong>Generated by:</strong> RMS Multi-Property Defragmentation Analyzer</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>This email was automatically generated by the Discovery Parks Multi-Property Defragmentation Analysis System.</p>
+                <p>Please review the attached Excel file for detailed analysis and implementation guidance.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return html_content
+
     def _add_excel_attachment(self, msg: MIMEMultipart, file_path: str):
         """Add Excel file as attachment"""
         
