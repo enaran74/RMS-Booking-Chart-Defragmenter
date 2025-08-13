@@ -471,12 +471,16 @@ class EmailSender:
                                      excel_success: bool) -> bool:
         """Send consolidated analysis report email with Excel attachment"""
         
+        # Get recipient email from environment variable
+        recipient_email = os.environ.get('CONSOLIDATED_EMAIL_RECIPIENT', 'operations@discoveryparks.com.au')
+        
         print(f"\n📧 SENDING CONSOLIDATED ANALYSIS REPORT EMAIL")
         print("=" * 60)
         print(f"📁 Excel File: {excel_file_path}")
         print(f"🏢 Properties Analyzed: {property_count}")
         print(f"📊 Total Suggestions: {total_suggestions}")
         print(f"🔄 Total Moves: {total_moves}")
+        print(f"📧 Recipient: {recipient_email}")
         
         try:
             # Create email message
@@ -517,9 +521,12 @@ class EmailSender:
                                                 excel_success: bool) -> MIMEMultipart:
         """Create the consolidated report email message with HTML content"""
         
+        # Get recipient email from environment variable
+        recipient_email = os.environ.get('CONSOLIDATED_EMAIL_RECIPIENT', 'operations@discoveryparks.com.au')
+        
         msg = MIMEMultipart('alternative')
         msg['From'] = f'"{self.sender_display_name}" <{self.sender_email}>'
-        msg['To'] = "operations@discoveryparks.com.au"
+        msg['To'] = recipient_email
         msg['Subject'] = f"RMS Multi-Property Defragmentation Analysis Report - {analysis_start_date.strftime('%d/%m/%Y')} to {analysis_end_date.strftime('%d/%m/%Y')}"
         
         # Create HTML content

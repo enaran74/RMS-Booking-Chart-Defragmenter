@@ -156,6 +156,7 @@ CLIENT_PASSWORD=your_client_password_here
 TARGET_PROPERTIES=ALL
 ENABLE_EMAILS=false
 SEND_CONSOLIDATED_EMAIL=false
+CONSOLIDATED_EMAIL_RECIPIENT=operations@discoveryparks.com.au
 USE_TRAINING_DB=false
 
 # Email Configuration (if enabled)

@@ -298,6 +298,7 @@ CLIENT_PASSWORD=your_actual_client_password
 TARGET_PROPERTIES=ALL
 ENABLE_EMAILS=true
 SEND_CONSOLIDATED_EMAIL=true
+CONSOLIDATED_EMAIL_RECIPIENT=operations@discoveryparks.com.au
 USE_TRAINING_DB=false
 
 # Email Configuration (if enabled)
@@ -338,7 +339,8 @@ docker-compose logs -f
 | `CLIENT_PASSWORD` | ✅ | - | RMS API Client Password |
 | `TARGET_PROPERTIES` | ❌ | `ALL` | Properties to analyze (comma-separated) |
 | `ENABLE_EMAILS` | ❌ | `false` | Enable email notifications |
-| `SEND_CONSOLIDATED_EMAIL` | ❌ | `false` | Send consolidated report to operations team |
+| `SEND_CONSOLIDATED_EMAIL` | ❌ | `false` | Send consolidated report email |
+| `CONSOLIDATED_EMAIL_RECIPIENT` | ❌ | `operations@discoveryparks.com.au` | Email address for consolidated reports |
 | `USE_TRAINING_DB` | ❌ | `false` | Use training database |
 | `SMTP_SERVER` | ❌ | `smtp.gmail.com` | SMTP server for emails |
 | `SMTP_PORT` | ❌ | `587` | SMTP port |
