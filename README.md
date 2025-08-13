@@ -559,6 +559,14 @@ python3 start.py
 - `-e, --email`: Send email notifications with Excel attachments after each property analysis
 - `-t, --training`: Use training database instead of live production data (emails sent to operations@discoveryparks.com.au)
 
+#### Environment Variables
+**Email Configuration:**
+- `ENABLE_EMAILS`: Enable/disable property-specific email notifications
+- `SEND_CONSOLIDATED_EMAIL`: Enable/disable consolidated report email to operations team
+- `SENDER_EMAIL`: Gmail account for SMTP authentication
+- `SENDER_DISPLAY_NAME`: Custom display name for email sender
+- `APP_PASSWORD`: Gmail app password for SMTP authentication
+
 ### Analysis Process
 The system will:
 1. Authenticate with RMS API (Live Production or Training database)
@@ -678,6 +686,9 @@ The consolidated file (`Full_Defragmentation_Analysis.xlsx`) contains:
 - **Sheet 1: Consolidated Daily Moves** - Property-by-property heatmap of daily move opportunities with two rows per property:
   - `{ParkCode} Moves` - Number of moves available for each day
   - `{ParkCode} Move Importance` - Strategic importance level (High/Medium/Low/None) for each day based on category importance
+  - **Row Totals** - Total moves for each property across all dates (right column)
+  - **Column Totals** - Total moves across all properties for each date (bottom row)
+  - **Grand Total** - Total moves across all properties and all dates (bottom right corner)
 - **Sheet 2: Suggested_Moves** - Complete collection of all suggested moves across all properties in a single table
 
 ### Email Notifications
@@ -690,6 +701,13 @@ When enabled, sends professional HTML emails with:
 - Excel file attachments
 - Implementation guidance
 - **Holiday-Specific Subject Lines**: Clear identification of holiday-enhanced analysis
+
+#### Consolidated Report Email
+When `SEND_CONSOLIDATED_EMAIL=true` is set, the system also sends:
+- **Multi-Property Summary Report** to `operations@discoveryparks.com.au`
+- **Consolidated Excel File** (`Full_Defragmentation_Analysis.xlsx`) as attachment
+- **Cross-Property Analysis** showing total opportunities and strategic priorities
+- **Implementation Guidance** for operations team coordination
 
 ### Console Output
 Comprehensive progress tracking and summaries:

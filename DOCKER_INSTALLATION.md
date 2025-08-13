@@ -297,6 +297,7 @@ CLIENT_PASSWORD=your_actual_client_password
 # Analysis Configuration
 TARGET_PROPERTIES=ALL
 ENABLE_EMAILS=true
+SEND_CONSOLIDATED_EMAIL=true
 USE_TRAINING_DB=false
 
 # Email Configuration (if enabled)
@@ -337,6 +338,7 @@ docker-compose logs -f
 | `CLIENT_PASSWORD` | ✅ | - | RMS API Client Password |
 | `TARGET_PROPERTIES` | ❌ | `ALL` | Properties to analyze (comma-separated) |
 | `ENABLE_EMAILS` | ❌ | `false` | Enable email notifications |
+| `SEND_CONSOLIDATED_EMAIL` | ❌ | `false` | Send consolidated report to operations team |
 | `USE_TRAINING_DB` | ❌ | `false` | Use training database |
 | `SMTP_SERVER` | ❌ | `smtp.gmail.com` | SMTP server for emails |
 | `SMTP_PORT` | ❌ | `587` | SMTP port |

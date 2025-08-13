@@ -155,6 +155,7 @@ CLIENT_PASSWORD=your_client_password_here
 # Analysis Configuration
 TARGET_PROPERTIES=ALL
 ENABLE_EMAILS=false
+SEND_CONSOLIDATED_EMAIL=false
 USE_TRAINING_DB=false
 
 # Email Configuration (if enabled)

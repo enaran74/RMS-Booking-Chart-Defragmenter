@@ -732,6 +732,14 @@ class MultiPropertyAnalyzer:
             date_cell = ws.cell(row=current_row, column=col_idx, value=date.strftime("%d/%m"))
             date_cell.font = Font(bold=True)
             date_cell.alignment = Alignment(horizontal="center")
+        
+        # Add Total column header
+        total_header = ws.cell(row=current_row, column=len(date_range) + 1, value="Total")
+        total_header.font = Font(bold=True)
+        total_header.alignment = Alignment(horizontal="center")
+        total_header.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        total_header.font = Font(color="FFFFFF", bold=True)
+        
         current_row += 1
         
         # Property rows with move data - two rows per property
@@ -763,6 +771,17 @@ class MultiPropertyAnalyzer:
                         cell.comment = comment
                 else:
                     ws.cell(row=current_row, column=col_idx, value=0)
+            
+            # Add row total for this property (right column)
+            property_total = sum(
+                self.consolidated_daily_data[property_code][date]['moves']
+                for date in date_range
+                if date in self.consolidated_daily_data[property_code]
+            )
+            total_cell = ws.cell(row=current_row, column=len(date_range) + 1, value=property_total)
+            total_cell.font = Font(bold=True)
+            total_cell.alignment = Alignment(horizontal="center")
+            total_cell.fill = PatternFill(start_color="E6E6E6", end_color="E6E6E6", fill_type="solid")
             
             current_row += 1
             
@@ -822,7 +841,45 @@ class MultiPropertyAnalyzer:
                     ws.cell(row=current_row, column=col_idx, value="None")
                     ws.cell(row=current_row, column=col_idx).fill = PatternFill(start_color="FFE6E6", end_color="FFE6E6", fill_type="solid")
             
+            # Add row total for Move Importance (right column) - set to 0 since it's qualitative
+            importance_total_cell = ws.cell(row=current_row, column=len(date_range) + 1, value=0)
+            importance_total_cell.font = Font(bold=True)
+            importance_total_cell.alignment = Alignment(horizontal="center")
+            importance_total_cell.fill = PatternFill(start_color="E6E6E6", end_color="E6E6E6", fill_type="solid")
+            
             current_row += 1
+        
+        # Add column totals (bottom row)
+        ws.cell(row=current_row, column=1, value="Total").font = Font(bold=True, size=12)
+        ws.cell(row=current_row, column=1).fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        ws.cell(row=current_row, column=1).font = Font(color="FFFFFF", bold=True)
+        
+        for col_idx, date in enumerate(date_range, start=2):
+            # Calculate total moves for this date across all properties
+            total_moves = 0
+            for property_code in property_codes:
+                if date in self.consolidated_daily_data[property_code]:
+                    total_moves += self.consolidated_daily_data[property_code][date]['moves']
+            
+            cell = ws.cell(row=current_row, column=col_idx, value=total_moves)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Add grand total (bottom right corner)
+        grand_total = sum(
+            sum(self.consolidated_daily_data[property_code][date]['moves'] 
+                for date in date_range 
+                if date in self.consolidated_daily_data[property_code])
+            for property_code in property_codes
+        )
+        
+        grand_total_cell = ws.cell(row=current_row, column=len(date_range) + 1, value=grand_total)
+        grand_total_cell.font = Font(bold=True, color="FFFFFF", size=12)
+        grand_total_cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        grand_total_cell.alignment = Alignment(horizontal="center")
+        
+        current_row += 2
         
         # Legend
         current_row += 1
@@ -910,6 +967,28 @@ class MultiPropertyAnalyzer:
         print(f"🎨 Move Importance: Color-coded levels (High/Medium/Low/None) showing strategic move opportunities")
         if self.consolidated_suggestions:
             print(f"📋 Suggested_Moves sheet: {len(self.consolidated_suggestions)} total moves across all properties")
+        
+        # Send consolidated report email if enabled
+        if self.enable_emails and os.environ.get('SEND_CONSOLIDATED_EMAIL', 'false').lower() == 'true':
+            self.logger.info("Sending consolidated report email")
+            print(f"📧 Sending consolidated report email...")
+            
+            email_success = self.email_sender.send_consolidated_report_email(
+                output_filename,
+                len(property_codes),
+                date_range[0],
+                date_range[-1],
+                len(self.consolidated_suggestions) if self.consolidated_suggestions else 0,
+                grand_total,
+                excel_success=True
+            )
+            
+            if email_success:
+                print(f"✅ Consolidated report email sent successfully")
+            else:
+                print(f"❌ Consolidated report email failed to send")
+        else:
+            print(f"📧 Consolidated report email: {'Disabled' if not self.enable_emails else 'Not configured'}")
     
     def _create_suggested_moves_sheet(self, wb):
         """Create Suggested_Moves sheet with all suggestions across all properties"""
