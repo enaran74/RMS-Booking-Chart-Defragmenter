@@ -562,7 +562,8 @@ python3 start.py
 #### Environment Variables
 **Email Configuration:**
 - `ENABLE_EMAILS`: Enable/disable property-specific email notifications
-- `SEND_CONSOLIDATED_EMAIL`: Enable/disable consolidated report email to operations team
+- `SEND_CONSOLIDATED_EMAIL`: Enable/disable consolidated report email
+- `CONSOLIDATED_EMAIL_RECIPIENT`: Email address for consolidated reports (default: operations@discoveryparks.com.au)
 - `SENDER_EMAIL`: Gmail account for SMTP authentication
 - `SENDER_DISPLAY_NAME`: Custom display name for email sender
 - `APP_PASSWORD`: Gmail app password for SMTP authentication
@@ -704,10 +705,12 @@ When enabled, sends professional HTML emails with:
 
 #### Consolidated Report Email
 When `SEND_CONSOLIDATED_EMAIL=true` is set, the system also sends:
-- **Multi-Property Summary Report** to `operations@discoveryparks.com.au`
+- **Multi-Property Summary Report** to the address specified in `CONSOLIDATED_EMAIL_RECIPIENT`
 - **Consolidated Excel File** (`Full_Defragmentation_Analysis.xlsx`) as attachment
 - **Cross-Property Analysis** showing total opportunities and strategic priorities
 - **Implementation Guidance** for operations team coordination
+
+**Default recipient**: `operations@discoveryparks.com.au` (configurable)
 
 ### Console Output
 Comprehensive progress tracking and summaries:
