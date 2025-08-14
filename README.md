@@ -423,8 +423,11 @@ Each property generates an Excel file named: `{PropertyCode}-Defragmentation-Ana
 #### Sheet 2: Move Suggestions
 - **Category-Based Order**: Numbered moves by category (1.1, 1.2, 2.1, 2.2, etc.)
 - **Reservation Details**: Guest name, current accommodation unit, suggested unit
+- **Category & Status**: Accommodation type and reservation status
+- **Dates & Duration**: Arrival, departure dates and number of nights
 - **Improvement Score**: Quantified benefit of each move
 - **Implementation Notes**: Detailed reasoning and instructions
+- **📧 Email Enhancement**: Property emails now include all these columns for comprehensive review
 
 #### Sheet 3: Holiday Move Suggestions 🎄
 - **Holiday-Specific Moves**: Dedicated sheet for moves optimized for holiday periods
@@ -698,7 +701,7 @@ When enabled, sends professional HTML emails with:
 - Property-specific analysis summaries
 - **🎄 Holiday-Enhanced Content**: Separate tables for regular and holiday moves
 - **Holiday Summary Section**: Overview of holiday periods and analysis
-- Complete move recommendation tables
+- **📋 Comprehensive Move Tables**: All columns from Excel (Category, Status, Dates, Nights, Reason)
 - Excel file attachments
 - Implementation guidance
 - **Holiday-Specific Subject Lines**: Clear identification of holiday-enhanced analysis
