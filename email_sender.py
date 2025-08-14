@@ -355,25 +355,23 @@ class EmailSender:
                 
                 # Get holiday period info
                 holiday_period = suggestion.get('holiday_period', '')
-                if holiday_period:
-                    holiday_period = holiday_period[:15]  # Truncate long holiday names
                 
                 holiday_moves_table += f"""
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Sequential_Order', suggestion.get('move_id', ''))}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Reservation_No', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', suggestion.get('guest_name', ''))[:20]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', suggestion.get('from_unit', ''))[:18]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', suggestion.get('to_unit', ''))[:18]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Status', '')[:10]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', suggestion.get('guest_name', ''))}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', suggestion.get('from_unit', ''))}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', suggestion.get('to_unit', ''))}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Status', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{arrive_date}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{depart_date}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Nights', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{holiday_period}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('holiday_importance', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Improvement_Score', suggestion.get('improvement_score', 0))}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')[:40]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')}</td>
                 </tr>
                 """
             
@@ -414,16 +412,16 @@ class EmailSender:
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Sequential_Order', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Reservation_No', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', '')[:20]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', '')[:18]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', '')[:18]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Status', '')[:10]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Status', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{arrive_date}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{depart_date}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Nights', '')}</td>
                     <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Improvement_Score', 0)}</td>
-                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')[:40]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')}</td>
                 </tr>
                 """
             
