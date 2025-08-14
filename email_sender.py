@@ -325,28 +325,55 @@ class EmailSender:
         if holiday_suggestions:
             holiday_moves_table = f"""
             <h3>🎄 Holiday Move Recommendations ({len(holiday_suggestions)} total):</h3>
-            <table style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+            <table style="border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px;">
                 <tr style="background-color: #8B4513; color: white;">
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Move ID</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Guest</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">From</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">To</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Holiday Period</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Importance</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Score</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Order</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Res No</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Guest</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">From</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">To</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Category</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Status</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Arrive</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Depart</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Nights</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Holiday</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Importance</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Score</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Reason</th>
                 </tr>
             """
             
             for suggestion in holiday_suggestions:
+                # Format dates for better readability
+                arrive_date = suggestion.get('Arrive_Date', '')
+                depart_date = suggestion.get('Depart_Date', '')
+                if arrive_date:
+                    arrive_date = arrive_date.strftime('%d/%m') if hasattr(arrive_date, 'strftime') else str(arrive_date)[:5]
+                if depart_date:
+                    depart_date = depart_date.strftime('%d/%m') if hasattr(depart_date, 'strftime') else str(depart_date)[:5]
+                
+                # Get holiday period info
+                holiday_period = suggestion.get('holiday_period', '')
+                if holiday_period:
+                    holiday_period = holiday_period[:15]  # Truncate long holiday names
+                
                 holiday_moves_table += f"""
                 <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('move_id', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('guest_name', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('from_unit', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('to_unit', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('holiday_period', '')[:20]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('holiday_importance', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('improvement_score', 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Sequential_Order', suggestion.get('move_id', ''))}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Reservation_No', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', suggestion.get('guest_name', ''))[:20]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', suggestion.get('from_unit', ''))[:18]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', suggestion.get('to_unit', ''))[:18]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')[:15]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Status', '')[:10]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{arrive_date}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{depart_date}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Nights', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{holiday_period}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('holiday_importance', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Improvement_Score', suggestion.get('improvement_score', 0))}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')[:40]}</td>
                 </tr>
                 """
             
@@ -357,26 +384,46 @@ class EmailSender:
         if regular_suggestions:
             regular_moves_table = f"""
             <h3>📋 Regular Move Recommendations ({len(regular_suggestions)} total):</h3>
-            <table style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+            <table style="border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px;">
                 <tr style="background-color: #F47425; color: white;">
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Order</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Res No</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Guest</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">From</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">To</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Score</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Order</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Res No</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Guest</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">From</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">To</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Category</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Status</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Arrive</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Depart</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Nights</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Score</th>
+                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Reason</th>
                 </tr>
             """
             
             for suggestion in regular_suggestions:
+                # Format dates for better readability
+                arrive_date = suggestion.get('Arrive_Date', '')
+                depart_date = suggestion.get('Depart_Date', '')
+                if arrive_date:
+                    arrive_date = arrive_date.strftime('%d/%m') if hasattr(arrive_date, 'strftime') else str(arrive_date)[:5]
+                if depart_date:
+                    depart_date = depart_date.strftime('%d/%m') if hasattr(depart_date, 'strftime') else str(depart_date)[:5]
+                
                 regular_moves_table += f"""
                 <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Sequential_Order', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Reservation_No', '')}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Surname', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Current_Unit', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Suggested_Unit', '')[:15]}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{suggestion.get('Improvement_Score', 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Sequential_Order', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Reservation_No', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Surname', '')[:20]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Current_Unit', '')[:18]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Suggested_Unit', '')[:18]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Category', '')[:15]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Status', '')[:10]}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{arrive_date}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{depart_date}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{suggestion.get('Nights', '')}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">{suggestion.get('Improvement_Score', 0)}</td>
+                    <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{suggestion.get('Reason', '')[:40]}</td>
                 </tr>
                 """
             
@@ -439,6 +486,7 @@ class EmailSender:
                         <li>Fixed reservations are excluded from suggestions</li>
                         <li>Higher improvement scores = better defragmentation results</li>
                         <li>Real-time data from RMS API and Nager.Date API at time of analysis</li>
+                        <li><strong>📋 Enhanced Email Tables:</strong> Move recommendations now include all columns from Excel (Category, Status, Dates, Nights, Reason)</li>
                         <li>Refer to attached excel file for full analysis and graphical booking chart guide</li>
                     </ul>
                 </div>
