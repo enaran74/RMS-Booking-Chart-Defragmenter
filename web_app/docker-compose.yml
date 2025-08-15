@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  web-app:
+    build: .
+    container_name: defrag-web-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=172.17.0.1
+      - DB_PORT=5432
+      - DB_NAME=defrag_db
+      - DB_USER=defrag_user
+      - DB_PASSWORD=DefragDB2024!
+      - WEB_APP_PORT=8000
+      - WEB_APP_HOST=0.0.0.0
+      - SECRET_KEY=your-secret-key-here
+      - JWT_SECRET_KEY=your-jwt-secret-key-here
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - defrag-network
+    depends_on:
+      - postgres-check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-check:
+    image: postgres:15
+    container_name: postgres-check
+    environment:
+      - POSTGRES_PASSWORD=dummy
+    command: >
+      sh -c "
+        until pg_isready -h host.docker.internal -p 5432 -U defrag_user -d defrag_db;
+        do
+          echo 'Waiting for PostgreSQL...'
+          sleep 2
+        done
+        echo 'PostgreSQL is ready!'
+      "
+    networks:
+      - defrag-network
+
+networks:
+  defrag-network:
+    driver: bridge
