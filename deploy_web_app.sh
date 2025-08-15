@@ -5,9 +5,10 @@
 
 set -e
 
-VPS_IP="45.124.54.185"
-VPS_USER="enaran"
-VPS_PASSWORD="Configur8&1"
+# VPS Configuration - Can be overridden by environment variables for security
+VPS_IP="${VPS_IP:-45.124.54.185}"
+VPS_USER="${VPS_USER:-enaran}"
+VPS_PASSWORD="${VPS_PASSWORD:-Configur8&1}"
 APP_DIR="/opt/defrag-app"
 
 echo "🚀 Deploying RMS Booking Chart Defragmenter Web Application to VPS..."
