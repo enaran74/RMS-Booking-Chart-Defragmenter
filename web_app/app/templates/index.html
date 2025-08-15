@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMS Booking Chart Defragmenter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .move-card {
+            transition: transform 0.2s;
+        }
+        .move-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status-pending { border-left: 4px solid #ffc107; }
+        .status-approved { border-left: 4px solid #28a745; }
+        .status-rejected { border-left: 4px solid #dc3545; }
+        .status-applied { border-left: 4px solid #17a2b8; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                RMS Defragmenter
+            </a>
+                               <div class="navbar-nav ms-auto">
+                       <span class="navbar-text me-3" id="user-info">
+                           <i class="fas fa-user me-1"></i>
+                           <span id="username">Guest</span>
+                       </span>
+                       <div class="dropdown d-none" id="user-dropdown">
+                           <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                               <i class="fas fa-user-cog me-1"></i>Profile
+                           </button>
+                           <ul class="dropdown-menu">
+                               <li><a class="dropdown-item" href="#" onclick="showProfileEdit()">
+                                   <i class="fas fa-edit me-2"></i>Edit Profile
+                               </a></li>
+                               <li><a class="dropdown-item" href="#" onclick="showPasswordChange()">
+                                   <i class="fas fa-key me-2"></i>Change Password
+                               </a></li>
+                               <li><hr class="dropdown-divider"></li>
+                               <li><a class="dropdown-item" href="#" onclick="showUserManagement()" id="user-management-link" style="display: none;">
+                                   <i class="fas fa-users me-2"></i>User Management
+                               </a></li>
+                               <li><hr class="dropdown-divider"></li>
+                               <li><a class="dropdown-item" href="#" onclick="logout()">
+                                   <i class="fas fa-sign-out-alt me-2"></i>Logout
+                               </a></li>
+                           </ul>
+                       </div>
+                       <button class="btn btn-outline-light btn-sm" id="login-btn" onclick="showLogin()">
+                           <i class="fas fa-sign-in-alt me-1"></i>Login
+                       </button>
+                   </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Login Form -->
+        <div class="row justify-content-center" id="login-section">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Login</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="login-form">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username-input" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password-input" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div class="d-none" id="main-app">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="status-filter">
+                                    <option value="">All</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="applied">Applied</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm w-100" onclick="refreshMoves()">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Defragmentation Moves</h5>
+                            <span class="badge bg-primary" id="move-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="moves-container">
+                                <div class="text-center text-muted py-5">
+                                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                                    <p>Loading moves...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+               <!-- Move Details Modal -->
+           <div class="modal fade" id="moveModal" tabindex="-1">
+               <div class="modal-dialog modal-lg">
+                   <div class="modal-content">
+                       <div class="modal-header">
+                           <h5 class="modal-title">Move Details</h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                       </div>
+                       <div class="modal-body" id="move-modal-content">
+                           <!-- Content will be populated dynamically -->
+                       </div>
+                       <div class="modal-footer" id="move-modal-actions">
+                           <!-- Actions will be populated dynamically -->
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Profile Edit Modal -->
+           <div class="modal fade" id="profileModal" tabindex="-1">
+               <div class="modal-dialog">
+                   <div class="modal-content">
+                       <div class="modal-header">
+                           <h5 class="modal-title">Edit Profile</h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                       </div>
+                       <div class="modal-body">
+                           <form id="profile-form">
+                               <div class="mb-3">
+                                   <label for="profile-email" class="form-label">Email</label>
+                                   <input type="email" class="form-control" id="profile-email" required>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="profile-first-name" class="form-label">First Name</label>
+                                   <input type="text" class="form-control" id="profile-first-name">
+                               </div>
+                               <div class="mb-3">
+                                   <label for="profile-last-name" class="form-label">Last Name</label>
+                                   <input type="text" class="form-control" id="profile-last-name">
+                               </div>
+                           </form>
+                       </div>
+                       <div class="modal-footer">
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                           <button type="button" class="btn btn-primary" onclick="updateProfile()">Save Changes</button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Password Change Modal -->
+           <div class="modal fade" id="passwordModal" tabindex="-1">
+               <div class="modal-dialog">
+                   <div class="modal-content">
+                       <div class="modal-header">
+                           <h5 class="modal-title">Change Password</h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                       </div>
+                       <div class="modal-body">
+                           <form id="password-form">
+                               <div class="mb-3">
+                                   <label for="current-password" class="form-label">Current Password</label>
+                                   <input type="password" class="form-control" id="current-password" required>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="new-password" class="form-label">New Password</label>
+                                   <input type="password" class="form-control" id="new-password" required>
+                                   <div class="form-text">
+                                       Password must be at least 12 characters with uppercase, lowercase, digits, and special characters.
+                                   </div>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="confirm-password" class="form-label">Confirm New Password</label>
+                                   <input type="password" class="form-control" id="confirm-password" required>
+                               </div>
+                           </form>
+                       </div>
+                       <div class="modal-footer">
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                           <button type="button" class="btn btn-primary" onclick="changePassword()">Change Password</button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- User Management Modal -->
+           <div class="modal fade" id="userManagementModal" tabindex="-1">
+               <div class="modal-dialog modal-xl">
+                   <div class="modal-content">
+                       <div class="modal-header">
+                           <h5 class="modal-title">User Management</h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                       </div>
+                       <div class="modal-body">
+                           <div class="d-flex justify-content-between align-items-center mb-3">
+                               <h6>Users</h6>
+                               <button class="btn btn-primary btn-sm" onclick="showCreateUser()">
+                                   <i class="fas fa-plus me-1"></i>Create User
+                               </button>
+                           </div>
+                           <div id="users-list">
+                               <!-- Users will be populated dynamically -->
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Create User Modal -->
+           <div class="modal fade" id="createUserModal" tabindex="-1">
+               <div class="modal-dialog">
+                   <div class="modal-content">
+                       <div class="modal-header">
+                           <h5 class="modal-title">Create New User</h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                       </div>
+                       <div class="modal-body">
+                           <form id="create-user-form">
+                               <div class="mb-3">
+                                   <label for="create-username" class="form-label">Username</label>
+                                   <input type="text" class="form-control" id="create-username" required>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="create-email" class="form-label">Email</label>
+                                   <input type="email" class="form-control" id="create-email" required>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="create-password" class="form-label">Password</label>
+                                   <input type="password" class="form-control" id="create-password" required>
+                                   <div class="form-text">
+                                       Password must be at least 12 characters with uppercase, lowercase, digits, and special characters.
+                                   </div>
+                               </div>
+                               <div class="mb-3">
+                                   <label for="create-first-name" class="form-label">First Name</label>
+                                   <input type="text" class="form-control" id="create-first-name">
+                               </div>
+                               <div class="mb-3">
+                                   <label for="create-last-name" class="form-label">Last Name</label>
+                                   <input type="text" class="form-control" id="create-last-name">
+                               </div>
+                               <div class="mb-3">
+                                   <div class="form-check">
+                                       <input class="form-check-input" type="checkbox" id="create-is-admin">
+                                       <label class="form-check-label" for="create-is-admin">
+                                           Admin User
+                                       </label>
+                                   </div>
+                               </div>
+                           </form>
+                       </div>
+                       <div class="modal-footer">
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                           <button type="button" class="btn btn-primary" onclick="createUser()">Create User</button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentUser = null;
+        let authToken = null;
+
+        // Login functionality
+        async function login(username, password) {
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    currentUser = { username };
+                    showMainApp();
+                    loadUserInfo();
+                    refreshMoves();
+                } else {
+                    alert('Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        }
+
+                       // Show main application
+               function showMainApp() {
+                   document.getElementById('login-section').classList.add('d-none');
+                   document.getElementById('main-app').classList.remove('d-none');
+                   document.getElementById('login-btn').classList.add('d-none');
+                   document.getElementById('user-dropdown').classList.remove('d-none');
+               }
+
+        // Show login form
+        function showLogin() {
+            document.getElementById('login-section').classList.remove('d-none');
+            document.getElementById('main-app').classList.add('d-none');
+        }
+
+        // Logout
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            document.getElementById('login-section').classList.remove('d-none');
+            document.getElementById('main-app').classList.add('d-none');
+            document.getElementById('login-btn').classList.remove('d-none');
+            document.getElementById('user-dropdown').classList.add('d-none');
+            document.getElementById('username').textContent = 'Guest';
+        }
+
+                       // Load user information
+               async function loadUserInfo() {
+                   if (!authToken) return;
+                   
+                   try {
+                       const response = await fetch('/api/v1/auth/me', {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (response.ok) {
+                           const user = await response.json();
+                           currentUser = user;
+                           document.getElementById('username').textContent = user.username;
+                           
+                           // Show/hide user management link for admins
+                           if (user.is_admin) {
+                               document.getElementById('user-management-link').style.display = 'block';
+                           }
+                       }
+                   } catch (error) {
+                       console.error('Error loading user info:', error);
+                   }
+               }
+
+        // Refresh moves
+        async function refreshMoves() {
+            if (!authToken) return;
+            
+            try {
+                const statusFilter = document.getElementById('status-filter').value;
+                let url = '/api/v1/defrag-moves/';
+                if (statusFilter) {
+                    url += `?status=${statusFilter}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const moves = await response.json();
+                    displayMoves(moves);
+                }
+            } catch (error) {
+                console.error('Error loading moves:', error);
+            }
+        }
+
+        // Display moves
+        function displayMoves(moves) {
+            const container = document.getElementById('moves-container');
+            const countElement = document.getElementById('move-count');
+            
+            countElement.textContent = moves.length;
+            
+            if (moves.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                        <p>No moves found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const movesHtml = moves.map(move => `
+                <div class="card move-card mb-3 status-${move.status}" onclick="showMoveDetails(${move.id})">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h6 class="card-title mb-1">Move #${move.id}</h6>
+                                <p class="card-text text-muted mb-1">
+                                    <i class="fas fa-building me-1"></i>Property ID: ${move.property_id}
+                                </p>
+                                <p class="card-text text-muted mb-0">
+                                    <i class="fas fa-clock me-1"></i>${new Date(move.created_at).toLocaleString()}
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <span class="badge bg-${getStatusColor(move.status)}">${move.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = movesHtml;
+        }
+
+        // Get status color
+        function getStatusColor(status) {
+            switch (status) {
+                case 'pending': return 'warning';
+                case 'approved': return 'success';
+                case 'rejected': return 'danger';
+                case 'applied': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        // Show move details
+        async function showMoveDetails(moveId) {
+            if (!authToken) return;
+            
+            try {
+                const response = await fetch(`/api/v1/defrag-moves/${moveId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const move = await response.json();
+                    showMoveModal(move);
+                }
+            } catch (error) {
+                console.error('Error loading move details:', error);
+            }
+        }
+
+        // Show move modal
+        function showMoveModal(move) {
+            const modal = new bootstrap.Modal(document.getElementById('moveModal'));
+            const content = document.getElementById('move-modal-content');
+            const actions = document.getElementById('move-modal-actions');
+            
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Move ID:</strong> ${move.id}</p>
+                        <p><strong>Property ID:</strong> ${move.property_id}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(move.status)}">${move.status}</span></p>
+                        <p><strong>Created:</strong> ${new Date(move.created_at).toLocaleString()}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Suggested by:</strong> ${move.suggested_by || 'N/A'}</p>
+                        <p><strong>Approved by:</strong> ${move.approved_by || 'N/A'}</p>
+                        <p><strong>Approved at:</strong> ${move.approved_at ? new Date(move.approved_at).toLocaleString() : 'N/A'}</p>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6>Move Data:</h6>
+                    <pre class="bg-light p-3 rounded">${JSON.stringify(move.move_data, null, 2)}</pre>
+                </div>
+            `;
+            
+            // Show actions based on status
+            if (move.status === 'pending') {
+                actions.innerHTML = `
+                    <button type="button" class="btn btn-success" onclick="approveMove(${move.id}, 'approve')">
+                        <i class="fas fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="approveMove(${move.id}, 'reject')">
+                        <i class="fas fa-times me-1"></i>Reject
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                `;
+            }
+            
+            modal.show();
+        }
+
+        // Approve/reject move
+        async function approveMove(moveId, action) {
+            if (!authToken) return;
+            
+            try {
+                const response = await fetch(`/api/v1/defrag-moves/${moveId}/approve`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        move_id: moveId,
+                        action: action
+                    })
+                });
+                
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('moveModal')).hide();
+                    refreshMoves();
+                    alert(`Move ${action}d successfully!`);
+                } else {
+                    alert('Failed to update move status.');
+                }
+            } catch (error) {
+                console.error('Error updating move:', error);
+                alert('Failed to update move status.');
+            }
+        }
+
+                       // Profile management functions
+               function showProfileEdit() {
+                   if (!currentUser) return;
+                   
+                   // Populate form with current user data
+                   document.getElementById('profile-email').value = currentUser.email || '';
+                   document.getElementById('profile-first-name').value = currentUser.first_name || '';
+                   document.getElementById('profile-last-name').value = currentUser.last_name || '';
+                   
+                   const modal = new bootstrap.Modal(document.getElementById('profileModal'));
+                   modal.show();
+               }
+
+               async function updateProfile() {
+                   if (!authToken) return;
+                   
+                   const email = document.getElementById('profile-email').value;
+                   const firstName = document.getElementById('profile-first-name').value;
+                   const lastName = document.getElementById('profile-last-name').value;
+                   
+                   try {
+                       const response = await fetch('/api/v1/auth/me', {
+                           method: 'PUT',
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`,
+                               'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify({
+                               email: email,
+                               first_name: firstName,
+                               last_name: lastName
+                           })
+                       });
+                       
+                       if (response.ok) {
+                           const updatedUser = await response.json();
+                           currentUser = updatedUser;
+                           bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+                           alert('Profile updated successfully!');
+                           loadUserInfo();
+                       } else {
+                           const error = await response.json();
+                           alert(`Failed to update profile: ${error.detail}`);
+                       }
+                   } catch (error) {
+                       console.error('Error updating profile:', error);
+                       alert('Failed to update profile.');
+                   }
+               }
+
+               function showPasswordChange() {
+                   // Clear form
+                   document.getElementById('current-password').value = '';
+                   document.getElementById('new-password').value = '';
+                   document.getElementById('confirm-password').value = '';
+                   
+                   const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
+                   modal.show();
+               }
+
+               async function changePassword() {
+                   if (!authToken) return;
+                   
+                   const currentPassword = document.getElementById('current-password').value;
+                   const newPassword = document.getElementById('new-password').value;
+                   const confirmPassword = document.getElementById('confirm-password').value;
+                   
+                   if (newPassword !== confirmPassword) {
+                       alert('New passwords do not match!');
+                       return;
+                   }
+                   
+                   try {
+                       const response = await fetch('/api/v1/auth/me/change-password', {
+                           method: 'PUT',
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`,
+                               'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify({
+                               current_password: currentPassword,
+                               new_password: newPassword
+                           })
+                       });
+                       
+                       if (response.ok) {
+                           bootstrap.Modal.getInstance(document.getElementById('passwordModal')).hide();
+                           alert('Password changed successfully!');
+                       } else {
+                           const error = await response.json();
+                           alert(`Failed to change password: ${error.detail}`);
+                       }
+                   } catch (error) {
+                       console.error('Error changing password:', error);
+                       alert('Failed to change password.');
+                   }
+               }
+
+               // User management functions
+               function showUserManagement() {
+                   const modal = new bootstrap.Modal(document.getElementById('userManagementModal'));
+                   modal.show();
+                   loadUsers();
+               }
+
+               async function loadUsers() {
+                   if (!authToken) return;
+                   
+                   try {
+                       const response = await fetch('/api/v1/auth/users', {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (response.ok) {
+                           const users = await response.json();
+                           displayUsers(users);
+                       }
+                   } catch (error) {
+                       console.error('Error loading users:', error);
+                   }
+               }
+
+               function displayUsers(users) {
+                   const container = document.getElementById('users-list');
+                   
+                   if (users.length === 0) {
+                       container.innerHTML = '<p class="text-muted">No users found</p>';
+                       return;
+                   }
+                   
+                   const usersHtml = users.map(user => `
+                       <div class="card mb-2">
+                           <div class="card-body">
+                               <div class="row align-items-center">
+                                   <div class="col-md-3">
+                                       <strong>${user.username}</strong>
+                                       ${user.is_admin ? '<span class="badge bg-danger ms-2">Admin</span>' : ''}
+                                   </div>
+                                   <div class="col-md-3">${user.email}</div>
+                                   <div class="col-md-2">${user.first_name || 'N/A'} ${user.last_name || ''}</div>
+                                   <div class="col-md-2">
+                                       <span class="badge bg-${user.is_active ? 'success' : 'danger'}">
+                                           ${user.is_active ? 'Active' : 'Inactive'}
+                                       </span>
+                                   </div>
+                                   <div class="col-md-2">
+                                       <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser(${user.id})">
+                                           <i class="fas fa-edit"></i>
+                                       </button>
+                                       ${!user.is_admin ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
+                                           <i class="fas fa-trash"></i>
+                                       </button>` : ''}
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   `).join('');
+                   
+                   container.innerHTML = usersHtml;
+               }
+
+               function showCreateUser() {
+                   // Reset form to create mode
+                   resetCreateUserForm();
+                   
+                   const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+                   modal.show();
+               }
+
+               async function createUser() {
+                   if (!authToken) return;
+                   
+                   const username = document.getElementById('create-username').value;
+                   const email = document.getElementById('create-email').value;
+                   const password = document.getElementById('create-password').value;
+                   const firstName = document.getElementById('create-first-name').value;
+                   const lastName = document.getElementById('create-last-name').value;
+                   const isAdmin = document.getElementById('create-is-admin').checked;
+                   
+                   try {
+                       const response = await fetch('/api/v1/auth/users', {
+                           method: 'POST',
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`,
+                               'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify({
+                               username: username,
+                               email: email,
+                               password: password,
+                               first_name: firstName,
+                               last_name: lastName,
+                               is_admin: isAdmin
+                           })
+                       });
+                       
+                       if (response.ok) {
+                           bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                           alert('User created successfully!');
+                           loadUsers();
+                       } else {
+                           const error = await response.json();
+                           alert(`Failed to create user: ${error.detail}`);
+                       }
+                   } catch (error) {
+                       console.error('Error creating user:', error);
+                       alert('Failed to create user.');
+                   }
+               }
+
+               async function deleteUser(userId) {
+                   if (!authToken || !confirm('Are you sure you want to delete this user?')) return;
+                   
+                   try {
+                       const response = await fetch(`/api/v1/auth/users/${userId}`, {
+                           method: 'DELETE',
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (response.ok) {
+                           alert('User deleted successfully!');
+                           loadUsers();
+                       } else {
+                           const error = await response.json();
+                           alert(`Failed to delete user: ${error.detail}`);
+                       }
+                   } catch (error) {
+                       console.error('Error deleting user:', error);
+                       alert('Failed to delete user.');
+                   }
+               }
+
+               async function editUser(userId) {
+                   if (!authToken) return;
+                   
+                   try {
+                       // Get user details
+                       const response = await fetch(`/api/v1/auth/users/${userId}`, {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (response.ok) {
+                           const user = await response.json();
+                           showEditUserModal(user);
+                       } else {
+                           alert('Failed to load user details.');
+                       }
+                   } catch (error) {
+                       console.error('Error loading user details:', error);
+                       alert('Failed to load user details.');
+                   }
+               }
+
+               function showEditUserModal(user) {
+                   // Populate the create user form with existing user data
+                   document.getElementById('create-username').value = user.username;
+                   document.getElementById('create-email').value = user.email;
+                   document.getElementById('create-first-name').value = user.first_name || '';
+                   document.getElementById('create-last-name').value = user.last_name || '';
+                   document.getElementById('create-is-admin').checked = user.is_admin;
+                   
+                   // Change the modal title and button
+                   document.querySelector('#createUserModal .modal-title').textContent = 'Edit User';
+                   document.querySelector('#createUserModal .modal-footer .btn-primary').textContent = 'Update User';
+                   document.querySelector('#createUserModal .modal-footer .btn-primary').onclick = () => updateUser(user.id);
+                   
+                   // Disable username field (cannot change username)
+                   document.getElementById('create-username').disabled = true;
+                   
+                   // Show the modal
+                   const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+                   modal.show();
+               }
+
+               async function updateUser(userId) {
+                   if (!authToken) return;
+                   
+                   const email = document.getElementById('create-email').value;
+                   const firstName = document.getElementById('create-first-name').value;
+                   const lastName = document.getElementById('create-last-name').value;
+                   const isAdmin = document.getElementById('create-is-admin').checked;
+                   
+                   try {
+                       const response = await fetch(`/api/v1/auth/users/${userId}`, {
+                           method: 'PUT',
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`,
+                               'Content-Type': 'application/json'
+                           },
+                           body: JSON.stringify({
+                               email: email,
+                               first_name: firstName,
+                               last_name: lastName,
+                               is_admin: isAdmin
+                           })
+                       });
+                       
+                       if (response.ok) {
+                           bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                           alert('User updated successfully!');
+                           loadUsers();
+                           
+                           // Reset form and button
+                           resetCreateUserForm();
+                       } else {
+                           const error = await response.json();
+                           alert(`Failed to update user: ${error.detail}`);
+                       }
+                   } catch (error) {
+                       console.error('Error updating user:', error);
+                       alert('Failed to update user.');
+                   }
+               }
+
+               function resetCreateUserForm() {
+                   // Reset form fields
+                   document.getElementById('create-username').value = '';
+                   document.getElementById('create-email').value = '';
+                   document.getElementById('create-password').value = '';
+                   document.getElementById('create-first-name').value = '';
+                   document.getElementById('create-last-name').value = '';
+                   document.getElementById('create-is-admin').checked = false;
+                   
+                   // Re-enable username field
+                   document.getElementById('create-username').disabled = false;
+                   
+                   // Reset modal title and button
+                   document.querySelector('#createUserModal .modal-title').textContent = 'Create New User';
+                   document.querySelector('#createUserModal .modal-footer .btn-primary').textContent = 'Create User';
+                   document.querySelector('#createUserModal .modal-footer .btn-primary').onclick = createUser;
+               }
+
+               // Event listeners
+               document.getElementById('login-form').addEventListener('submit', function(e) {
+                   e.preventDefault();
+                   const username = document.getElementById('username-input').value;
+                   const password = document.getElementById('password-input').value;
+                   login(username, password);
+               });
+
+               document.getElementById('status-filter').addEventListener('change', refreshMoves);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in (e.g., from localStorage)
+            const savedToken = localStorage.getItem('authToken');
+            if (savedToken) {
+                authToken = savedToken;
+                showMainApp();
+                loadUserInfo();
+                refreshMoves();
+            }
+        });
+    </script>
+</body>
+</html>
