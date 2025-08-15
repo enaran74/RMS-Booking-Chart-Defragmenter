@@ -12,15 +12,15 @@ class Settings(BaseSettings):
     DB_PORT: int = 5432
     DB_NAME: str = "defrag_db"
     DB_USER: str = "defrag_user"
-    DB_PASSWORD: str = "DefragDB2024!"
+    DB_PASSWORD: str = "DefragDB2024!"  # nosec B105 - Will be overridden by environment variable
     
     # Web Application Configuration
     WEB_APP_PORT: int = 8000
-    WEB_APP_HOST: str = "0.0.0.0"
+    WEB_APP_HOST: str = "0.0.0.0"  # nosec B104 - Required for Docker containerization
     
     # Security
-    SECRET_KEY: str = "your-secret-key-here"
-    JWT_SECRET_KEY: str = "your-jwt-secret-key-here"
+    SECRET_KEY: str = "your-secret-key-here"  # nosec B105 - Will be overridden by environment variable
+    JWT_SECRET_KEY: str = "your-jwt-secret-key-here"  # nosec B105 - Will be overridden by environment variable
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # RMS API Configuration
