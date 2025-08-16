@@ -27,6 +27,12 @@ class RMSService:
         
     def authenticate(self) -> bool:
         """Authenticate with RMS API"""
+        logger.info("authenticate method called")
+        logger.info(f"Using agent ID: {settings.AGENT_ID}")
+        logger.info(f"Using client ID: {settings.CLIENT_ID}")
+        logger.info(f"Using training DB: {settings.USE_TRAINING_DB}")
+        logger.info(f"Base URL: {self.base_url}")
+        
         try:
             auth_payload = {
                 "AgentId": settings.AGENT_ID,
@@ -38,12 +44,17 @@ class RMSService:
             }
             
             logger.info("Authenticating with RMS API")
+            logger.info(f"Auth URL: {self.base_url}/authToken")
             response = self.session.post(f"{self.base_url}/authToken", json=auth_payload)
             
+            logger.info(f"RMS API response status: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"RMS API response data keys: {list(data.keys()) if data else 'None'}")
                 self.token = data.get('token')
                 self.token_expiry = data.get('expiryDate')
+                logger.info(f"Token received: {'Yes' if self.token else 'No'}")
+                logger.info(f"Token expiry: {self.token_expiry}")
                 
                 if self.token:
                     self.session.headers.update({
@@ -52,8 +63,16 @@ class RMSService:
                     })
                     logger.info("RMS API authentication successful")
                     return True
+                else:
+                    logger.error("No token in RMS API response")
                     
             logger.error(f"RMS API authentication failed: Status {response.status_code}")
+            if response.status_code != 200:
+                try:
+                    error_data = response.json()
+                    logger.error(f"Error response data: {error_data}")
+                except:
+                    logger.error(f"Error response text: {response.text}")
             return False
             
         except Exception as e:
@@ -62,19 +81,27 @@ class RMSService:
     
     def _is_token_valid(self) -> bool:
         """Check if the current token is still valid"""
+        logger.info(f"_is_token_valid called - token: {'Yes' if self.token else 'No'}, expiry: {self.token_expiry}")
         if not self.token or not self.token_expiry:
+            logger.info("No token or expiry date")
             return False
         
         try:
             expiry_date = datetime.fromisoformat(self.token_expiry.replace('Z', '+00:00'))
-            return datetime.now(expiry_date.tzinfo) < expiry_date
-        except:
+            is_valid = datetime.now(expiry_date.tzinfo) < expiry_date
+            logger.info(f"Token expiry: {expiry_date}, is_valid: {is_valid}")
+            return is_valid
+        except Exception as e:
+            logger.error(f"Error checking token validity: {e}")
             return False
     
     def _ensure_authenticated(self) -> bool:
         """Ensure we have a valid authentication token"""
+        logger.info("_ensure_authenticated called")
         if not self._is_token_valid():
+            logger.info("Token not valid, calling authenticate()")
             return self.authenticate()
+        logger.info("Token is valid")
         return True
     
     def fetch_properties(self) -> List[Dict]:
@@ -158,12 +185,18 @@ class RMSService:
     
     def refresh_properties_in_database(self, db: Session = None) -> bool:
         """Refresh properties in the database from RMS API"""
+        logger.info("refresh_properties_in_database called")
+        logger.info(f"db parameter: {db}")
+        
         # Create our own database session if none provided
         own_session = False
         if db is None:
+            logger.info("No db session provided, creating new one")
             from app.core.database import SessionLocal
             db = SessionLocal()
             own_session = True
+        else:
+            logger.info("Using provided db session")
             
         try:
             # Check if we need to refresh (not more than once per hour)
@@ -176,7 +209,10 @@ class RMSService:
             logger.info("Refreshing properties from RMS API")
             
             # Fetch properties from RMS API
+            logger.info("Calling fetch_properties()")
             rms_properties = self.fetch_properties()
+            logger.info(f"fetch_properties returned {len(rms_properties) if rms_properties else 0} properties")
+            
             if not rms_properties:
                 logger.error("No properties received from RMS API")
                 return False
@@ -248,9 +284,8 @@ class RMSService:
     def get_properties_from_database(self, db: Session, force_refresh: bool = False) -> List[Property]:
         """Get properties from database, optionally forcing a refresh"""
         if force_refresh:
-            # Don't pass the db session to refresh_properties_in_database
-            # Let it create its own session to avoid conflicts
-            self.refresh_properties_in_database()
+            # Pass the existing db session to avoid transaction conflicts
+            self.refresh_properties_in_database(db)
         
         # Get all properties from database
         properties = db.query(Property).order_by(Property.property_code).all()

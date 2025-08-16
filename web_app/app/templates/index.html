@@ -97,7 +97,7 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <button class="btn btn-outline-success btn-sm w-100 mb-2" onclick="refreshProperties()">
+                                <button id="refresh-properties-btn" class="btn btn-outline-success btn-sm w-100 mb-2" onclick="refreshProperties()">
                                     <i class="fas fa-sync-alt me-1"></i>Refresh from RMS
                                 </button>
                                 <div id="properties-info" class="text-muted small">
@@ -419,15 +419,21 @@
         async function refreshProperties() {
             if (!authToken) return;
             
+            // Get the button that was clicked
+            const button = document.querySelector('#refresh-properties-btn');
+            if (!button) {
+                console.error('Refresh button not found');
+                return;
+            }
+            
+            const originalText = button.innerHTML;
+            
             try {
-                // Get the button that was clicked
-                const button = document.querySelector('#refresh-properties-btn');
-                const originalText = button.innerHTML;
-                
                 // Show loading state
                 button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
                 button.disabled = true;
                 
+                console.log('Starting properties refresh...');
                 const response = await fetch('/api/v1/properties/refresh', {
                     method: 'POST',
                     headers: {
@@ -435,23 +441,31 @@
                     }
                 });
                 
+                console.log('Refresh response status:', response.status);
+                
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Refresh successful:', result);
                     showAlert('success', 'Properties refreshed successfully from RMS API');
                     
                     // Update properties count
+                    console.log('Loading updated properties...');
                     await loadProperties();
+                    console.log('Properties loaded successfully');
                 } else {
                     const error = await response.json();
+                    console.error('Refresh failed:', error);
                     showAlert('danger', `Failed to refresh properties: ${error.detail}`);
                 }
             } catch (error) {
                 console.error('Error refreshing properties:', error);
                 showAlert('danger', 'Error refreshing properties');
             } finally {
-                // Restore button state
+                // Always restore button state
+                console.log('Restoring button state...');
                 button.innerHTML = originalText;
                 button.disabled = false;
+                console.log('Button state restored');
             }
         }
 

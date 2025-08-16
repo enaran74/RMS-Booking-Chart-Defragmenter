@@ -76,26 +76,40 @@ async def refresh_properties_from_rms(
     current_user: User = Depends(get_current_user)
 ):
     """Manually refresh properties from RMS API (admin only)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Refresh properties endpoint called by user: {current_user.username}")
+    
     if not current_user.is_admin:
+        logger.warning(f"Non-admin user {current_user.username} attempted to refresh properties")
         raise HTTPException(
             status_code=403, 
             detail="Only administrators can refresh properties"
         )
     
+    logger.info("Starting property refresh from RMS API")
+    
     try:
+        logger.info("Calling rms_service.refresh_properties_in_database")
         success = rms_service.refresh_properties_in_database(db)
+        logger.info(f"rms_service.refresh_properties_in_database returned: {success}")
+        
         if success:
+            logger.info("Property refresh successful")
             return {
                 "message": "Properties refreshed successfully from RMS API",
                 "timestamp": rms_service.last_property_refresh.isoformat() if rms_service.last_property_refresh else None
             }
         else:
+            logger.error("Property refresh failed - rms_service returned False")
             raise HTTPException(
                 status_code=500,
                 detail="Failed to refresh properties from RMS API"
             )
             
     except Exception as e:
+        logger.error(f"Exception during property refresh: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error refreshing properties: {str(e)}"

@@ -12,7 +12,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 import uvicorn
 import os
+import logging
 from contextlib import asynccontextmanager
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 from app.core.config import settings
 from app.core.database import engine, Base
