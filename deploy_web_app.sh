@@ -64,7 +64,8 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
            
            # Run database migration
            echo "🗄️ Running database migration..."
-           docker-compose exec web-app python migrate_admin_user.py
+           # Note: migrate_admin_user.py was deleted as part of cleanup
+    # Additional migrations can be added here as needed
     
     # Clean up temporary files
     rm -f /tmp/web_app.tar.gz
