@@ -156,8 +156,15 @@ class RMSService:
             logger.error(f"Error extracting property info: {e}")
             return None
     
-    def refresh_properties_in_database(self, db: Session) -> bool:
+    def refresh_properties_in_database(self, db: Session = None) -> bool:
         """Refresh properties in the database from RMS API"""
+        # Create our own database session if none provided
+        own_session = False
+        if db is None:
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            own_session = True
+            
         try:
             # Check if we need to refresh (not more than once per hour)
             if self.last_property_refresh:
@@ -225,13 +232,25 @@ class RMSService:
             
         except Exception as e:
             logger.error(f"Error refreshing properties in database: {e}")
-            db.rollback()
+            try:
+                db.rollback()
+            except:
+                pass  # Ignore rollback errors
             return False
+        finally:
+            # Close our own session if we created it
+            if own_session:
+                try:
+                    db.close()
+                except:
+                    pass  # Ignore close errors
     
     def get_properties_from_database(self, db: Session, force_refresh: bool = False) -> List[Property]:
         """Get properties from database, optionally forcing a refresh"""
         if force_refresh:
-            self.refresh_properties_in_database(db)
+            # Don't pass the db session to refresh_properties_in_database
+            # Let it create its own session to avoid conflicts
+            self.refresh_properties_in_database()
         
         # Get all properties from database
         properties = db.query(Property).order_by(Property.property_code).all()
