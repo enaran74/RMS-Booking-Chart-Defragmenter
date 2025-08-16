@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.property import Property
 from app.services.rms_service import rms_service
 from pydantic import BaseModel
+from datetime import datetime
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ class PropertyResponse(BaseModel):
     id: int
     property_code: str
     property_name: str
-    created_at: str
+    created_at: datetime
     
     class Config:
         from_attributes = True
