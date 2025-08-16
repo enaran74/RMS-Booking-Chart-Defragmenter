@@ -17,6 +17,12 @@ services:
       - WEB_APP_HOST=0.0.0.0
       - SECRET_KEY=your-secret-key-here
       - JWT_SECRET_KEY=your-jwt-secret-key-here
+      - AGENT_ID=224
+      - AGENT_PASSWORD=4FhEvH7v7pGHBEFQ
+      - CLIENT_ID=2998
+      - CLIENT_PASSWORD=F*j7q6!X
+      - USE_TRAINING_DB=true
+      - PROPERTY_REFRESH_INTERVAL_HOURS=1
     volumes:
       - ./logs:/app/logs
     networks:
