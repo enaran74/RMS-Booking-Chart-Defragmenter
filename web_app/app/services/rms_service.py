@@ -122,7 +122,7 @@ class RMSService:
         return code.rstrip('- _').strip()
     
     def _extract_property_info(self, property_data: Dict) -> Optional[Dict]:
-        """Extract property code and name from RMS property data"""
+        """Extract property code, name, and active status from RMS property data"""
         try:
             # Try different possible field names for property code
             property_code = None
@@ -138,10 +138,16 @@ class RMSService:
                     property_name = str(property_data[name_field])
                     break
             
+            # Extract active status - RMS API returns 'inactive' field, convert to 'is_active'
+            is_active = True  # Default to active
+            if 'inactive' in property_data:
+                is_active = not property_data['inactive']  # Convert inactive to is_active
+            
             if property_code and property_name:
                 return {
                     'code': self._clean_property_code(property_code),
-                    'name': property_name.strip()
+                    'name': property_name.strip(),
+                    'is_active': is_active
                 }
             
             return None
@@ -189,14 +195,21 @@ class RMSService:
                 
                 if existing_property:
                     # Update existing property
+                    updated = False
                     if existing_property.property_name != prop_info['name']:
                         existing_property.property_name = prop_info['name']
+                        updated = True
+                    if existing_property.is_active != prop_info['is_active']:
+                        existing_property.is_active = prop_info['is_active']
+                        updated = True
+                    if updated:
                         properties_updated += 1
                 else:
                     # Create new property
                     new_property = Property(
                         property_code=prop_info['code'],
-                        property_name=prop_info['name']
+                        property_name=prop_info['name'],
+                        is_active=prop_info['is_active']
                     )
                     db.add(new_property)
                     properties_created += 1

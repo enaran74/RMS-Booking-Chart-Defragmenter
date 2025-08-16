@@ -19,6 +19,7 @@ class PropertyResponse(BaseModel):
     id: int
     property_code: str
     property_name: str
+    is_active: bool
     created_at: datetime
     
     class Config:
