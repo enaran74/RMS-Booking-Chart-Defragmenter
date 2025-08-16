@@ -24,14 +24,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # RMS API Configuration
-    AGENT_ID: Optional[str] = None
-    AGENT_PASSWORD: Optional[str] = None
-    CLIENT_ID: Optional[str] = None
-    CLIENT_PASSWORD: Optional[str] = None
+    AGENT_ID: str = "224"
+    AGENT_PASSWORD: str = "4FhEvH7v7pGHBEFQ"
+    CLIENT_ID: str = "2998"
+    CLIENT_PASSWORD: str = "F*j7q6!X"
+    USE_TRAINING_DB: bool = True
     
     # Application Settings
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    
+    # Property Refresh Configuration
+    PROPERTY_REFRESH_INTERVAL_HOURS: int = 1
     
     # CORS Settings
     CORS_ORIGINS: list = ["*"]
