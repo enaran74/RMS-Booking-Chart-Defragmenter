@@ -420,7 +420,8 @@
             if (!authToken) return;
             
             try {
-                const button = event.target;
+                // Get the button that was clicked
+                const button = document.querySelector('#refresh-properties-btn');
                 const originalText = button.innerHTML;
                 
                 // Show loading state
