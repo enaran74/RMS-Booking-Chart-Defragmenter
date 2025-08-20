@@ -16,15 +16,14 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
-    property_id = Column(Integer, ForeignKey("properties.id"), nullable=True)
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
-    # Relationships
-    property = relationship("Property", back_populates="users")
+    # Relationships - use string references to avoid circular imports
+    user_properties = relationship("UserProperty", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<User(id={self.id}, username='{self.username}', email='{self.email}', property_id={self.property_id})>"
+        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"

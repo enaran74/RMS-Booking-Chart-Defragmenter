@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RMS Booking Chart Defragmenter</title>
+    <!-- Cache buster: v1.2 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -18,6 +19,64 @@
         .status-approved { border-left: 4px solid #28a745; }
         .status-rejected { border-left: 4px solid #dc3545; }
         .status-applied { border-left: 4px solid #17a2b8; }
+        .debug-output-container {
+            background-color: #1e1e1e;
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .debug-output {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #ffffff;
+        }
+
+        .debug-line {
+            margin-bottom: 4px;
+            word-wrap: break-word;
+        }
+
+        .debug-line .timestamp {
+            color: #888888;
+            margin-right: 8px;
+        }
+
+        .debug-line .step {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .debug-line .message {
+            color: #ffffff;
+        }
+
+        .debug-line .error {
+            color: #f44336;
+        }
+
+        .debug-line .success {
+            color: #4CAF50;
+        }
+
+        .debug-line .warning {
+            color: #ff9800;
+        }
+
+        .debug-line .info {
+            color: #2196F3;
+        }
+
+        .progress {
+            background-color: #e9ecef;
+        }
+
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -27,6 +86,11 @@
                 <i class="fas fa-chart-line me-2"></i>
                 RMS Defragmenter
             </a>
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="#" id="move-history-nav" style="display: none;" onclick="showMoveHistory()">
+                    <i class="fas fa-history me-1"></i>Move History
+                </a>
+            </div>
                                <div class="navbar-nav ms-auto">
                        <span class="navbar-text me-3" id="user-info">
                            <i class="fas fa-user me-1"></i>
@@ -71,11 +135,11 @@
                     <div class="card-body">
                         <form id="login-form">
                             <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
+                                <label for="username-input" class="form-label">Username</label>
                                 <input type="text" class="form-control" id="username-input" required>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
+                                <label for="password-input" class="form-label">Password</label>
                                 <input type="password" class="form-control" id="password-input" required>
                             </div>
                             <button type="submit" class="btn btn-primary">
@@ -91,30 +155,18 @@
         <div class="d-none" id="main-app">
             <div class="row">
                 <div class="col-md-3">
-                    <div class="card mb-3">
+                    <!-- Admin Setup Link -->
+                    <div class="card mb-3 d-none" id="admin-setup-card">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-building me-2"></i>Properties</h6>
+                            <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Setup</h6>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <button id="refresh-properties-btn" class="btn btn-outline-success btn-sm w-100 mb-2" onclick="refreshProperties()">
-                                    <i class="fas fa-sync-alt me-1"></i>Refresh from RMS
-                                </button>
-                                <div id="properties-info" class="text-muted small">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    <span id="properties-count">0</span> properties loaded
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="show-active-only" checked>
-                                    <label class="form-check-label" for="show-active-only">
-                                        Show active properties only
-                                    </label>
-                                </div>
-                            </div>
-                            <div id="properties-list" class="small">
-                                <!-- Properties will be populated dynamically -->
+                            <a href="/setup" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                <i class="fas fa-cogs me-1"></i>System Setup
+                            </a>
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Properties & Database Management
                             </div>
                         </div>
                     </div>
@@ -125,6 +177,13 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
+                                <label class="form-label">Property</label>
+                                <select class="form-select" id="property-filter">
+                                    <option value="">All Properties</option>
+                                    <!-- Properties will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label">Status</label>
                                 <select class="form-select" id="status-filter">
                                     <option value="">All</option>
@@ -134,26 +193,119 @@
                                     <option value="applied">Applied</option>
                                 </select>
                             </div>
-                            <button class="btn btn-outline-primary btn-sm w-100" onclick="refreshMoves()">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh
-                            </button>
+                            <div class="mb-3">
+                                <label class="form-label">Move Suggestions</label>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary btn-sm" id="load-moves-btn" onclick="loadMoveSuggestions()">
+                                        <i class="fas fa-download me-1"></i>Load Move Suggestions
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm" id="refresh-moves-btn" onclick="refreshMoveSuggestions()" style="display: none;">
+                                        <i class="fas fa-sync-alt me-1"></i>Refresh Move Suggestions
+                                    </button>
+                                </div>
+                                <div class="form-text small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Generate fresh move suggestions from live RMS data.
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="refreshMoves()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh Display
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="col-md-9">
+                    <!-- Move Suggestions Display -->
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Defragmentation Moves</h5>
-                            <span class="badge bg-primary" id="move-count">0</span>
+                            <h5 class="mb-0">
+                                <i class="fas fa-exchange-alt me-2"></i>
+                                Defragmentation Moves
+                                <span id="cache-status" class="badge bg-secondary ms-2">No data loaded</span>
+                            </h5>
+                            <div>
+                                <button id="refresh-display-btn" class="btn btn-outline-secondary btn-sm" onclick="refreshMoves()" style="display: none;">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh Display
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div id="moves-container">
-                                <div class="text-center text-muted py-5">
-                                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                                    <p>Loading moves...</p>
+                            <!-- Move Actions Bar -->
+                            <div id="move-actions-bar" class="mb-3" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-muted">Selected: </span>
+                                        <span id="selected-count" class="badge bg-primary">0</span>
+                                        <span class="text-muted ms-2">moves</span>
+                                    </div>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="processSelectedMoves()" id="process-btn" disabled>
+                                            <i class="fas fa-check me-1"></i>Process Selected
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">
+                                            <i class="fas fa-times me-1"></i>Clear Selection
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                            
+                            <div id="moves-container">
+                                <p class="text-muted text-center">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Select a property and click "Load Move Suggestions" to begin
+                                </p>
+                            </div>
+                            
+                            <!-- Move History Link -->
+                            <div class="text-center mt-3">
+                                <a href="/move-history" class="btn btn-outline-info">
+                                    <i class="fas fa-history me-1"></i>View Move History
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- RMS API Debug Panel -->
+                    <div id="rms-debug-panel" class="card mt-3" style="display: none;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-terminal me-2"></i>
+                                RMS API Progress
+                            </h6>
+                            <div>
+                                <span id="rms-status-badge" class="badge bg-secondary">Disconnected</span>
+                                <button type="button" class="btn-close" onclick="closeRmsDebugPanel()" aria-label="Close"></button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Progress Bar -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small id="rms-progress-text">Initializing...</small>
+                                    <small id="rms-progress-percentage">0%</small>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div id="rms-progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Debug Output -->
+                            <div class="debug-output-container">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">Debug Output</small>
+                                </div>
+                                <div id="rms-debug-output" class="debug-output">
+                                    <div class="debug-line">
+                                        <span class="timestamp">[Ready]</span>
+                                        <span class="message">Ready to connect to RMS API...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Auto-managed connection - no manual controls needed -->
                         </div>
                     </div>
                 </div>
@@ -310,6 +462,17 @@
                                        </label>
                                    </div>
                                </div>
+                               <div class="mb-3">
+                                   <label class="form-label">Assign Properties</label>
+                                   <div id="create-user-properties-list">
+                                       <div class="text-muted small">Loading properties...</div>
+                                   </div>
+                                   <div class="mt-2">
+                                       <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPropertyToCreateUser()">
+                                           <i class="fas fa-plus me-1"></i>Add Property
+                                       </button>
+                                   </div>
+                               </div>
                            </form>
                        </div>
                        <div class="modal-footer">
@@ -322,9 +485,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // VERSION CHECK - Cache buster v1.2
+        console.log('Loading RMS Defragmenter v1.2 - Fixed suggestions fetching after generation');
+        
         let currentUser = null;
         let authToken = null;
-        let currentProperties = null;
+
 
         // Login functionality
         async function login(username, password) {
@@ -340,6 +506,8 @@
                 if (response.ok) {
                     const data = await response.json();
                     authToken = data.access_token;
+                    // Store token in localStorage for cross-page access
+                    localStorage.setItem('authToken', data.access_token);
                     currentUser = { username };
                     showMainApp();
                     loadUserInfo();
@@ -354,39 +522,52 @@
         }
 
                        // Show main application
-               function showMainApp() {
-                   document.getElementById('login-section').classList.add('d-none');
-                   document.getElementById('main-app').classList.remove('d-none');
-                   document.getElementById('login-btn').classList.add('d-none');
-                   document.getElementById('user-dropdown').classList.remove('d-none');
-                   
-                   // Load initial data
-                   loadProperties();
-                   refreshMoves();
-                   
-                   // Add event listener for active properties filter
-                   document.getElementById('show-active-only').addEventListener('change', function() {
-                       if (currentProperties) {
-                           displayPropertiesList(currentProperties);
-                       }
-                   });
-               }
+                       function showMainApp() {
+            document.getElementById('login-section').classList.add('d-none');
+            document.getElementById('main-app').classList.remove('d-none');
+            document.getElementById('login-btn').classList.add('d-none');
+            document.getElementById('user-dropdown').classList.remove('d-none');
+            document.getElementById('move-history-nav').style.display = 'block';
+            
+            // Load initial data
+            refreshMoves();
+        }
 
         // Show login form
         function showLogin() {
+            // Clear any existing state
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            
+            // Show login, hide main app
             document.getElementById('login-section').classList.remove('d-none');
             document.getElementById('main-app').classList.add('d-none');
+            document.getElementById('login-btn').classList.remove('d-none');
+            document.getElementById('user-dropdown').classList.add('d-none');
+            document.getElementById('move-history-nav').style.display = 'none';
         }
 
         // Logout
         function logout() {
             authToken = null;
             currentUser = null;
+            // Clear token from localStorage
+            localStorage.removeItem('authToken');
             document.getElementById('login-section').classList.remove('d-none');
             document.getElementById('main-app').classList.add('d-none');
             document.getElementById('login-btn').classList.remove('d-none');
             document.getElementById('user-dropdown').classList.add('d-none');
+            document.getElementById('move-history-nav').style.display = 'none';
             document.getElementById('username').textContent = 'Guest';
+            
+            // Reset any form states
+            if (document.getElementById('username-input')) {
+                document.getElementById('username-input').value = '';
+            }
+            if (document.getElementById('password-input')) {
+                document.getElementById('password-input').value = '';
+            }
         }
 
                        // Load user information
@@ -408,134 +589,134 @@
                            // Show/hide user management link for admins
                            if (user.is_admin) {
                                document.getElementById('user-management-link').style.display = 'block';
+                               document.getElementById('admin-setup-card').classList.remove('d-none');
                            }
+                           
+                           // Show Move History nav link for all authenticated users
+                           document.getElementById('move-history-nav').style.display = 'block';
+                           
+                           // Load user properties to populate filters
+                           loadUserProperties();
                        }
                    } catch (error) {
                        console.error('Error loading user info:', error);
                    }
                }
 
-        // Refresh properties from RMS API
-        async function refreshProperties() {
-            if (!authToken) return;
-            
-            // Get the button that was clicked
-            const button = document.querySelector('#refresh-properties-btn');
-            if (!button) {
-                console.error('Refresh button not found');
-                return;
-            }
-            
-            const originalText = button.innerHTML;
-            
-            try {
-                // Show loading state
-                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
-                button.disabled = true;
-                
-                console.log('Starting properties refresh...');
-                const response = await fetch('/api/v1/properties/refresh', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                console.log('Refresh response status:', response.status);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Refresh successful:', result);
-                    showAlert('success', 'Properties refreshed successfully from RMS API');
-                    
-                    // Update properties count
-                    console.log('Loading updated properties...');
-                    await loadProperties();
-                    console.log('Properties loaded successfully');
-                } else {
-                    const error = await response.json();
-                    console.error('Refresh failed:', error);
-                    showAlert('danger', `Failed to refresh properties: ${error.detail}`);
-                }
-            } catch (error) {
-                console.error('Error refreshing properties:', error);
-                showAlert('danger', 'Error refreshing properties');
-            } finally {
-                // Always restore button state
-                console.log('Restoring button state...');
-                button.innerHTML = originalText;
-                button.disabled = false;
-                console.log('Button state restored');
-            }
-        }
+               // Load user properties for property filter
+               async function loadUserProperties() {
+                   console.log('loadUserProperties called');
+                   if (!authToken) {
+                       console.log('No auth token available');
+                       return;
+                   }
+                   
+                   try {
+                       // Admin users see all properties, regular users see only their assigned properties
+                       let url = '/api/v1/user-properties/my-properties';
+                       if (currentUser && currentUser.is_admin) {
+                           url = '/api/v1/properties/';
+                       }
+                       
+                       console.log(`Loading properties from: ${url}`);
+                       console.log('Current user:', currentUser);
+                       
+                       const response = await fetch(url, {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       console.log('Properties API response status:', response.status);
+                       
+                       if (response.ok) {
+                           let data;
+                           if (currentUser && currentUser.is_admin) {
+                               // For admin users, convert properties to user-property format
+                               const properties = await response.json();
+                               console.log('Admin properties response:', properties);
+                               data = properties.map(prop => ({
+                                   property_id: prop.id,
+                                   property: prop,
+                                   is_primary: false
+                               }));
+                           } else {
+                               // For regular users, use the user-properties response
+                               data = await response.json();
+                               console.log('User properties response:', data);
+                           }
+                           
+                           console.log('Processed data for property filter:', data);
+                           populatePropertyFilter(data);
+                       } else {
+                           const errorText = await response.text();
+                           console.error('Failed to load user properties:', response.status, errorText);
+                       }
+                   } catch (error) {
+                       console.error('Error loading user properties:', error);
+                   }
+               }
 
-        // Load properties from database
-        async function loadProperties() {
-            if (!authToken) return;
-            
-            try {
-                const response = await fetch('/api/v1/properties/', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const properties = await response.json();
-                    currentProperties = properties; // Store current properties
-                    updatePropertiesInfo(properties);
-                }
-            } catch (error) {
-                console.error('Error loading properties:', error);
-            }
-        }
+               // Populate property filter dropdown
+               function populatePropertyFilter(userProperties) {
+                   console.log('populatePropertyFilter called with:', userProperties);
+                   
+                   const propertyFilter = document.getElementById('property-filter');
+                   if (!propertyFilter) {
+                       console.error('Property filter element not found');
+                       return;
+                   }
+                   
+                   // Clear existing options except "All Properties"
+                   propertyFilter.innerHTML = '<option value="">All Properties</option>';
+                   
+                   if (userProperties && userProperties.length > 0) {
+                       console.log(`Adding ${userProperties.length} properties to filter`);
+                       
+                       userProperties.forEach((up, index) => {
+                           console.log(`Processing property ${index}:`, up);
+                           
+                           const option = document.createElement('option');
+                           
+                           // Handle different data structures and store property code in value
+                           let propertyCode = '';
+                           let displayText = '';
+                           
+                           if (up.property) {
+                               // User-property format
+                               propertyCode = up.property.property_code || `PROP${up.property_id}`;
+                               displayText = up.property.property_name || up.property.property_code || `Property ${up.property_id}`;
+                           } else if (up.property_code) {
+                               // Direct property format
+                               propertyCode = up.property_code;
+                               displayText = up.property_name || up.property_code;
+                           } else {
+                               // Fallback
+                               propertyCode = `PROP${up.property_id}`;
+                               displayText = `Property ${up.property_id}`;
+                           }
+                           
+                           option.value = propertyCode;
+                           
+                           if (up.is_primary) {
+                               displayText += ' (Primary)';
+                           }
+                           
+                           option.textContent = displayText;
+                           propertyFilter.appendChild(option);
+                           
+                           console.log(`Added option: ${option.value} = ${option.textContent}`);
+                       });
+                   } else {
+                       console.log('No properties to add to filter');
+                   }
+                   
+                   console.log('Final property filter options:', propertyFilter.innerHTML);
+               }
 
-        // Update properties info display
-        function updatePropertiesInfo(properties) {
-            const countElement = document.getElementById('properties-count');
-            countElement.textContent = properties.length;
-            
-            // Update properties list display
-            displayPropertiesList(properties);
-        }
-        
-        // Display properties list
-        function displayPropertiesList(properties) {
-            const propertiesListElement = document.getElementById('properties-list');
-            const showActiveOnly = document.getElementById('show-active-only').checked;
-            
-            // Filter properties based on active status
-            let filteredProperties = properties;
-            if (showActiveOnly) {
-                filteredProperties = properties.filter(prop => prop.is_active);
-            }
-            
-            if (filteredProperties.length === 0) {
-                propertiesListElement.innerHTML = '<div class="text-muted">No properties to display</div>';
-                return;
-            }
-            
-            // Create properties list HTML
-            const propertiesHtml = filteredProperties.map(prop => {
-                const statusBadge = prop.is_active 
-                    ? '<span class="badge bg-success">Active</span>'
-                    : '<span class="badge bg-secondary">Inactive</span>';
-                
-                return `
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                        <div>
-                            <strong>${prop.property_code}</strong><br>
-                            <small class="text-muted">${prop.property_name}</small>
-                        </div>
-                        <div>
-                            ${statusBadge}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            propertiesListElement.innerHTML = propertiesHtml;
-        }
+
+
+
 
         // Show alert message
         function showAlert(type, message) {
@@ -564,10 +745,15 @@
             
             try {
                 const statusFilter = document.getElementById('status-filter').value;
-                let url = '/api/v1/defrag-moves/';
-                if (statusFilter) {
-                    url += `?status=${statusFilter}`;
+                const propertyFilter = document.getElementById('property-filter').value;
+                
+                // Only try to load moves if we have both auth token and property filter
+                if (!propertyFilter) {
+                    console.log('No property selected, skipping move refresh');
+                    return;
                 }
+                
+                let url = '/api/v1/defrag-moves/suggestions/' + propertyFilter;
                 
                 const response = await fetch(url, {
                     headers: {
@@ -576,11 +762,24 @@
                 });
                 
                 if (response.ok) {
-                    const moves = await response.json();
-                    displayMoves(moves);
+                    const data = await response.json();
+                    displayMoveSuggestions(data);
+                } else {
+                    console.log('No existing move suggestions found, use Load Move Suggestions to generate new ones');
+                    // Clear the display
+                    const container = document.getElementById('moves-container');
+                    if (container) {
+                        container.innerHTML = `
+                            <p class="text-muted text-center">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Select a property and click "Load Move Suggestions" to begin
+                            </p>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading moves:', error);
+                // Don't show error to user for this background refresh
             }
         }
 
@@ -637,18 +836,52 @@
         }
 
         // Show move details
-        async function showMoveDetails(moveId) {
+        async function showMoveDetails(moveId, moveDataId = null) {
             if (!authToken) return;
             
             try {
-                const response = await fetch(`/api/v1/defrag-moves/${moveId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
+                let move;
                 
-                if (response.ok) {
-                    const move = await response.json();
+                if (moveDataId) {
+                    // This is a move suggestion from the table
+                    const response = await fetch(`/api/v1/defrag-moves/${moveDataId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const moveData = await response.json();
+                        // Create a move object from the suggestion data
+                        move = {
+                            id: moveData.id,
+                            property_id: moveData.property_id,
+                            property_code: moveData.property_code,
+                            status: moveData.status,
+                            created_at: moveData.created_at,
+                            suggested_by: moveData.suggested_by,
+                            approved_by: moveData.approved_by,
+                            approved_at: moveData.approved_at,
+                            move_data: moveData.move_data,
+                            is_suggestion: true,
+                            suggestion_index: moveId // This is the index in the suggestions array
+                        };
+                    }
+                } else {
+                    // This is a regular move from the old system
+                    const response = await fetch(`/api/v1/defrag-moves/${moveId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        move = await response.json();
+                        move.is_suggestion = false;
+                    }
+                }
+                
+                if (move) {
                     showMoveModal(move);
                 }
             } catch (error) {
@@ -662,25 +895,85 @@
             const content = document.getElementById('move-modal-content');
             const actions = document.getElementById('move-modal-actions');
             
-            content.innerHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Move ID:</strong> ${move.id}</p>
-                        <p><strong>Property ID:</strong> ${move.property_id}</p>
-                        <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(move.status)}">${move.status}</span></p>
-                        <p><strong>Created:</strong> ${new Date(move.created_at).toLocaleString()}</p>
+            let contentHtml = '';
+            
+            if (move.is_suggestion) {
+                // Display move suggestion details
+                const suggestions = move.move_data.moves || [];
+                const suggestion = suggestions[move.suggestion_index] || {};
+                
+                contentHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Property:</strong> ${move.property_code}</p>
+                            <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(move.status)}">${move.status}</span></p>
+                            <p><strong>Analysis Date:</strong> ${new Date(move.move_data.analysis_date).toLocaleString()}</p>
+                            <p><strong>Total Suggestions:</strong> ${move.move_data.move_count}</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Suggested by:</strong> ${move.suggested_by || 'System'}</p>
+                            <p><strong>Created:</strong> ${new Date(move.created_at).toLocaleString()}</p>
+                            <p><strong>Cache Age:</strong> ${move.move_data.cache_age_hours || 0} hours</p>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <p><strong>Suggested by:</strong> ${move.suggested_by || 'N/A'}</p>
-                        <p><strong>Approved by:</strong> ${move.approved_by || 'N/A'}</p>
-                        <p><strong>Approved at:</strong> ${move.approved_at ? new Date(move.approved_at).toLocaleString() : 'N/A'}</p>
+                    <div class="mt-4">
+                        <h6>Move Suggestion Details:</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>From Unit:</strong> ${suggestion.from_unit}</p>
+                                        <p><strong>To Unit:</strong> ${suggestion.to_unit}</p>
+                                        <p><strong>Guest:</strong> ${suggestion.guest_name}</p>
+                                        <p><strong>Category:</strong> ${suggestion.category}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>From Date:</strong> ${suggestion.from_date}</p>
+                                        <p><strong>To Date:</strong> ${suggestion.to_date}</p>
+                                        <p><strong>Strategic Importance:</strong> 
+                                            <span class="badge bg-${getStrategicImportanceColor(suggestion.strategic_importance)}">
+                                                ${suggestion.strategic_importance}
+                                            </span>
+                                        </p>
+                                        <p><strong>Score:</strong> 
+                                            <span class="badge bg-${getScoreColor(suggestion.score)}">
+                                                ${suggestion.score}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <p><strong>Constraint Period:</strong> ${suggestion.constraint_period}</p>
+                                    <p><strong>Reason:</strong> ${suggestion.reason || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="mt-3">
-                    <h6>Move Data:</h6>
-                    <pre class="bg-light p-3 rounded">${JSON.stringify(move.move_data, null, 2)}</pre>
-                </div>
-            `;
+                `;
+            } else {
+                // Display regular move details (old format)
+                contentHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Move ID:</strong> ${move.id}</p>
+                            <p><strong>Property ID:</strong> ${move.property_id}</p>
+                            <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(move.status)}">${move.status}</span></p>
+                            <p><strong>Created:</strong> ${new Date(move.created_at).toLocaleString()}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Suggested by:</strong> ${move.suggested_by || 'N/A'}</p>
+                            <p><strong>Approved by:</strong> ${move.approved_by || 'N/A'}</p>
+                            <p><strong>Approved at:</strong> ${move.approved_at ? new Date(move.approved_at).toLocaleString() : 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h6>Move Data:</h6>
+                        <pre class="bg-light p-3 rounded">${JSON.stringify(move.move_data, null, 2)}</pre>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = contentHtml;
             
             // Show actions based on status
             if (move.status === 'pending') {
@@ -899,8 +1192,348 @@
                    // Reset form to create mode
                    resetCreateUserForm();
                    
+                   // Load properties for assignment
+                   loadPropertiesForUserCreation();
+                   
                    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
                    modal.show();
+               }
+
+               // Load properties for user creation
+               async function loadPropertiesForUserCreation() {
+                   if (!authToken) return;
+                   
+                   console.log('Loading properties for user creation...');
+                   
+                   try {
+                       const response = await fetch('/api/v1/properties/', {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       console.log('Properties response status:', response.status);
+                       
+                       if (response.ok) {
+                           const properties = await response.json();
+                           console.log('Properties loaded:', properties.length, 'properties');
+                           window.availableProperties = properties; // Store globally for dropdowns
+                           displayPropertiesForUserCreation(properties);
+                       } else {
+                           console.error('Failed to load properties:', response.status);
+                           const errorText = await response.text();
+                           console.error('Error response:', errorText);
+                       }
+                   } catch (error) {
+                       console.error('Error loading properties for user creation:', error);
+                   }
+               }
+
+               // Display properties for user creation
+               function displayPropertiesForUserCreation(properties) {
+                   const container = document.getElementById('create-user-properties-list');
+                   
+                   console.log('Displaying properties for user creation. Container:', container);
+                   console.log('Properties to display:', properties);
+                   
+                   if (!properties || properties.length === 0) {
+                       console.log('No properties available, showing message');
+                       container.innerHTML = '<div class="text-muted small">No properties available</div>';
+                       return;
+                   }
+                   
+                   console.log('Properties available, updating container');
+                   
+                   // Clear the loading message and prepare container for property assignments
+                   container.innerHTML = '<div class="text-muted small">No properties assigned yet</div>';
+                   
+                   // Store properties globally for dropdowns
+                   window.availableProperties = properties;
+                   console.log('Properties stored globally:', window.availableProperties);
+               }
+
+               // Add property to user creation
+               function addPropertyToCreateUser() {
+                   const container = document.getElementById('create-user-properties-list');
+                   
+                   // Check if properties are loaded
+                   if (!window.availableProperties || window.availableProperties.length === 0) {
+                       alert('Properties are still loading. Please wait a moment and try again.');
+                       return;
+                   }
+                   
+                   // Create property selection row
+                   const propertyRow = document.createElement('div');
+                   propertyRow.className = 'd-flex align-items-center mb-2';
+                   propertyRow.innerHTML = `
+                       <select class="form-select form-select-sm me-2" style="flex: 1;" onchange="handlePropertySelection(this)">
+                           <option value="">Select Property</option>
+                           ${getPropertiesOptions()}
+                       </select>
+                       <div class="form-check me-2">
+                           <input class="form-check-input" type="checkbox" onchange="handlePrimaryChange(this)">
+                           <label class="form-check-label small">Primary</label>
+                       </div>
+                       <button type="button" class="btn btn-outline-danger btn-sm" onclick="removePropertyFromCreateUser(this)">
+                           <i class="fas fa-times"></i>
+                       </button>
+                   `;
+                   
+                   container.appendChild(propertyRow);
+                   
+                   // Update container message
+                   if (container.querySelector('.text-muted')) {
+                       container.querySelector('.text-muted').remove();
+                   }
+               }
+
+               // Remove property from user creation
+               function removePropertyFromCreateUser(button) {
+                   const row = button.closest('.d-flex');
+                   const container = document.getElementById('create-user-properties-list');
+                   const primaryCheckbox = row.querySelector('input[type="checkbox"]');
+                   
+                   // Check if this is a primary property
+                   if (primaryCheckbox && primaryCheckbox.checked) {
+                       // Count other properties
+                       const otherProperties = container.querySelectorAll('.d-flex');
+                       if (otherProperties.length <= 1) {
+                           alert('Cannot delete the only primary property. You must have at least one primary property assigned.');
+                           return;
+                       }
+                       
+                       // Find another property to make primary
+                       let foundReplacement = false;
+                       otherProperties.forEach(propRow => {
+                           if (propRow !== row) {
+                               const select = propRow.querySelector('select');
+                               if (select && select.value) {
+                                   const checkbox = propRow.querySelector('input[type="checkbox"]');
+                                   if (checkbox) {
+                                       checkbox.checked = true;
+                                       foundReplacement = true;
+                                   }
+                               }
+                           }
+                       });
+                       
+                       if (!foundReplacement) {
+                           alert('Cannot delete primary property without another property to replace it.');
+                           return;
+                       }
+                   }
+                   
+                   // If this was the last property row, show message
+                   if (container.children.length === 1) {
+                       container.innerHTML = '<div class="text-muted small">No properties assigned yet</div>';
+                   } else {
+                       row.remove();
+                   }
+               }
+
+               // Handle property selection change
+               function handlePropertySelection(select) {
+                   const row = select.closest('.d-flex');
+                   const primaryCheckbox = row.querySelector('input[type="checkbox"]');
+                   
+                   // If this is the first property selected, make it primary
+                   if (select.value && !hasAnyPrimaryProperty()) {
+                       primaryCheckbox.checked = true;
+                   }
+               }
+
+               // Handle primary property change
+               function handlePrimaryChange(checkbox) {
+                   if (checkbox.checked) {
+                       // Uncheck all other primary checkboxes
+                       const container = document.getElementById('create-user-properties-list');
+                       const allCheckboxes = container.querySelectorAll('input[type="checkbox"]');
+                       
+                       allCheckboxes.forEach(cb => {
+                           if (cb !== checkbox) {
+                               cb.checked = false;
+                           }
+                       });
+                   }
+               }
+
+               // Check if any property is marked as primary
+               function hasAnyPrimaryProperty() {
+                   const container = document.getElementById('create-user-properties-list');
+                   const primaryCheckbox = container.querySelector('input[type="checkbox"]:checked');
+                   return primaryCheckbox !== null;
+               }
+
+               // Update user property assignments
+               async function updateUserPropertyAssignments(userId, newAssignments) {
+                   try {
+                       // First, get current assignments
+                       const currentResponse = await fetch(`/api/v1/user-properties/user/${userId}/properties`, {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (currentResponse.ok) {
+                           const currentAssignments = await currentResponse.json();
+                           
+                           // Remove assignments that are no longer present
+                           for (const current of currentAssignments) {
+                               const stillExists = newAssignments.some(newAssign => 
+                                   newAssign.property_id === current.property_id
+                               );
+                               
+                               if (!stillExists) {
+                                   await fetch(`/api/v1/user-properties/${current.id}`, {
+                                       method: 'DELETE',
+                                       headers: {
+                                           'Authorization': `Bearer ${authToken}`
+                                       }
+                                   });
+                               }
+                           }
+                           
+                           // Update or create new assignments
+                           for (const newAssign of newAssignments) {
+                               const existing = currentAssignments.find(current => 
+                                   current.property_id === newAssign.property_id
+                               );
+                               
+                               if (existing) {
+                                   // Update existing assignment
+                                   await fetch(`/api/v1/user-properties/${existing.id}`, {
+                                       method: 'PUT',
+                                       headers: {
+                                           'Authorization': `Bearer ${authToken}`,
+                                           'Content-Type': 'application/json'
+                                       },
+                                       body: JSON.stringify({
+                                           is_primary: newAssign.is_primary
+                                       })
+                                   });
+                               } else {
+                                   // Create new assignment
+                                   await fetch('/api/v1/user-properties/assign', {
+                                       method: 'POST',
+                                       headers: {
+                                           'Authorization': `Bearer ${authToken}`,
+                                           'Content-Type': 'application/json'
+                                       },
+                                       body: JSON.stringify({
+                                           user_id: userId,
+                                           property_id: newAssign.property_id,
+                                           is_primary: newAssign.is_primary
+                                       })
+                                   });
+                               }
+                           }
+                       }
+                   } catch (error) {
+                       console.error('Error updating user property assignments:', error);
+                       throw error;
+                   }
+               }
+
+               // Get properties options for dropdown
+               function getPropertiesOptions() {
+                   console.log('Getting properties options. Available properties:', window.availableProperties);
+                   
+                   if (!window.availableProperties) {
+                       console.log('No available properties found');
+                       return '';
+                   }
+                   
+                   const options = window.availableProperties.map(prop => 
+                       `<option value="${prop.id}">${prop.property_name} (${prop.property_code})</option>`
+                   ).join('');
+                   
+                   console.log('Generated options:', options);
+                   return options;
+               }
+
+               // Load existing user property assignments for editing
+               async function loadUserPropertyAssignments(userId) {
+                   if (!authToken) return;
+                   
+                   try {
+                       // First ensure properties are loaded
+                       if (!window.availableProperties || window.availableProperties.length === 0) {
+                           console.log('Properties not loaded yet, loading them first...');
+                           await loadPropertiesForUserCreation();
+                       }
+                       
+                       const response = await fetch(`/api/v1/user-properties/user/${userId}/properties`, {
+                           headers: {
+                               'Authorization': `Bearer ${authToken}`
+                           }
+                       });
+                       
+                       if (response.ok) {
+                           const userProperties = await response.json();
+                           console.log('User property assignments loaded:', userProperties);
+                           displayExistingUserPropertyAssignments(userProperties);
+                       } else {
+                           console.error('Failed to load user property assignments');
+                           // Show empty state
+                           displayExistingUserPropertyAssignments([]);
+                       }
+                   } catch (error) {
+                       console.error('Error loading user property assignments:', error);
+                       // Show empty state
+                       displayExistingUserPropertyAssignments([]);
+                   }
+               }
+
+               // Display existing user property assignments
+               function displayExistingUserPropertyAssignments(userProperties) {
+                   const container = document.getElementById('create-user-properties-list');
+                   
+                   console.log('displayExistingUserPropertyAssignments called with:', userProperties);
+                   console.log('Available properties:', window.availableProperties);
+                   
+                   if (!userProperties || userProperties.length === 0) {
+                       container.innerHTML = '<div class="text-muted small">No properties assigned yet</div>';
+                       return;
+                   }
+                   
+                   // Clear container
+                   container.innerHTML = '';
+                   
+                   // Add each existing assignment
+                   userProperties.forEach(up => {
+                       console.log('Creating property row for assignment:', up);
+                       const propertyRow = document.createElement('div');
+                       propertyRow.className = 'd-flex align-items-center mb-2';
+                       
+                       // Get property options before creating the row
+                       const propertyOptions = getPropertiesOptions();
+                       console.log('Property options generated:', propertyOptions);
+                       
+                       propertyRow.innerHTML = `
+                           <select class="form-select form-select-sm me-2" style="flex: 1;" onchange="handlePropertySelection(this)">
+                               <option value="">Select Property</option>
+                               ${propertyOptions}
+                           </select>
+                           <div class="form-check me-2">
+                               <input class="form-check-input" type="checkbox" onchange="handlePrimaryChange(this)" ${up.is_primary ? 'checked' : ''}>
+                               <label class="form-check-label small">Primary</label>
+                           </div>
+                           <button type="button" class="btn btn-outline-danger btn-sm" onclick="removePropertyFromCreateUser(this)">
+                               <i class="fas fa-times"></i>
+                           </button>
+                       `;
+                       
+                       // Set the selected property
+                       const select = propertyRow.querySelector('select');
+                       if (select) {
+                           console.log('Setting select value to:', up.property_id);
+                           select.value = up.property_id;
+                       }
+                       
+                       container.appendChild(propertyRow);
+                   });
+                   
+                   console.log('Finished creating property rows');
                }
 
                async function createUser() {
@@ -913,7 +1546,41 @@
                    const lastName = document.getElementById('create-last-name').value;
                    const isAdmin = document.getElementById('create-is-admin').checked;
                    
+                   // Get property assignments
+                   const propertyAssignments = [];
+                   const propertyRows = document.querySelectorAll('#create-user-properties-list .d-flex');
+                   
+                   propertyRows.forEach(row => {
+                       const propertySelect = row.querySelector('select');
+                       const primaryCheckbox = row.querySelector('input[type="checkbox"]');
+                       
+                       if (propertySelect && propertySelect.value) {
+                           propertyAssignments.push({
+                               property_id: parseInt(propertySelect.value),
+                               is_primary: primaryCheckbox ? primaryCheckbox.checked : false
+                           });
+                       }
+                   });
+                   
+                   // Validate that at least one property is assigned and marked as primary
+                   if (propertyAssignments.length === 0) {
+                       alert('You must assign at least one property to the user.');
+                       return;
+                   }
+                   
+                   const primaryProperties = propertyAssignments.filter(pa => pa.is_primary);
+                   if (primaryProperties.length === 0) {
+                       alert('You must mark at least one property as primary.');
+                       return;
+                   }
+                   
+                   if (primaryProperties.length > 1) {
+                       alert('Only one property can be marked as primary.');
+                       return;
+                   }
+                   
                    try {
+                       // First create the user
                        const response = await fetch('/api/v1/auth/users', {
                            method: 'POST',
                            headers: {
@@ -931,6 +1598,34 @@
                        });
                        
                        if (response.ok) {
+                           const newUser = await response.json();
+                           
+                           // Then assign properties if any were selected
+                           if (propertyAssignments.length > 0) {
+                               for (const assignment of propertyAssignments) {
+                                   try {
+                                       const assignResponse = await fetch('/api/v1/user-properties/assign', {
+                                           method: 'POST',
+                                           headers: {
+                                               'Authorization': `Bearer ${authToken}`,
+                                               'Content-Type': 'application/json'
+                                           },
+                                           body: JSON.stringify({
+                                               user_id: newUser.id,
+                                               property_id: assignment.property_id,
+                                               is_primary: assignment.is_primary
+                                           })
+                                       });
+                                       
+                                       if (!assignResponse.ok) {
+                                           console.warn(`Failed to assign property ${assignment.property_id} to user ${newUser.id}`);
+                                       }
+                                   } catch (error) {
+                                       console.error('Error assigning property:', error);
+                                   }
+                               }
+                           }
+                           
                            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
                            alert('User created successfully!');
                            loadUsers();
@@ -1007,6 +1702,12 @@
                    // Disable username field (cannot change username)
                    document.getElementById('create-username').disabled = true;
                    
+                   // Load properties for editing
+                   loadPropertiesForUserCreation();
+                   
+                   // Load existing user property assignments
+                   loadUserPropertyAssignments(user.id);
+                   
                    // Show the modal
                    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
                    modal.show();
@@ -1020,7 +1721,41 @@
                    const lastName = document.getElementById('create-last-name').value;
                    const isAdmin = document.getElementById('create-is-admin').checked;
                    
+                   // Get property assignments
+                   const propertyAssignments = [];
+                   const propertyRows = document.querySelectorAll('#create-user-properties-list .d-flex');
+                   
+                   propertyRows.forEach(row => {
+                       const propertySelect = row.querySelector('select');
+                       const primaryCheckbox = row.querySelector('input[type="checkbox"]');
+                       
+                       if (propertySelect && propertySelect.value) {
+                           propertyAssignments.push({
+                               property_id: parseInt(propertySelect.value),
+                               is_primary: primaryCheckbox ? primaryCheckbox.checked : false
+                           });
+                       }
+                   });
+                   
+                   // Validate that at least one property is assigned and marked as primary
+                   if (propertyAssignments.length === 0) {
+                       alert('You must assign at least one property to the user.');
+                       return;
+                   }
+                   
+                   const primaryProperties = propertyAssignments.filter(pa => pa.is_primary);
+                   if (primaryProperties.length === 0) {
+                       alert('You must mark at least one property as primary.');
+                       return;
+                   }
+                   
+                   if (primaryProperties.length > 1) {
+                       alert('Only one property can be marked as primary.');
+                       return;
+                   }
+                   
                    try {
+                       // First update the user details
                        const response = await fetch(`/api/v1/auth/users/${userId}`, {
                            method: 'PUT',
                            headers: {
@@ -1036,6 +1771,9 @@
                        });
                        
                        if (response.ok) {
+                           // Then update property assignments
+                           await updateUserPropertyAssignments(userId, propertyAssignments);
+                           
                            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
                            alert('User updated successfully!');
                            loadUsers();
@@ -1064,6 +1802,12 @@
                    // Re-enable username field
                    document.getElementById('create-username').disabled = false;
                    
+                   // Reset property assignments
+                   const container = document.getElementById('create-user-properties-list');
+                   if (container) {
+                       container.innerHTML = '<div class="text-muted small">No properties assigned yet</div>';
+                   }
+                   
                    // Reset modal title and button
                    document.querySelector('#createUserModal .modal-title').textContent = 'Create New User';
                    document.querySelector('#createUserModal .modal-footer .btn-primary').textContent = 'Create User';
@@ -1079,18 +1823,837 @@
                });
 
                document.getElementById('status-filter').addEventListener('change', refreshMoves);
+               // Note: property-filter change should NOT auto-refresh moves - user must click "Load Move Suggestions"
+
+        // RMS API WebSocket Management
+    let rmsWebSocket = null;
+    let rmsAutoScroll = true;
+    let currentPropertyCode = null;
+    
+    // Promisified WebSocket connection function
+    function connectRmsWebSocketAndWait(propertyCode) {
+        return new Promise((resolve, reject) => {
+            if (rmsWebSocket && rmsWebSocket.readyState === WebSocket.OPEN) {
+                disconnectRmsWebSocket();
+            }
+            
+            currentPropertyCode = propertyCode;
+            const wsUrl = `ws://${window.location.host}/ws/rms-progress/${propertyCode}`;
+            
+            addRmsDebugLine('info', `Connecting to real-time updates for ${propertyCode}...`);
+            
+            try {
+                rmsWebSocket = new WebSocket(wsUrl);
+                
+                rmsWebSocket.onopen = function(event) {
+                    console.log('RMS WebSocket connected');
+                    updateRmsStatus('Connected', 'bg-success');
+                    addRmsDebugLine('success', 'WebSocket connected successfully');
+                    addRmsDebugLine('info', `Connected to real-time updates for ${propertyCode}`);
+                    
+                    // Connection controls have been removed - auto-managed now
+                    
+                    // Start ping interval
+                    startRmsPingInterval();
+                    
+                    // Resolve the promise when connected
+                    resolve();
+                };
+                
+                rmsWebSocket.onerror = function(error) {
+                    console.error('RMS WebSocket error:', error);
+                    updateRmsStatus('Error', 'bg-danger');
+                    addRmsDebugLine('error', 'WebSocket connection error');
+                    reject(error);
+                };
+                
+                rmsWebSocket.onmessage = function(event) {
+                    // Handle ping/pong messages
+                    if (event.data === 'pong') {
+                        addRmsDebugLine('info', 'Pong received');
+                        return;
+                    }
+                    
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleRmsWebSocketMessage(data);
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                        addRmsDebugLine('error', `Error parsing message: ${event.data}`);
+                    }
+                };
+                
+                rmsWebSocket.onclose = function(event) {
+                    console.log('RMS WebSocket disconnected');
+                    updateRmsStatus('Disconnected', 'bg-secondary');
+                    addRmsDebugLine('warning', 'WebSocket disconnected');
+                    
+                    // Connection controls have been removed - auto-managed now
+                    
+                    // Stop ping interval
+                    stopRmsPingInterval();
+                };
+                
+            } catch (error) {
+                console.error('Failed to create WebSocket:', error);
+                addRmsDebugLine('error', `Failed to create WebSocket: ${error.message}`);
+                reject(error);
+            }
+        });
+    }
+
+    function connectRmsWebSocket(propertyCode) {
+        if (rmsWebSocket && rmsWebSocket.readyState === WebSocket.OPEN) {
+            disconnectRmsWebSocket();
+        }
+        
+        currentPropertyCode = propertyCode;
+        const wsUrl = `ws://${window.location.host}/ws/rms-progress/${propertyCode}`;
+        
+        try {
+            rmsWebSocket = new WebSocket(wsUrl);
+            
+            rmsWebSocket.onopen = function(event) {
+                console.log('RMS WebSocket connected');
+                updateRmsStatus('Connected', 'bg-success');
+                showRmsDebugPanel();
+                addRmsDebugLine('success', 'WebSocket connected successfully');
+                
+                // Connection controls have been removed - auto-managed now
+                
+                // Start ping interval
+                startRmsPingInterval();
+            };
+            
+            rmsWebSocket.onmessage = function(event) {
+                // Handle ping/pong messages
+                if (event.data === 'pong') {
+                    addRmsDebugLine('info', 'Pong received');
+                    return;
+                }
+                
+                try {
+                    const data = JSON.parse(event.data);
+                    handleRmsWebSocketMessage(data);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                    addRmsDebugLine('error', `Error parsing message: ${event.data}`);
+                }
+            };
+            
+            rmsWebSocket.onclose = function(event) {
+                console.log('RMS WebSocket disconnected');
+                updateRmsStatus('Disconnected', 'bg-secondary');
+                addRmsDebugLine('warning', 'WebSocket disconnected');
+                
+                // Connection controls have been removed - auto-managed now
+                
+                // Stop ping interval
+                stopRmsPingInterval();
+            };
+            
+            rmsWebSocket.onerror = function(error) {
+                console.error('RMS WebSocket error:', error);
+                updateRmsStatus('Error', 'bg-danger');
+                addRmsDebugLine('error', 'WebSocket connection error');
+            };
+            
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+            addRmsDebugLine('error', `Failed to create WebSocket: ${error.message}`);
+        }
+    }
+    
+    function disconnectRmsWebSocket() {
+        if (rmsWebSocket) {
+            rmsWebSocket.close();
+            rmsWebSocket = null;
+        }
+        currentPropertyCode = null;
+    }
+    
+    function pingRmsWebSocket() {
+        if (rmsWebSocket && rmsWebSocket.readyState === WebSocket.OPEN) {
+            rmsWebSocket.send('ping');
+            addRmsDebugLine('info', 'Ping sent');
+        }
+    }
+    
+    let rmsPingInterval = null;
+    
+    function startRmsPingInterval() {
+        rmsPingInterval = setInterval(() => {
+            if (rmsWebSocket && rmsWebSocket.readyState === WebSocket.OPEN) {
+                rmsWebSocket.send('ping');
+            }
+        }, 30000); // Ping every 30 seconds
+    }
+    
+    function stopRmsPingInterval() {
+        if (rmsPingInterval) {
+            clearInterval(rmsPingInterval);
+            rmsPingInterval = null;
+        }
+    }
+    
+    function handleRmsWebSocketMessage(data) {
+        // Update progress bar for progress updates
+        if (data.type === 'progress_update' && data.progress !== null && data.progress !== undefined) {
+            const progressBar = document.getElementById('rms-progress-bar');
+            const progressText = document.getElementById('rms-progress-text');
+            const progressPercentage = document.getElementById('rms-progress-percentage');
+            
+            if (progressBar) {
+                progressBar.style.width = `${data.progress}%`;
+                progressBar.style.backgroundColor = '#007bff';
+                progressBar.style.transition = 'width 0.3s ease';
+            }
+            if (progressText) progressText.textContent = data.message;
+            if (progressPercentage) progressPercentage.textContent = `${Math.round(data.progress)}%`;
+        }
+        
+        switch (data.type) {
+            case 'connection_established':
+                addRmsDebugLine('success', data.message);
+                break;
+                
+            case 'progress_update':
+                handleRmsProgressUpdate(data);
+                break;
+                
+            case 'debug_message':
+                addRmsDebugLine('info', data.message);
+                break;
+                
+            case 'error':
+                addRmsDebugLine('error', `Error at step ${data.step}: ${data.error}`);
+                break;
+                
+            case 'completion':
+                handleRmsCompletion(data);
+                break;
+                
+            case 'pong':
+                // Silent ping response
+                break;
+                
+            default:
+                addRmsDebugLine('info', `Unknown message type: ${data.type}`);
+        }
+    }
+    
+    function handleRmsProgressUpdate(data) {
+        const step = data.step;
+        const message = data.message;
+        const progress = data.progress || 0;
+        const timestamp = data.timestamp;
+        
+        // Update progress bar
+        updateRmsProgress(progress, message);
+        
+        // Add debug line
+        addRmsDebugLine('info', `[${step.toUpperCase()}] ${message}`);
+        
+        // Update progress text
+        document.getElementById('rms-progress-text').textContent = message;
+        document.getElementById('rms-progress-percentage').textContent = `${Math.round(progress)}%`;
+    }
+    
+    function handleRmsCompletion(data) {
+        const result = data.result;
+        addRmsDebugLine('success', `Generation completed! Batch ID: ${result.batch_id}, Moves: ${result.move_count}`);
+        
+        // Update progress to 100%
+        updateRmsProgress(100, 'Generation completed successfully');
+        
+        // Auto-disconnect WebSocket after completion
+        setTimeout(() => {
+            addRmsDebugLine('info', 'Analysis complete - disconnecting...');
+            disconnectRmsWebSocket();
+        }, 2000); // Wait 2 seconds to let user see completion message
+        
+        // Don't call loadMoveSuggestions() here - it's already called from the loadMoveSuggestions() function
+        // This prevents duplicate batch creation
+        console.log('RMS generation completed - suggestions will be fetched by loadMoveSuggestions()');
+    }
+    
+    function updateRmsProgress(progress, message) {
+        const progressBar = document.getElementById('rms-progress-bar');
+        const progressText = document.getElementById('rms-progress-text');
+        const progressPercentage = document.getElementById('rms-progress-percentage');
+        
+        if (progressBar) progressBar.style.width = `${progress}%`;
+        if (progressText) progressText.textContent = message;
+        if (progressPercentage) progressPercentage.textContent = `${Math.round(progress)}%`;
+        
+        // Update progress bar color based on progress
+        if (progress < 30) {
+            progressBar.className = 'progress-bar bg-warning';
+        } else if (progress < 70) {
+            progressBar.className = 'progress-bar bg-info';
+        } else if (progress < 100) {
+            progressBar.className = 'progress-bar bg-primary';
+        } else {
+            progressBar.className = 'progress-bar bg-success';
+        }
+    }
+    
+    function updateRmsStatus(status, badgeClass) {
+        const statusBadge = document.getElementById('rms-status-badge');
+        statusBadge.textContent = status;
+        statusBadge.className = `badge ${badgeClass}`;
+    }
+    
+    function addRmsDebugLine(type, message) {
+        const debugOutput = document.getElementById('rms-debug-output');
+        const timestamp = new Date().toLocaleTimeString();
+        
+        const debugLine = document.createElement('div');
+        debugLine.className = 'debug-line';
+        
+        const timestampSpan = document.createElement('span');
+        timestampSpan.className = 'timestamp';
+        timestampSpan.textContent = `[${timestamp}]`;
+        
+        const messageSpan = document.createElement('span');
+        messageSpan.className = type;
+        messageSpan.textContent = message;
+        
+        debugLine.appendChild(timestampSpan);
+        debugLine.appendChild(messageSpan);
+        
+        debugOutput.appendChild(debugLine);
+        
+        // Auto-scroll if enabled
+        if (rmsAutoScroll) {
+            // Scroll the container, not the inner debug output
+            const debugContainer = debugOutput.parentElement;
+            debugContainer.scrollTop = debugContainer.scrollHeight;
+        }
+    }
+    
+    function showRmsDebugPanel() {
+        document.getElementById('rms-debug-panel').style.display = 'block';
+    }
+    
+    function closeRmsDebugPanel() {
+        document.getElementById('rms-debug-panel').style.display = 'none';
+        disconnectRmsWebSocket();
+    }
+    
+
+    
+    // Enhanced move suggestions functions with WebSocket integration
+    async function loadMoveSuggestions() {
+        if (!authToken) return;
+
+        const propertyFilter = document.getElementById('property-filter').value;
+        console.log('Starting loadMoveSuggestions for property:', propertyFilter);
+        if (!propertyFilter) {
+            alert('Please select a property first.');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const loadBtn = document.getElementById('load-moves-btn');
+            loadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+            loadBtn.disabled = true;
+
+            // Show debug panel immediately and connect to WebSocket
+            showRmsDebugPanel();
+            addRmsDebugLine('info', 'Preparing to load move suggestions...');
+            
+            // Connect to WebSocket for real-time updates and wait for connection
+            await connectRmsWebSocketAndWait(propertyFilter);
+            
+            // Now that WebSocket is connected, start the analysis
+            addRmsDebugLine('info', 'Starting move suggestions analysis...');
+
+            // Use the property code directly from the option value
+            const propertyCode = propertyFilter;
+
+            if (!propertyCode) {
+                alert('Could not determine property code.');
+                return;
+            }
+
+            console.log(`Loading move suggestions for property code: ${propertyCode}`);
+
+            // Generate new move suggestions from RMS API
+            const response = await fetch(`/api/v1/defrag-moves/generate/${propertyCode}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            console.log('Load suggestions API response status:', response.status);
+
+            if (response.ok) {
+                const generateData = await response.json();
+                console.log('Generate API response data:', generateData);
+
+                // Check if any suggestions were generated in this batch
+                const moveCount = generateData.move_count || 0;
+                console.log(`✅ Frontend received: Generated ${moveCount} new move suggestions`);
+                console.log('✅ Generate API Response Details:', JSON.stringify(generateData, null, 2));
+
+                if (moveCount > 0) {
+                    // 🔥 CRITICAL FIX: Use fresh suggestions directly from generate response - NO DATABASE LOOKUP
+                    console.log('✅ moveCount > 0, using FRESH suggestions directly from generate response');
+                    console.log('✅ Fresh suggestions from RMS API:', generateData.moves);
+                    console.log('✅ Calling displayMoveSuggestions with FRESH data...');
+                    displayMoveSuggestions(generateData);
+                } else {
+                    // No suggestions generated - show "No Move Suggestions Found"
+                    console.log('❌ moveCount is 0 - No move suggestions generated - displaying empty state');
+                    console.log('❌ Generate API returned move_count:', moveCount);
+                    displayNoMoveSuggestions();
+                }
+
+                console.log('Updating cache status...');
+                updateCacheStatus(generateData);
+
+                console.log('Showing refresh button...');
+                showRefreshButton();
+
+                console.log('Load suggestions completed successfully');
+            } else {
+                const error = await response.json();
+                console.error('Load suggestions API error:', error);
+                alert(`Failed to load move suggestions: ${error.detail}`);
+            }
+        } catch (error) {
+            console.error('Error loading move suggestions:', error);
+            console.error('Error stack:', error.stack);
+            alert('Failed to load move suggestions.');
+        } finally {
+            // Restore button state
+            const loadBtn = document.getElementById('load-moves-btn');
+            if (loadBtn) {
+                loadBtn.innerHTML = '<i class="fas fa-download me-1"></i>Load Move Suggestions';
+                loadBtn.disabled = false;
+            }
+        }
+    }
+    
+    async function refreshMoveSuggestions() {
+        if (!authToken) return;
+
+        const propertyFilter = document.getElementById('property-filter').value;
+        console.log('Starting refreshMoveSuggestions for property:', propertyFilter);
+        if (!propertyFilter) {
+            alert('Please select a property first.');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const refreshBtn = document.getElementById('refresh-moves-btn');
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+            refreshBtn.disabled = true;
+
+            // Show debug panel immediately and connect to WebSocket
+            showRmsDebugPanel();
+            addRmsDebugLine('info', 'Preparing to refresh move suggestions...');
+            
+            // Connect to WebSocket for real-time updates and wait for connection
+            await connectRmsWebSocketAndWait(propertyFilter);
+            
+            // Now that WebSocket is connected, start the analysis
+            addRmsDebugLine('info', 'Starting fresh move suggestions analysis...');
+
+            // Use the property code directly from the option value
+            const propertyCode = propertyFilter;
+
+            if (!propertyCode) {
+                alert('Could not determine property code.');
+                return;
+            }
+
+            console.log(`Refreshing move suggestions for property code: ${propertyCode}`);
+
+            // Call the generate endpoint to get fresh suggestions
+            const response = await fetch(`/api/v1/defrag-moves/generate/${propertyCode}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    force_refresh: true
+                })
+            });
+
+            console.log('Refresh suggestions API response status:', response.status);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Refresh suggestions API response data:', data);
+
+                console.log('Refresh suggestions completed - move data will be displayed by loadMoveSuggestions()');
+                // Don't call loadMoveSuggestions() here - it causes duplicate batch creation
+
+                console.log('Refresh suggestions completed successfully');
+            } else {
+                const error = await response.json();
+                console.error('Refresh suggestions API error:', error);
+                alert(`Failed to refresh move suggestions: ${error.detail}`);
+            }
+        } catch (error) {
+            console.error('Error refreshing move suggestions:', error);
+            console.error('Error stack:', error.stack);
+            alert('Failed to refresh move suggestions.');
+        } finally {
+            // Restore button state
+            const refreshBtn = document.getElementById('refresh-moves-btn');
+            if (refreshBtn) {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
+        }
+    }
+
+        function displayMoveSuggestions(data) {
+            console.log('displayMoveSuggestions called with data:', data);
+            
+            // Use the enhanced checkbox-enabled display function
+            displayMoveSuggestionsWithCheckboxes(data);
+        }
+
+        function displayNoMoveSuggestions() {
+            console.log('displayNoMoveSuggestions called - showing empty state');
+            
+            const movesContainer = document.getElementById('moves-container');
+            if (!movesContainer) {
+                console.error('Moves container not found');
+                return;
+            }
+            
+            // Clear any existing content
+            movesContainer.innerHTML = '';
+            
+            // Show "No Move Suggestions Found" message
+            movesContainer.innerHTML = `
+                <div class="alert alert-info text-center" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>No Move Suggestions Found</strong>
+                    <p class="mb-0 mt-2">The analysis found no optimization opportunities for this property at this time.</p>
+                    <p class="mb-0">This could mean:</p>
+                    <ul class="list-unstyled mt-2">
+                        <li>• All reservations are optimally placed</li>
+                        <li>• No short stays that can be moved</li>
+                        <li>• Property is fully booked with no alternative units available</li>
+                    </ul>
+                </div>
+            `;
+            
+            // Also clear the move actions bar
+            updateMoveSelectionUI();
+        }
+
+        function updateCacheStatus(data) {
+            console.log('updateCacheStatus called with data:', data);
+            
+            try {
+                const cacheStatusElement = document.getElementById('cache-status');
+                if (!cacheStatusElement) {
+                    console.error('Cache status element not found');
+                    return;
+                }
+                
+                if (!data || typeof data.cache_age_hours === 'undefined') {
+                    console.log('No cache age data available');
+                    cacheStatusElement.textContent = 'Unknown';
+                    cacheStatusElement.className = 'badge bg-secondary';
+                    return;
+                }
+                
+                const isFresh = data.cache_age_hours < 1;
+                console.log(`Cache age: ${data.cache_age_hours} hours, is fresh: ${isFresh}`);
+                
+                if (isFresh) {
+                    cacheStatusElement.textContent = 'Fresh';
+                    cacheStatusElement.className = 'badge bg-success';
+                } else {
+                    cacheStatusElement.textContent = 'Stale';
+                    cacheStatusElement.className = 'badge bg-warning';
+                }
+                
+                console.log('Cache status updated successfully');
+                
+            } catch (error) {
+                console.error('Error in updateCacheStatus:', error);
+                console.error('Error stack:', error.stack);
+            }
+        }
+
+        function showRefreshButton() {
+            document.getElementById('load-moves-btn').style.display = 'none';
+            document.getElementById('refresh-moves-btn').style.display = 'block';
+        }
+
+        function getStrategicImportanceColor(importance) {
+            if (!importance || importance === 'unknown') return 'secondary';
+            switch (importance.toLowerCase()) {
+                case 'high': return 'danger';
+                case 'medium': return 'warning';
+                case 'low': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is already logged in (e.g., from localStorage)
+            console.log('DOMContentLoaded event fired');
+            // Check if user is already logged in with a valid token
             const savedToken = localStorage.getItem('authToken');
+            console.log('Saved token found:', !!savedToken);
+            
             if (savedToken) {
-                authToken = savedToken;
-                showMainApp();
-                loadUserInfo();
-                refreshMoves();
+                console.log('Attempting auto-login with saved token...');
+                // Verify the token is still valid before auto-login
+                verifyTokenAndLogin(savedToken);
+            } else {
+                console.log('No saved token, showing login page');
             }
         });
+
+        // Verify token and auto-login if valid
+        async function verifyTokenAndLogin(token) {
+            try {
+                console.log('verifyTokenAndLogin called with token:', token ? token.substring(0, 20) + '...' : 'No token');
+                const response = await fetch('/api/v1/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    console.log('Auto-login successful for user:', user.username);
+                    authToken = token;
+                    currentUser = user;
+                    showMainApp();
+                    loadUserInfo();
+                    refreshMoves();
+                } else {
+                    // Token is invalid, remove it and show login
+                    localStorage.removeItem('authToken');
+                    console.log('Invalid token found, showing login page');
+                }
+            } catch (error) {
+                // Error occurred, remove token and show login
+                localStorage.removeItem('authToken');
+                console.error('Error verifying token:', error);
+            }
+        }
+
+        // Force logout and show login screen (useful for testing)
+        function forceLogout() {
+            console.log('Force logout called');
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            showLogin();
+        }
+
+        // Move Selection and Processing Functions
+        let selectedMoves = new Set();
+
+        function toggleMoveSelection(moveId, action) {
+            const key = `${moveId}-${action}`;
+            if (selectedMoves.has(key)) {
+                selectedMoves.delete(key);
+            } else {
+                // Remove any other selection for this move
+                selectedMoves.forEach(existingKey => {
+                    if (existingKey.startsWith(`${moveId}-`)) {
+                        selectedMoves.delete(existingKey);
+                    }
+                });
+                selectedMoves.add(key);
+            }
+            updateMoveSelectionUI();
+        }
+
+        function updateMoveSelectionUI() {
+            const selectedCount = selectedMoves.size;
+            const selectedCountElement = document.getElementById('selected-count');
+            const processBtn = document.getElementById('process-btn');
+            const actionsBar = document.getElementById('move-actions-bar');
+            
+            if (selectedCountElement) selectedCountElement.textContent = selectedCount;
+            if (processBtn) processBtn.disabled = selectedCount === 0;
+            if (actionsBar) actionsBar.style.display = selectedCount > 0 ? 'block' : 'none';
+        }
+
+        function clearSelection() {
+            selectedMoves.clear();
+            updateMoveSelectionUI();
+            
+            // Uncheck all checkboxes
+            document.querySelectorAll('input[name^="move-"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        }
+
+        async function processSelectedMoves() {
+            if (selectedMoves.size === 0) {
+                alert('No moves selected');
+                return;
+            }
+
+            const processData = [];
+            selectedMoves.forEach(key => {
+                const [moveId, action] = key.split('-');
+                processData.push({
+                    move_id: parseInt(moveId),
+                    action: action
+                });
+            });
+
+            try {
+                const response = await fetch('/api/v1/defrag-moves/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ moves: processData })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`Successfully processed ${result.total_processed} moves and rejected ${result.total_rejected} moves`);
+                    
+                    // Clear selection and refresh display
+                    clearSelection();
+                    refreshMoves();
+                } else {
+                    const error = await response.json();
+                    alert(`Error processing moves: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error processing moves:', error);
+                alert('Error processing moves. Please try again.');
+            }
+        }
+
+        function showMoveHistory() {
+            // Redirect to the move history page
+            window.location.href = '/move-history';
+        }
+
+        // Enhanced move display function with checkboxes
+        function displayMoveSuggestionsWithCheckboxes(data) {
+            try {
+                const container = document.getElementById('moves-container');
+                if (!container) {
+                    console.error('Moves container not found');
+                    return;
+                }
+
+                if (!data.moves || data.moves.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <p>No move suggestions available</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const tableHtml = `
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" style="font-size: 0.85rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">Select</th>
+                                    <th style="width: 90px;">From Unit</th>
+                                    <th style="width: 90px;">To Unit</th>
+                                    <th style="width: 120px;">Guest</th>
+                                    <th style="width: 80px;">Res#</th>
+                                    <th style="width: 85px;">Check-in</th>
+                                    <th style="width: 85px;">Check-out</th>
+                                    <th style="width: 95px;">Date Analysed</th>
+                                    <th style="width: 80px;">Importance</th>
+                                    <th style="width: 60px;">Score</th>
+                                    <th style="width: 60px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.moves.map((move, index) => `
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="move-${move.id}" 
+                                                       value="accept" onchange="toggleMoveSelection(${move.id}, 'accept')">
+                                                <label class="form-check-label small text-success">Accept</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="move-${move.id}" 
+                                                       value="reject" onchange="toggleMoveSelection(${move.id}, 'reject')">
+                                                <label class="form-check-label small text-danger">Reject</label>
+                                            </div>
+                                        </td>
+                                        <td><strong>${move.from_unit || 'N/A'}</strong></td>
+                                        <td><strong>${move.to_unit || 'N/A'}</strong></td>
+                                        <td>${move.guest || 'N/A'}</td>
+                                        <td><small><code>${move.reservation_id || 'N/A'}</code></small></td>
+                                        <td><small>${move.check_in || 'N/A'}</small></td>
+                                        <td><small>${move.check_out || 'N/A'}</small></td>
+                                        <td><small>${move.analysis_date ? new Date(move.analysis_date).toLocaleDateString() : 'N/A'}</small></td>
+                                        <td>
+                                            <span class="badge bg-${getStrategicImportanceColor(move.strategic_importance || 'unknown')}">
+                                                ${move.strategic_importance || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-${getScoreColor(move.score)}">
+                                                ${move.score || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="showMoveDetails(${index}, '${move.id || 'unknown'}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Analysis Date: ${data.analysis_date ? new Date(data.analysis_date).toLocaleString() : 'N/A'} | 
+                        Cache Age: ${data.cache_age_hours || 0} hours | 
+                        Property: ${data.property_code || 'N/A'}
+                    </div>
+                `;
+                
+                container.innerHTML = tableHtml;
+                console.log('Move suggestions with checkboxes displayed successfully');
+                
+            } catch (error) {
+                console.error('Error in displayMoveSuggestionsWithCheckboxes:', error);
+                container.innerHTML = `
+                    <div class="text-center text-danger py-5">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>Error displaying move suggestions</p>
+                        <small class="text-muted">Please try refreshing the page</small>
+                    </div>
+                `;
+            }
+        }
     </script>
 </body>
 </html>

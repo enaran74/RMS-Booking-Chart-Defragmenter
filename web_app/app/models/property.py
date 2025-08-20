@@ -16,8 +16,8 @@ class Property(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    users = relationship("User", back_populates="property")
+    # Relationships - use string references to avoid circular imports
+    user_properties = relationship("UserProperty", back_populates="property", cascade="all, delete-orphan")
     defrag_moves = relationship("DefragMove", back_populates="property")
     
     def __repr__(self):

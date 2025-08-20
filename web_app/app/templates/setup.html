@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - RMS Booking Chart Defragmenter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .property-badge {
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line me-2"></i>
+                RMS Defragmenter
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3" id="user-info">
+                    <i class="fas fa-user me-1"></i>
+                    <span id="username">Guest</span>
+                </span>
+                <div class="dropdown d-none" id="user-dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-cog me-1"></i>Profile
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/">
+                            <i class="fas fa-home me-2"></i>Main Dashboard
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Admin Access Check -->
+        <div class="d-none" id="admin-access">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h4 class="mb-0"><i class="fas fa-cogs me-2"></i>System Setup</h4>
+                                    <p class="text-muted mb-0">Administrative functions for system configuration and monitoring</p>
+                                </div>
+                                <a href="/" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Navigation Pills -->
+                            <ul class="nav nav-pills mb-4" id="setupTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="properties-tab" data-bs-toggle="pill" data-bs-target="#properties-content" type="button" role="tab">
+                                        <i class="fas fa-building me-2"></i>Properties
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="database-tab" data-bs-toggle="pill" data-bs-target="#database-content" type="button" role="tab">
+                                        <i class="fas fa-database me-2"></i>Database Management
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="user-properties-tab" data-bs-toggle="pill" data-bs-target="#user-properties-content" type="button" role="tab">
+                                        <i class="fas fa-users me-2"></i>User-Property Management
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="setupTabContent">
+                                <!-- Properties Tab -->
+                                <div class="tab-pane fade show active" id="properties-content" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="fas fa-sync-alt me-2"></i>Properties Management</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <button id="refresh-properties-btn" class="btn btn-outline-success btn-sm w-100 mb-2" onclick="refreshProperties()">
+                                                            <i class="fas fa-sync-alt me-1"></i>Refresh from RMS
+                                                        </button>
+                                                        <div id="properties-info" class="text-muted small">
+                                                            <i class="fas fa-info-circle me-1"></i>
+                                                            <span id="properties-count">0</span> properties loaded
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="show-active-only" checked>
+                                                            <label class="form-check-label" for="show-active-only">
+                                                                Show active properties only
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="fas fa-list me-2"></i>Properties List</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div id="properties-list" class="small">
+                                                        <!-- Properties will be populated dynamically -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Database Management Tab -->
+                                <div class="tab-pane fade" id="database-content" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="fas fa-database me-2"></i>Database Tables</h6>
+                                                    <p class="text-muted mb-0">View database structure and records (read-only)</p>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <button class="btn btn-outline-primary btn-sm" onclick="refreshDatabaseInfo()">
+                                                            <i class="fas fa-sync-alt me-1"></i>Refresh Database Info
+                                                        </button>
+                                                    </div>
+                                                    <div id="database-tables">
+                                                        <div class="text-center text-muted py-5">
+                                                            <i class="fas fa-database fa-2x mb-3"></i>
+                                                            <p>Click "Refresh Database Info" to load table information</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- User-Property Management Tab -->
+                                <div class="tab-pane fade" id="user-properties-content" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="fas fa-plus me-2"></i>Assign Properties</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <form id="assign-property-form">
+                                                        <div class="mb-3">
+                                                            <label for="assign-user" class="form-label">User</label>
+                                                            <select class="form-select" id="assign-user" required>
+                                                                <option value="">Select User</option>
+                                                                <!-- Users will be populated dynamically -->
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="assign-property" class="form-label">Property</label>
+                                                            <select class="form-select" id="assign-property" required>
+                                                                <option value="">Select Property</option>
+                                                                <!-- Properties will be populated dynamically -->
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="assign-primary">
+                                                                <label class="form-check-label" for="assign-primary">
+                                                                    Set as Primary Property
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                                            <i class="fas fa-plus me-1"></i>Assign Property
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="fas fa-list me-2"></i>Current Assignments</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <button class="btn btn-outline-primary btn-sm" onclick="refreshUserProperties()">
+                                                            <i class="fas fa-sync-alt me-1"></i>Refresh Assignments List
+                                                        </button>
+                                                    </div>
+                                                    <div id="user-properties-list">
+                                                        <div class="text-center text-muted py-5">
+                                                            <i class="fas fa-users fa-2x mb-3"></i>
+                                                            <p>Click "Refresh Assignments" to load current user-property assignments</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Non-Admin Access Message -->
+        <div class="d-none" id="non-admin-access">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-lock fa-3x text-warning mb-3"></i>
+                            <h5>Access Restricted</h5>
+                            <p class="text-muted">This page is only accessible to administrators.</p>
+                            <a href="/" class="btn btn-primary">
+                                <i class="fas fa-home me-2"></i>Return to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let authToken = null;
+        let currentUser = null;
+
+        // Check authentication and user role on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
+
+        async function checkAuth() {
+            console.log('checkAuth called');
+            const token = localStorage.getItem('authToken');
+            console.log('Token from localStorage:', token ? token.substring(0, 20) + '...' : 'No token found');
+            
+            if (!token) {
+                console.log('No token found, showing non-admin access');
+                showNonAdminAccess();
+                return;
+            }
+
+            try {
+                console.log('Making API call to /api/v1/auth/me');
+                const response = await fetch('/api/v1/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('API response status:', response.status);
+
+                if (response.ok) {
+                    const user = await response.json();
+                    console.log('User data received:', user);
+                    console.log('User is_admin:', user.is_admin);
+                    
+                    if (user.is_admin) {
+                        console.log('User is admin, showing admin access');
+                        authToken = token;
+                        currentUser = user;
+                        showAdminAccess();
+                        loadUserInfo();
+                        loadProperties();
+                    } else {
+                        console.log('User is not admin, showing non-admin access');
+                        showNonAdminAccess();
+                    }
+                } else {
+                    console.log('API call failed, showing non-admin access');
+                    showNonAdminAccess();
+                }
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+                showNonAdminAccess();
+            }
+        }
+
+        function showAdminAccess() {
+            document.getElementById('loading-state').classList.add('d-none');
+            document.getElementById('non-admin-access').classList.add('d-none');
+            document.getElementById('admin-access').classList.remove('d-none');
+            
+            // Load initial data for admin access
+            loadProperties();
+            
+            // Load users and properties for User-Property Management
+            loadUsersAndProperties();
+            
+            // Load initial assignments to show current state
+            loadInitialAssignments();
+        }
+
+        function showNonAdminAccess() {
+            document.getElementById('loading-state').classList.add('d-none');
+            document.getElementById('non-admin-access').classList.remove('d-none');
+        }
+
+        function loadUserInfo() {
+            document.getElementById('username').textContent = currentUser.username;
+        }
+
+        // Properties Management Functions
+        async function refreshProperties() {
+            if (!authToken) return;
+            
+            const button = document.querySelector('#refresh-properties-btn');
+            if (!button) {
+                console.error('Refresh button not found');
+                return;
+            }
+            
+            const originalText = button.innerHTML;
+            
+            try {
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+                button.disabled = true;
+                
+                console.log('Starting properties refresh...');
+                const response = await fetch('/api/v1/properties/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                console.log('Refresh response status:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Refresh successful:', result);
+                    showAlert('success', 'Properties refreshed successfully from RMS API');
+                    
+                    console.log('Loading updated properties...');
+                    await loadProperties();
+                    console.log('Properties loaded successfully');
+                } else {
+                    const error = await response.json();
+                    console.error('Refresh failed:', error);
+                    showAlert('danger', `Failed to refresh properties: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error refreshing properties:', error);
+                showAlert('danger', 'Error refreshing properties');
+            } finally {
+                console.log('Restoring button state...');
+                button.innerHTML = originalText;
+                button.disabled = false;
+                console.log('Button state restored');
+            }
+        }
+
+        async function loadProperties() {
+            if (!authToken) return;
+            
+            try {
+                const response = await fetch('/api/v1/properties/', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const properties = await response.json();
+                    updatePropertiesInfo(properties);
+                    displayPropertiesList(properties);
+                }
+            } catch (error) {
+                console.error('Error loading properties:', error);
+            }
+        }
+
+        function updatePropertiesInfo(properties) {
+            const countElement = document.getElementById('properties-count');
+            countElement.textContent = properties.length;
+        }
+        
+        function displayPropertiesList(properties) {
+            const propertiesListElement = document.getElementById('properties-list');
+            const showActiveOnly = document.getElementById('show-active-only').checked;
+            
+            let filteredProperties = properties;
+            if (showActiveOnly) {
+                filteredProperties = properties.filter(prop => prop.is_active);
+            }
+            
+            if (filteredProperties.length === 0) {
+                propertiesListElement.innerHTML = '<div class="text-muted">No properties to display</div>';
+                return;
+            }
+            
+            const propertiesHtml = filteredProperties.map(prop => {
+                const statusBadge = prop.is_active 
+                    ? '<span class="badge bg-success property-badge">Active</span>'
+                    : '<span class="badge bg-secondary property-badge">Inactive</span>';
+                
+                return `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <strong>${prop.property_code}</strong><br>
+                            <small class="text-muted">${prop.property_name}</small>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            propertiesListElement.innerHTML = propertiesHtml;
+        }
+
+        // Database Management Functions
+        async function refreshDatabaseInfo() {
+            if (!authToken) return;
+            
+            try {
+                const response = await fetch('/api/v1/setup/database/tables', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const tables = await response.json();
+                    displayDatabaseTables(tables);
+                } else {
+                    showAlert('danger', 'Failed to load database information');
+                }
+            } catch (error) {
+                console.error('Error loading database info:', error);
+                showAlert('danger', 'Error loading database information');
+            }
+        }
+
+        function displayDatabaseTables(tables) {
+            const container = document.getElementById('database-tables');
+            
+            if (!tables || tables.length === 0) {
+                container.innerHTML = '<div class="text-muted">No tables found</div>';
+                return;
+            }
+            
+            const tablesHtml = tables.map(table => `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-table me-2"></i>${table.name}
+                            <span class="badge bg-info ms-2">${table.record_count} records</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        ${table.columns.map(col => `<th>${col}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody id="table-records-${table.name}">
+                                    ${table.sample_records.map(record => `
+                                        <tr>
+                                            ${Object.values(record).map(value => `<td>${value || '<em>null</em>'}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted" id="records-info-${table.name}">
+                                Showing first 5 records of ${table.record_count} total
+                            </small>
+                            ${table.record_count > 5 ? `
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        id="load-more-${table.name}" 
+                                        onclick="loadMoreRecords('${table.name}')">
+                                    Load More (50)
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = tablesHtml;
+        }
+
+        // Load More Records Function
+        async function loadMoreRecords(tableName) {
+            if (!authToken) return;
+            
+            const button = document.getElementById(`load-more-${tableName}`);
+            const recordsContainer = document.getElementById(`table-records-${tableName}`);
+            const recordsInfo = document.getElementById(`records-info-${tableName}`);
+            
+            if (!button || !recordsContainer || !recordsInfo) {
+                console.error('Required elements not found for table:', tableName);
+                return;
+            }
+            
+            // Get current offset (number of records already loaded)
+            const currentRecords = recordsContainer.querySelectorAll('tr').length;
+            const offset = currentRecords;
+            
+            try {
+                // Show loading state
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+                button.disabled = true;
+                
+                console.log(`Loading more records for ${tableName}, offset: ${offset}`);
+                
+                const response = await fetch(`/api/v1/setup/database/table/${tableName}/records?offset=${offset}&limit=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Loaded ${data.records.length} more records for ${tableName}`);
+                    
+                    // Add new records to the table
+                    const newRows = data.records.map(record => `
+                        <tr>
+                            ${Object.values(record).map(value => `<td>${value || '<em>null</em>'}</td>`).join('')}
+                        </tr>
+                    `).join('');
+                    
+                    recordsContainer.insertAdjacentHTML('beforeend', newRows);
+                    
+                    // Update the records info
+                    const totalShown = currentRecords + data.records.length;
+                    recordsInfo.textContent = `Showing ${totalShown} records of ${data.total_count} total`;
+                    
+                    // Hide button if no more records
+                    if (!data.has_more) {
+                        button.style.display = 'none';
+                    }
+                    
+                    showAlert('success', `Loaded ${data.records.length} more records from ${tableName}`);
+                } else {
+                    const errorData = await response.json();
+                    showAlert('danger', `Failed to load more records: ${errorData.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error loading more records:', error);
+                showAlert('danger', 'Error loading more records');
+            } finally {
+                // Restore button state
+                button.innerHTML = 'Load More (50)';
+                button.disabled = false;
+            }
+        }
+
+        // User-Property Management Functions
+        async function loadUsersAndProperties() {
+            if (!authToken) {
+                console.error('loadUsersAndProperties: No authToken available');
+                return;
+            }
+            
+            console.log('loadUsersAndProperties called - loading dropdowns only');
+            console.log('authToken available:', !!authToken);
+            
+            try {
+                // Load users and properties for the form dropdowns
+                console.log('Starting to load users and properties...');
+                await Promise.all([
+                    loadUsersForAssignment(),
+                    loadPropertiesForAssignment()
+                ]);
+                
+                console.log('Users and properties loaded for dropdowns');
+            } catch (error) {
+                console.error('Error loading users and properties for dropdowns:', error);
+            }
+        }
+
+        async function refreshUserProperties() {
+            if (!authToken) return;
+            
+            console.log('refreshUserProperties called - refreshing assignments only');
+            
+            try {
+                // Load current assignments only
+                console.log('Loading current assignments...');
+                const response = await fetch('/api/v1/user-properties/', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                if (response.ok) {
+                    const assignments = await response.json();
+                    console.log('Assignments received:', assignments);
+                    displayUserPropertyAssignments(assignments);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    showAlert('danger', 'Failed to load user-property assignments');
+                }
+            } catch (error) {
+                console.error('Error loading user properties:', error);
+                showAlert('danger', 'Error loading user-property assignments');
+            }
+        }
+
+        async function loadInitialAssignments() {
+            if (!authToken) return;
+
+            try {
+                console.log('Loading initial user-property assignments...');
+                const response = await fetch('/api/v1/user-properties/', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const assignments = await response.json();
+                    console.log('Initial assignments received:', assignments);
+                    displayUserPropertyAssignments(assignments);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error loading initial assignments:', errorText);
+                    showAlert('danger', 'Failed to load initial user-property assignments');
+                }
+            } catch (error) {
+                console.error('Error loading initial assignments:', error);
+                showAlert('danger', 'Error loading initial user-property assignments');
+            }
+        }
+
+        async function loadUsersForAssignment() {
+            try {
+                console.log('loadUsersForAssignment called');
+                console.log('authToken available:', !!authToken);
+                
+                if (!authToken) {
+                    console.error('No authToken available for loading users');
+                    return;
+                }
+                
+                const response = await fetch('/api/v1/auth/users', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                console.log('Users response status:', response.status);
+                console.log('Users response ok:', response.ok);
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    console.log('Users received:', users);
+                    console.log('Number of users:', users ? users.length : 'undefined');
+                    populateUserSelect(users);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Users error response:', errorText);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function loadPropertiesForAssignment() {
+            try {
+                console.log('loadPropertiesForAssignment called');
+                const response = await fetch('/api/v1/properties/', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                console.log('Properties response status:', response.status);
+                console.log('Properties response ok:', response.ok);
+                
+                if (response.ok) {
+                    const properties = await response.json();
+                    console.log('Properties received:', properties);
+                    
+                    // Store properties globally like the working implementation
+                    window.availableProperties = properties;
+                    console.log('Properties stored globally:', window.availableProperties);
+                    
+                    populatePropertySelect(properties);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Properties error response:', errorText);
+                }
+            } catch (error) {
+                console.error('Error loading properties:', error);
+            }
+        }
+
+        function populateUserSelect(users) {
+            console.log('populateUserSelect called with users:', users);
+            const userSelect = document.getElementById('assign-user');
+            console.log('User select element found:', userSelect);
+            
+            if (!userSelect) {
+                console.error('User select element not found!');
+                return;
+            }
+            
+            console.log('Clearing and populating user select...');
+            userSelect.innerHTML = '<option value="">Select User</option>';
+            
+            if (users && users.length > 0) {
+                users.forEach(user => {
+                    console.log('Adding user option:', user);
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.username}${user.email ? ` (${user.email})` : ''}`;
+                    userSelect.appendChild(option);
+                });
+                console.log('User select populated with', users.length, 'users');
+            } else {
+                console.log('No users to populate');
+            }
+        }
+
+        function populatePropertySelect(properties) {
+            const propertySelect = document.getElementById('assign-property');
+            if (!propertySelect) return;
+            
+            propertySelect.innerHTML = '<option value="">Select Property</option>';
+            properties.forEach(property => {
+                const option = document.createElement('option');
+                option.value = property.id;
+                option.textContent = `${property.property_name} (${property.property_code})`;
+                propertySelect.appendChild(option);
+            });
+        }
+
+        function displayUserPropertyAssignments(assignments) {
+            const container = document.getElementById('user-properties-list');
+            
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-users fa-2x mb-3"></i>
+                        <p>No user-property assignments found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const assignmentsHtml = assignments.map(assignment => `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${assignment.user.username}</strong> → 
+                                <strong>${assignment.property.property_name}</strong>
+                                ${assignment.is_primary ? '<span class="badge bg-primary ms-2">Primary</span>' : ''}
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-danger btn-sm" 
+                                        onclick="removeUserPropertyAssignment(${assignment.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = assignmentsHtml;
+        }
+
+        // Event Listeners
+        document.getElementById('show-active-only').addEventListener('change', function() {
+            // Re-render properties list when filter changes
+            // This will be handled by the existing properties data
+        });
+
+        // Add form submission handler for property assignment
+        document.addEventListener('DOMContentLoaded', function() {
+            const assignForm = document.getElementById('assign-property-form');
+            if (assignForm) {
+                assignForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    await assignPropertyToUser();
+                });
+            }
+        });
+
+        async function assignPropertyToUser() {
+            if (!authToken) return;
+            
+            const userId = document.getElementById('assign-user').value;
+            const propertyId = document.getElementById('assign-property').value;
+            const isPrimary = document.getElementById('assign-primary').checked;
+            
+            if (!userId || !propertyId) {
+                showAlert('danger', 'Please select both user and property');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/user-properties/assign', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: parseInt(userId),
+                        property_id: parseInt(propertyId),
+                        is_primary: isPrimary
+                    })
+                });
+                
+                if (response.ok) {
+                    showAlert('success', 'Property assigned successfully!');
+                    document.getElementById('assign-property-form').reset();
+                    refreshUserProperties();
+                } else {
+                    const error = await response.json();
+                    showAlert('danger', `Failed to assign property: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error assigning property:', error);
+                showAlert('danger', 'Error assigning property');
+            }
+        }
+
+        async function removeUserPropertyAssignment(assignmentId) {
+            if (!authToken) return;
+            
+            if (!confirm('Are you sure you want to remove this property assignment?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/v1/user-properties/${assignmentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    showAlert('success', 'Property assignment removed successfully!');
+                    refreshUserProperties();
+                } else {
+                    const error = await response.json();
+                    showAlert('danger', `Failed to remove assignment: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error removing assignment:', error);
+                showAlert('danger', 'Error removing property assignment');
+            }
+        }
+
+        // Utility Functions
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

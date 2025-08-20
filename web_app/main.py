@@ -4,11 +4,11 @@ RMS Booking Chart Defragmenter - Web Application
 FastAPI-based web interface for managing defragmentation moves
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.requests import Request
 import uvicorn
 import os
@@ -22,10 +22,18 @@ logging.basicConfig(
 )
 
 from app.core.config import settings
+from app.core.websocket_manager import websocket_manager
+
+# Import all models to ensure they are registered with SQLAlchemy BEFORE creating the engine
+from app.models.user import User
+from app.models.property import Property
+from app.models.user_property import UserProperty
+from app.models.move_batch import MoveBatch
+from app.models.defrag_move import DefragMove
+
 from app.core.database import engine, Base
 from app.api.v1.api import api_router
 from app.core.security import create_access_token, get_current_user
-from app.models.user import User
 from app.schemas.auth import TokenResponse
 
 # Create database tables
@@ -52,10 +60,20 @@ templates = Jinja2Templates(directory="app/templates")
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Root endpoint - serves the main application page"""
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/")
+async def read_root():
+    """Serve the main application page"""
+    return FileResponse("app/templates/index.html")
+
+@app.get("/setup")
+async def read_setup():
+    """Serve the admin setup page"""
+    return FileResponse("app/templates/setup.html")
+
+@app.get("/move-history")
+async def read_move_history():
+    """Serve the move history page"""
+    return FileResponse("app/templates/move_history.html")
 
 @app.get("/health")
 async def health_check():
@@ -78,6 +96,31 @@ async def login(credentials: HTTPAuthorizationCredentials = Depends(security)):
 async def protected_route(current_user: User = Depends(get_current_user)):
     """Protected route example"""
     return {"message": f"Hello {current_user.username}, this is a protected route!"}
+
+@app.websocket("/ws/rms-progress/{property_code}")
+async def websocket_rms_progress(websocket: WebSocket, property_code: str):
+    """WebSocket endpoint for real-time RMS API progress updates"""
+    try:
+        # Connect the WebSocket
+        await websocket_manager.connect(websocket, property_code.upper())
+        
+        # Keep the connection alive and handle incoming messages
+        while True:
+            try:
+                # Wait for any message from the client (ping/pong for keep-alive)
+                data = await websocket.receive_text()
+                
+                # Handle ping messages
+                if data == "ping":
+                    await websocket.send_text("pong")
+                    
+            except WebSocketDisconnect:
+                websocket_manager.disconnect(websocket)
+                break
+                
+    except Exception as e:
+        logging.error(f"WebSocket error for {property_code}: {e}")
+        websocket_manager.disconnect(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(

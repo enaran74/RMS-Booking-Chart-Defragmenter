@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Move History - RMS Booking Chart Defragmenter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .history-filters {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .history-table {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.8em;
+        }
+        .date-range-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .date-range-inputs input {
+            max-width: 150px;
+        }
+        .pagination-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line me-2"></i>RMS Defragmenter
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a class="nav-link active" href="/move-history">
+                    <i class="fas fa-history me-1"></i>Move History
+                </a>
+                <a class="nav-link" href="#" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-history me-2"></i>Move History</h2>
+                    <button class="btn btn-outline-secondary" onclick="window.location.href='/'">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </button>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="history-filters">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="propertyFilter" class="form-label">Property</label>
+                            <select class="form-select" id="propertyFilter">
+                                <option value="">All Properties</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="statusFilter" class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="processed">Processed</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date Range</label>
+                            <div class="date-range-inputs">
+                                <input type="date" class="form-control" id="startDate">
+                                <span class="text-muted">to</span>
+                                <input type="date" class="form-control" id="endDate">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-primary w-100" onclick="searchMoveHistory()">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="history-table">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Search Results</h5>
+                                <div class="loading-spinner" id="loadingSpinner">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="historyResults">
+                                <div class="no-results">
+                                    <i class="fas fa-search fa-2x mb-3"></i>
+                                    <p>Use the filters above to search for move history</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-info" id="paginationInfo" style="display: none;">
+                    <div class="text-muted">
+                        Showing <span id="showingStart">0</span> to <span id="showingEnd">0</span> of <span id="totalCount">0</span> results
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm" id="prevPageBtn" onclick="previousPage()" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="nextPageBtn" onclick="nextPage()" disabled>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        let currentPage = 0;
+        let pageSize = 50;
+        let totalResults = 0;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!authToken) {
+                window.location.href = '/';
+                return;
+            }
+            
+            loadUserInfo();
+            loadUserProperties();
+            setDefaultDateRange();
+        });
+
+        // Load user information
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/v1/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    console.log('User loaded:', currentUser.username);
+                } else {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                localStorage.removeItem('authToken');
+                window.location.href = '/';
+            }
+        }
+
+        // Load user properties
+        async function loadUserProperties() {
+            try {
+                const response = await fetch('/api/v1/user-properties/my-properties', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const properties = await response.json();
+                    populatePropertyFilter(properties);
+                }
+            } catch (error) {
+                console.error('Error loading properties:', error);
+            }
+        }
+
+        // Populate property filter
+        function populatePropertyFilter(properties) {
+            const filter = document.getElementById('propertyFilter');
+            filter.innerHTML = '<option value="">All Properties</option>';
+            
+            properties.forEach(property => {
+                const option = document.createElement('option');
+                option.value = property.property_code;
+                option.textContent = property.property_name || property.property_code;
+                filter.appendChild(option);
+            });
+        }
+
+        // Set default date range (last 7 days)
+        function setDefaultDateRange() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7);
+            
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+        }
+
+        // Search move history
+        async function searchMoveHistory() {
+            currentPage = 0;
+            await performSearch();
+        }
+
+        // Perform search
+        async function performSearch() {
+            const propertyCode = document.getElementById('propertyFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            showLoading(true);
+
+            try {
+                const params = new URLSearchParams({
+                    limit: pageSize,
+                    offset: currentPage * pageSize
+                });
+
+                if (propertyCode) params.append('property_code', propertyCode);
+                if (status) params.append('status', status);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`/api/v1/defrag-moves/history?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayHistoryResults(data);
+                    updatePagination(data.total_count);
+                } else {
+                    const error = await response.json();
+                    showError(`Error loading history: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error searching history:', error);
+                showError('Error searching history. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Display history results
+        function displayHistoryResults(data) {
+            const container = document.getElementById('historyResults');
+            
+            if (!data.moves || data.moves.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                        <p>No moves found for the selected criteria</p>
+                        <small class="text-muted">Try adjusting your search filters</small>
+                    </div>
+                `;
+                return;
+            }
+
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Property</th>
+                                <th>From Unit</th>
+                                <th>To Unit</th>
+                                <th>Guest</th>
+                                <th>Importance</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                                <th>Analysis Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.moves.map(move => `
+                                <tr>
+                                    <td><strong>${move.property_code || 'N/A'}</strong></td>
+                                    <td>${move.move_data?.from_unit || 'N/A'}</td>
+                                    <td>${move.move_data?.to_unit || 'N/A'}</td>
+                                    <td>${move.move_data?.guest || 'N/A'}</td>
+                                    <td>
+                                        <span class="badge bg-${getStrategicImportanceColor(move.move_data?.strategic_importance)} status-badge">
+                                            ${move.move_data?.strategic_importance || 'N/A'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-${getScoreColor(move.move_data?.score)} status-badge">
+                                            ${move.move_data?.score || 'N/A'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-${getStatusColor(move)} status-badge">
+                                            ${getStatusText(move)}
+                                        </span>
+                                    </td>
+                                    <td>${formatDate(move.analysis_date)}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="showMoveDetails('${move.id}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+        }
+
+        // Update pagination
+        function updatePagination(totalCount) {
+            totalResults = totalCount;
+            const start = currentPage * pageSize + 1;
+            const end = Math.min((currentPage + 1) * pageSize, totalCount);
+            
+            document.getElementById('showingStart').textContent = start;
+            document.getElementById('showingEnd').textContent = end;
+            document.getElementById('totalCount').textContent = totalCount;
+            
+            document.getElementById('prevPageBtn').disabled = currentPage === 0;
+            document.getElementById('nextPageBtn').disabled = end >= totalCount;
+            
+            document.getElementById('paginationInfo').style.display = 'block';
+        }
+
+        // Navigation functions
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                performSearch();
+            }
+        }
+
+        function nextPage() {
+            const maxPage = Math.ceil(totalResults / pageSize) - 1;
+            if (currentPage < maxPage) {
+                currentPage++;
+                performSearch();
+            }
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('historyResults');
+            container.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        function getStrategicImportanceColor(importance) {
+            switch (importance?.toLowerCase()) {
+                case 'high': return 'danger';
+                case 'medium': return 'warning';
+                case 'low': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
+
+        function getStatusColor(move) {
+            if (move.is_processed) return 'success';
+            if (move.is_rejected) return 'danger';
+            return 'warning';
+        }
+
+        function getStatusText(move) {
+            if (move.is_processed) return 'Processed';
+            if (move.is_rejected) return 'Rejected';
+            return 'Pending';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function showMoveDetails(moveId) {
+            // TODO: Implement move details modal
+            alert(`Move details for ID: ${moveId} - Coming soon!`);
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

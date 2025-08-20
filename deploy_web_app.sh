@@ -6,7 +6,7 @@
 set -e
 
 # VPS Configuration - Can be overridden by environment variables for security
-VPS_IP="${VPS_IP:-45.124.54.185}"
+VPS_IP="${VPS_IP:-100.78.0.44}"
 VPS_USER="${VPS_USER:-enaran}"
 VPS_PASSWORD="${VPS_PASSWORD:-Configur8&1}"
 APP_DIR="/opt/defrag-app"
@@ -51,11 +51,48 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
                # Build and start the application
            echo "🏗️ Building and starting application..."
            cd /opt/defrag-app
-           docker-compose up -d --build
+           
+           # Check network connectivity before building
+           echo "🌐 Checking network connectivity..."
+           ping -c 3 deb.debian.org || echo "⚠️ Warning: Cannot reach deb.debian.org"
+           ping -c 3 8.8.8.8 || echo "⚠️ Warning: Cannot reach Google DNS"
+           
+           # Check Docker daemon
+           echo "🐳 Checking Docker status..."
+           docker --version
+           docker system info | grep "Server Version" || echo "⚠️ Warning: Docker daemon may not be running properly"
+           
+           # Build with timeout and verbose output
+           echo "📦 Building Docker image (this may take several minutes)..."
+           echo "🔍 Build progress will be shown in real-time..."
+           echo "⏰ Build timeout: 10 minutes"
+           echo "📋 Starting build at: $(date)"
+           
+           # Create build log file
+           BUILD_LOG="/opt/defrag-app/logs/build-$(date +%Y%m%d-%H%M%S).log"
+           mkdir -p /opt/defrag-app/logs
+           
+           # Use host network for build to avoid Docker networking issues
+           export DOCKER_BUILDKIT=1
+           timeout 600 docker-compose build --no-cache --progress=plain --build-arg BUILDKIT_INLINE_CACHE=1 web-app 2>&1 | tee "$BUILD_LOG" || {
+               echo "❌ Docker build failed or timed out after 10 minutes"
+               echo "📋 Checking for existing containers and cleaning up..."
+               docker-compose down --remove-orphans
+               docker system prune -f
+               echo "🔄 Retrying build without cache..."
+               RETRY_LOG="/opt/defrag-app/logs/build-retry-$(date +%Y%m%d-%H%M%S).log"
+               timeout 300 docker-compose build --no-cache --progress=plain --build-arg BUILDKIT_INLINE_CACHE=1 web-app 2>&1 | tee "$RETRY_LOG" || {
+                   echo "❌ Second build attempt failed. Exiting..."
+                   exit 1
+               }
+           }
+           
+           echo "🚀 Starting application..."
+           docker-compose up -d
            
            # Wait for application to start
            echo "⏳ Waiting for application to start..."
-           sleep 15
+           sleep 20
     
                # Check application status
            echo "🔍 Checking application status..."
@@ -64,8 +101,10 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
            
            # Run database migration
            echo "🗄️ Running database migration..."
-           # Note: migrate_admin_user.py was deleted as part of cleanup
-    # Additional migrations can be added here as needed
+           if [ -f migrate_user_properties.py ]; then
+               echo "🔄 Running user-property migration..."
+               docker exec defrag-web-app python migrate_user_properties.py
+           fi
     
     # Clean up temporary files
     rm -f /tmp/web_app.tar.gz
@@ -73,13 +112,13 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
     echo "✅ Deployment completed!"
     echo ""
     echo "🌐 Web application is now running on:"
-    echo "   http://45.124.54.185:8000"
+    echo "   http://100.78.0.44:8000"
     echo ""
     echo "📚 API documentation available at:"
-    echo "   http://45.124.54.185:8000/docs"
+    echo "   http://100.78.0.44:8000/docs"
     echo ""
     echo "🔍 Health check:"
-    echo "   http://45.124.54.185:8000/health"
+    echo "   http://100.78.0.44:8000/health"
     echo ""
     echo "📋 New features available:"
     echo "   - User profile editing with email addresses"
@@ -96,7 +135,7 @@ rm -f web_app.tar.gz
 echo "✅ Deployment script completed!"
 echo ""
 echo "📋 Next steps:"
-echo "1. Access the web application at http://45.124.54.185:8000"
+echo "1. Access the web application at http://100.78.0.44:8000"
 echo "2. Login with admin user (username: admin, password: admin)"
 echo "3. Test the new user management features:"
 echo "   - Edit profile and add email address"
