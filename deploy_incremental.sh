@@ -46,7 +46,6 @@ if [ "$FULL_DEPLOY" = true ]; then
 fi
 
 echo "📦 Creating incremental update package..."
-cd web_app
 
 # Create a package with updated files
 tar -czf incremental_update.tar.gz \
@@ -55,9 +54,7 @@ tar -czf incremental_update.tar.gz \
     --exclude='*.pyo' \
     defrag_analyzer.py \
     utils.py \
-    requirements.txt \
-    app/ \
-    main.py
+    web_app/
 
 echo "📤 Uploading incremental update to VPS..."
 sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no incremental_update.tar.gz ${VPS_USER}@${VPS_HOST}:${VPS_APP_DIR}/
@@ -80,11 +77,10 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOS
         echo '📋 Copying utils.py to container...'
         docker cp utils.py $CONTAINER_NAME:/app/
         
-        echo '📋 Copying main.py to container...'
-        docker cp main.py $CONTAINER_NAME:/app/
-        
-        echo '📋 Copying app directory to container...'
-        docker cp app/. $CONTAINER_NAME:/app/app/
+        echo '📋 Copying web app files to container...'
+        docker cp web_app/main.py $CONTAINER_NAME:/app/
+        docker cp web_app/app/. $CONTAINER_NAME:/app/app/
+        docker cp web_app/requirements.txt $CONTAINER_NAME:/app/
         
         if [ '$FILES_ONLY' != true ]; then
             echo '📦 Installing/updating Python dependencies...'

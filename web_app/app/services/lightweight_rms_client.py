@@ -557,7 +557,8 @@ class LightweightRMSClient:
                     "reason": suggestion.get('Reason', 'Defragmentation optimization'),
                     "reservation_id": str(suggestion.get('Reservation_No', '')),
                     "category": suggestion.get('Category', 'Unknown'),
-                    "nights_freed": suggestion.get('Nights_Freed', 1)
+                    "nights_freed": suggestion.get('Nights_Freed', 1),
+                    "sequential_order": suggestion.get('Sequential_Order', f"{idx + 1}")
                 }
                 
                 # DEBUG: Log the converted suggestion

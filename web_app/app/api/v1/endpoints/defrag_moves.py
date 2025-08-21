@@ -391,11 +391,28 @@ async def get_move_suggestions(
     for move_record in moves:
         if move_record.move_data and 'moves' in move_record.move_data:
             for individual_move in move_record.move_data['moves']:
-                # Add metadata to each individual move
-                individual_move['move_id'] = move_record.id
-                individual_move['batch_id'] = move_record.batch_id
-                individual_move['analysis_date'] = move_record.analysis_date.isoformat()
-                individual_moves.append(individual_move)
+                # Normalize field names for frontend consistency
+                normalized_move = {
+                    # Core move data with consistent field names
+                    'from_unit': individual_move.get('current_unit', individual_move.get('from_unit', '')),
+                    'to_unit': individual_move.get('target_unit', individual_move.get('to_unit', '')),
+                    'guest': individual_move.get('guest_name', individual_move.get('guest', '')),
+                    'reservation_id': individual_move.get('reservation_id', ''),
+                    'check_in': individual_move.get('check_in', ''),
+                    'check_out': individual_move.get('check_out', ''),
+                    'category': individual_move.get('category', 'Uncategorized'),
+                    'strategic_importance': individual_move.get('strategic_importance', 'Medium'),
+                    'score': individual_move.get('score', 0),
+                    'sequential_order': individual_move.get('sequential_order', ''),
+                    'reason': individual_move.get('reason', 'Defragmentation optimization'),
+                    'nights_freed': individual_move.get('nights_freed', 1),
+                    # Metadata
+                    'move_id': move_record.id,
+                    'batch_id': move_record.batch_id,
+                    'analysis_date': move_record.analysis_date.isoformat(),
+                    'id': f"{move_record.id}_{len(individual_moves)}"  # Unique ID for frontend
+                }
+                individual_moves.append(normalized_move)
     
     logger.info(f"Extracted {len(individual_moves)} individual move suggestions for {property_code}")
     

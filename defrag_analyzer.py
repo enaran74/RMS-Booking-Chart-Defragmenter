@@ -36,7 +36,16 @@ class DefragmentationAnalyzer:
         
         self.logger.info(f"Starting defragmentation analysis: {len(reservations_df)} reservations, {len(inventory_df)} units")
         
-        suggestions = self._suggest_moves(reservations_df, inventory_df, constraint_start_date, constraint_end_date)
+        # Calculate category strategic importance first
+        category_importance = self.calculate_category_strategic_importance(
+            reservations_df, inventory_df, constraint_start_date, constraint_end_date
+        )
+        
+        self.logger.info(f"DEBUG - Category Strategic Importance Scores: {category_importance}")
+        for category, score in category_importance.items():
+            print(f"📊 Category '{category}': Strategic Importance = {score:.3f}")
+        
+        suggestions = self._suggest_moves(reservations_df, inventory_df, constraint_start_date, constraint_end_date, category_importance)
         
         duration = time.time() - start_time
         self.logger.log_performance_metric("Defragmentation analysis", duration)
@@ -51,7 +60,7 @@ class DefragmentationAnalyzer:
         return suggestions
     
     def _suggest_moves(self, reservations_df: pd.DataFrame, inventory_df: pd.DataFrame, 
-                      constraint_start_date, constraint_end_date) -> List[Dict]:
+                      constraint_start_date, constraint_end_date, category_importance: Dict[str, float] = None) -> List[Dict]:
         """Core defragmentation algorithm"""
         start_time = time.time()
         self.logger.log_function_entry("_suggest_moves")
@@ -159,6 +168,23 @@ class DefragmentationAnalyzer:
                     # Increment category counter
                     category_move_counters[category] += 1
                     
+                    # Calculate strategic importance based on category importance and improvement score
+                    improvement_score = best_move['improvement']
+                    category_strategic_score = category_importance.get(category, 0.0) if category_importance else 0.0
+                    
+                    # Combine category strategic importance with individual move improvement
+                    # Category importance acts as a multiplier for move significance
+                    combined_score = improvement_score * (1 + category_strategic_score)
+                    
+                    self.logger.info(f"DEBUG - Strategic calculation for {res_info['res_no']}: improvement={improvement_score:.3f}, category_strategic={category_strategic_score:.3f}, combined={combined_score:.3f}")
+                    
+                    if combined_score >= 0.6 or category_strategic_score >= 0.7:
+                        strategic_importance = "High"
+                    elif combined_score >= 0.3 or category_strategic_score >= 0.4:
+                        strategic_importance = "Medium"
+                    else:
+                        strategic_importance = "Low"
+                    
                     # Create suggestion record without sequential order (will be assigned later)
                     suggestion = {
                         'Reservation_No': res_info['res_no'],
@@ -171,7 +197,9 @@ class DefragmentationAnalyzer:
                         'Depart_Date': res_info['depart'].strftime('%d/%m/%Y'),
                         'Nights': res_info['nights'],
                         'Improvement_Score': round(best_move['improvement'], 2),
+                        'Strategic_Importance': strategic_importance,
                         'Sequential_Order': '',  # Will be assigned after sorting
+                        'Nights_Freed': best_move['nights_freed'],  # Add as separate field
                         'Reason': f'Frees up {best_move["nights_freed"]} contiguous nights in {res_info["current_unit"]}'
                     }
                     all_moves.append(suggestion)
@@ -450,17 +478,24 @@ class DefragmentationAnalyzer:
         arrive_date = res_info['arrive']
         depart_date = res_info['depart']
         
+        self.logger.info(f"DEBUG - Calculating nights freed for {res_info['res_no']} in {current_unit}, {arrive_date} to {depart_date}")
+        
         # Remove the reservation temporarily
         temp_occupancy = occupancy.copy()
         current_date = arrive_date
+        freed_dates = []
         while current_date < depart_date and current_date <= constraint_end_date:
             key = (current_unit, current_date)
             if key in temp_occupancy:
                 del temp_occupancy[key]
+                freed_dates.append(current_date)
             current_date += timedelta(days=1)
+        
+        self.logger.info(f"DEBUG - Freed {len(freed_dates)} nights: {freed_dates}")
         
         # Find contiguous periods
         available_periods = self._find_contiguous_availability(current_unit, dates, temp_occupancy)
+        self.logger.info(f"DEBUG - Available periods after freeing: {available_periods}")
         
         # Find the period that would include the freed dates
         max_freed = 0
@@ -478,8 +513,10 @@ class DefragmentationAnalyzer:
                 current += timedelta(days=1)
             
             if reservation_dates.intersection(period_dates):
+                self.logger.info(f"DEBUG - Found matching period: {start_date} to {end_date}, length {period_length}")
                 max_freed = max(max_freed, period_length)
         
+        self.logger.info(f"DEBUG - Final max_freed: {max_freed}")
         return max_freed
     
     def _validate_move_improves_contiguous_availability(self, res_info: Dict, current_unit: str, target_unit: str,

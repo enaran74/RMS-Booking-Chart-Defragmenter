@@ -55,7 +55,7 @@ security = HTTPBearer()
 templates = Jinja2Templates(directory="app/templates")
 
 # Mount static files
-# app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
@@ -83,6 +83,18 @@ async def health_check():
         "service": "RMS Booking Chart Defragmenter Web App",
         "version": "1.0.0"
     }
+
+@app.get("/static/images/dhp_logo_white.svg")
+async def serve_logo():
+    """Serve the DHP logo directly"""
+    logo_path = "app/static/images/dhp_logo_white.svg"
+    return FileResponse(logo_path, media_type="image/svg+xml")
+
+@app.get("/static/images/dhp_circle_logo.svg")
+async def serve_circle_logo():
+    """Serve the DHP circular logo directly for favicon"""
+    logo_path = "app/static/images/dhp_circle_logo.svg"
+    return FileResponse(logo_path, media_type="image/svg+xml")
 
 @app.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: HTTPAuthorizationCredentials = Depends(security)):
