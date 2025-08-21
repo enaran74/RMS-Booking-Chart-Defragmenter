@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Dict, Any
 import logging
+import re
 
 from app.core.database import get_db
 from app.models.user import User
@@ -16,6 +17,57 @@ from app.core.security import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def validate_table_name(table_name: str) -> bool:
+    """
+    Validate table name to prevent SQL injection.
+    Only allow alphanumeric characters, underscores, and specific patterns.
+    """
+    # Allow only alphanumeric characters, underscores, and hyphens
+    # Maximum length of 64 characters (PostgreSQL limit)
+    pattern = r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$'
+    return bool(re.match(pattern, table_name))
+
+
+def get_valid_table_names(db: Session) -> List[str]:
+    """Get list of valid table names from database to validate against."""
+    try:
+        table_query = text("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            ORDER BY table_name
+        """)
+        table_result = db.execute(table_query)
+        return [row[0] for row in table_result]
+    except Exception as e:
+        logger.error(f"Error getting table names: {e}")
+        return []
+
+
+def secure_table_operation(db: Session, table_name: str, operation: str) -> str:
+    """
+    Securely validate table name and return quoted identifier for SQL operations.
+    Raises HTTPException if table name is invalid.
+    """
+    # Basic validation
+    if not validate_table_name(table_name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid table name format: {table_name}"
+        )
+    
+    # Check if table exists in database
+    valid_tables = get_valid_table_names(db)
+    if table_name not in valid_tables:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Table '{table_name}' not found"
+        )
+    
+    # Return quoted identifier to prevent injection
+    return f'"{table_name}"'
 
 
 @router.get("/database/tables")
@@ -56,6 +108,11 @@ async def get_database_tables(
         
         for table_name in table_names:
             try:
+                # Validate table name for security
+                if not validate_table_name(table_name):
+                    logger.warning(f"Skipping invalid table name: {table_name}")
+                    continue
+                
                 # Get column information using information_schema
                 try:
                     column_query = text("""
@@ -72,9 +129,11 @@ async def get_database_tables(
                     column_names = []
                     columns = []
                 
-                # Get record count
+                # Get record count using secure table identifier
                 try:
-                    count_result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+                    secure_table = f'"{table_name}"'  # Quoted identifier for security
+                    count_query = text(f"SELECT COUNT(*) FROM {secure_table}")
+                    count_result = db.execute(count_query)
                     record_count = count_result.scalar()
                 except Exception as count_error:
                     logger.warning(f"Error counting records in {table_name}: {count_error}")
@@ -84,7 +143,9 @@ async def get_database_tables(
                 sample_records = []
                 if record_count > 0:
                     try:
-                        sample_result = db.execute(text(f"SELECT * FROM {table_name} LIMIT 5"))
+                        secure_table = f'"{table_name}"'  # Quoted identifier for security
+                        sample_query = text(f"SELECT * FROM {secure_table} LIMIT 5")
+                        sample_result = db.execute(sample_query)
                         # Convert to list of dicts more safely
                         sample_records = []
                         for row in sample_result:
@@ -150,21 +211,11 @@ async def get_table_records(
         )
     
     try:
-        # Validate table name to prevent SQL injection
-        table_query = text("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_name = :table_name
-        """)
-        table_result = db.execute(table_query, {"table_name": table_name})
-        if not table_result.fetchone():
-            raise HTTPException(
-                status_code=404,
-                detail=f"Table '{table_name}' not found"
-            )
+        # Validate and secure table name to prevent SQL injection
+        secure_table = secure_table_operation(db, table_name, "query")
         
         # Get total record count
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")
+        count_query = text(f"SELECT COUNT(*) FROM {secure_table}")
         count_result = db.execute(count_query)
         total_count = count_result.scalar()
         
@@ -197,7 +248,7 @@ async def get_table_records(
         if offset < 0:
             offset = 0
             
-        query = text(f"SELECT * FROM {table_name} {order_clause} LIMIT :limit OFFSET :offset")
+        query = text(f"SELECT * FROM {secure_table} {order_clause} LIMIT :limit OFFSET :offset")
         result = db.execute(query, {"limit": limit, "offset": offset})
         
         # Convert to list of dicts safely
