@@ -1,28 +1,38 @@
 #!/bin/bash
-# BookingChartDefragmenter Installation Script for Debian 12 Linux
-# This script installs and configures the BookingChartDefragmenter on a Debian 12 server
+# ==============================================================================
+# RMS Booking Chart Defragmenter - Installation Script
+# ==============================================================================
+# One-command installation script that downloads and deploys the complete system
+# Supports Linux, macOS, and Windows (WSL)
 
-set -e  # Exit on any error
+set -e
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="/opt/bookingchart-defragmenter"
-SERVICE_USER="defrag"
-SERVICE_GROUP="defrag"
-LOG_DIR="/var/log/bookingchart-defragmenter"
-CONFIG_DIR="/etc/bookingchart-defragmenter"
-
-echo -e "${BLUE}🚀 BookingChartDefragmenter Installation for Debian 12 Linux${NC}"
-echo "=================================================="
+REPO_URL="https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git"
+REPO_BRANCH="main"
+INSTALL_DIR="$HOME/rms-defragmenter"
+TEMP_DIR="/tmp/rms-defrag-install-$$"
+CONTAINER_NAME="defrag-app"
+COMPOSE_PROJECT="rms-defragmenter"
 
 # Function to print colored output
+print_header() {
+    echo ""
+    echo -e "${CYAN}================================================================================================${NC}"
+    echo -e "${CYAN}$1${NC}"
+    echo -e "${CYAN}================================================================================================${NC}"
+    echo ""
+}
+
 print_status() {
     echo -e "${GREEN}✅ $1${NC}"
 }
@@ -35,413 +45,305 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   print_error "This script must be run as root (use sudo)"
-   exit 1
+print_info() {
+    echo -e "${BLUE}ℹ️  $1${NC}"
+}
+
+print_step() {
+    echo -e "${PURPLE}📋 $1${NC}"
+}
+
+# Print welcome message
+print_header "RMS BOOKING CHART DEFRAGMENTER - INSTALLATION"
+echo -e "${BLUE}🚀 Welcome to the RMS Booking Chart Defragmenter installer!${NC}"
+echo ""
+echo "This script will install the complete system including:"
+echo "  ✨ Original CLI defragmentation analyzer with cron scheduling"
+echo "  ✨ Modern web interface for move management"
+echo "  ✨ PostgreSQL database for data persistence"
+echo "  ✨ Docker-based deployment for easy management"
+echo ""
+
+# Check operating system
+print_step "Detecting operating system..."
+OS="unknown"
+ARCH=$(uname -m)
+
+case "$(uname -s)" in
+    Linux*)     OS="linux" ;;
+    Darwin*)    OS="macos" ;;
+    CYGWIN*|MINGW*|MSYS*) OS="windows" ;;
+    *)          OS="unknown" ;;
+esac
+
+print_info "Detected OS: ${OS} (${ARCH})"
+
+if [ "$OS" = "unknown" ]; then
+    print_error "Unsupported operating system"
+    exit 1
 fi
 
-# Update system packages
-print_status "Updating system packages..."
-apt update && apt upgrade -y
-
-# Install system dependencies
-print_status "Installing system dependencies..."
-apt install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev \
-    build-essential \
-    git \
-    curl \
-    wget \
-    unzip \
-    cron \
-    systemd \
-    logrotate
-
-# Create service user and group
-print_status "Creating service user and group..."
-if ! getent group $SERVICE_GROUP > /dev/null 2>&1; then
-    groupadd $SERVICE_GROUP
+# Check if running as root (not recommended)
+if [ "$OS" = "linux" ] && [ "$EUID" -eq 0 ]; then
+    print_warning "Running as root is not recommended"
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
 fi
 
-if ! getent passwd $SERVICE_USER > /dev/null 2>&1; then
-    useradd -r -g $SERVICE_GROUP -s /bin/bash -d $INSTALL_DIR $SERVICE_USER
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Check prerequisites
+print_step "Checking prerequisites..."
+
+# Check for git
+if ! command_exists git; then
+    print_error "Git is not installed"
+    case "$OS" in
+        linux)
+            print_info "Install with: sudo apt update && sudo apt install git (Debian/Ubuntu)"
+            print_info "Or: sudo yum install git (CentOS/RHEL)"
+            ;;
+        macos)
+            print_info "Install with: brew install git"
+            print_info "Or: Install Xcode Command Line Tools"
+            ;;
+        windows)
+            print_info "Install Git for Windows from: https://git-scm.com/download/win"
+            ;;
+    esac
+    exit 1
 fi
+print_status "Git is available"
+
+# Check for Docker
+if ! command_exists docker; then
+    print_error "Docker is not installed"
+    case "$OS" in
+        linux)
+            print_info "Install with: curl -fsSL https://get.docker.com | sh"
+            ;;
+        macos)
+            print_info "Install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+            ;;
+        windows)
+            print_info "Install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+            ;;
+    esac
+    exit 1
+fi
+print_status "Docker is available"
+
+# Check for Docker Compose
+if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; then
+    print_error "Docker Compose is not installed"
+    print_info "Install Docker Compose from: https://docs.docker.com/compose/install/"
+    exit 1
+fi
+print_status "Docker Compose is available"
+
+# Determine Docker Compose command
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
+
+# Check Docker daemon
+if ! docker info >/dev/null 2>&1; then
+    print_error "Docker daemon is not running"
+    case "$OS" in
+        linux)
+            print_info "Start with: sudo systemctl start docker"
+            ;;
+        macos|windows)
+            print_info "Start Docker Desktop application"
+            ;;
+    esac
+    exit 1
+fi
+print_status "Docker daemon is running"
+
+# Create temporary directory
+print_step "Creating temporary directory..."
+mkdir -p "$TEMP_DIR"
+print_status "Temporary directory created: $TEMP_DIR"
+
+# Cleanup function
+cleanup() {
+    print_info "Cleaning up temporary files..."
+    rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT
+
+# Clone repository
+print_step "Downloading latest code from GitHub..."
+cd "$TEMP_DIR"
+git clone --branch "$REPO_BRANCH" "$REPO_URL" rms-defragmenter
+print_status "Repository cloned successfully"
 
 # Create installation directory
-print_status "Creating installation directory..."
-mkdir -p $INSTALL_DIR
-mkdir -p $LOG_DIR
-mkdir -p $CONFIG_DIR
-
-# Copy application files
-print_status "Copying application files..."
-cp -r $SCRIPT_DIR/* $INSTALL_DIR/
-chown -R $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR
-chmod -R 755 $INSTALL_DIR
-
-# Create Python virtual environment
-print_status "Creating Python virtual environment..."
-cd $INSTALL_DIR
-python3 -m venv venv
-source venv/bin/activate
-
-# Install Python dependencies
-print_status "Installing Python dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Create log directory with proper permissions
-print_status "Setting up logging..."
-mkdir -p $LOG_DIR
-chown -R $SERVICE_USER:$SERVICE_GROUP $LOG_DIR
-chmod -R 755 $LOG_DIR
-
-# Create logrotate configuration
-cat > /etc/logrotate.d/bookingchart-defragmenter << EOF
-$LOG_DIR/*.log {
-    daily
-    missingok
-    rotate 30
-    compress
-    delaycompress
-    notifempty
-    create 644 $SERVICE_USER $SERVICE_GROUP
-    postrotate
-        systemctl reload bookingchart-defragmenter.service > /dev/null 2>&1 || true
-    endscript
-}
-EOF
-
-# Create systemd service file
-print_status "Creating systemd service..."
-cat > /etc/systemd/system/bookingchart-defragmenter.service << EOF
-[Unit]
-Description=BookingChartDefragmenter Service
-After=network.target
-
-[Service]
-Type=simple
-User=$SERVICE_USER
-Group=$SERVICE_GROUP
-WorkingDirectory=$INSTALL_DIR
-Environment=PATH=$INSTALL_DIR/venv/bin
-EnvironmentFile=/etc/bookingchart-defragmenter/config.env
-ExecStart=$INSTALL_DIR/service_wrapper.sh
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Create configuration file template
-print_status "Creating configuration template..."
-cat > $CONFIG_DIR/config.env << EOF
-# BookingChartDefragmenter Configuration
-# Copy this file to config.env and update with your credentials
-
-# RMS API Credentials
-AGENT_ID=your_agent_id_here
-AGENT_PASSWORD=your_agent_password_here
-CLIENT_ID=your_client_id_here
-CLIENT_PASSWORD=your_client_password_here
-
-# Analysis Configuration
-TARGET_PROPERTIES=ALL
-ENABLE_EMAILS=false
-SEND_CONSOLIDATED_EMAIL=false
-CONSOLIDATED_EMAIL_RECIPIENT=operations@discoveryparks.com.au
-USE_TRAINING_DB=false
-
-# Email Configuration (if enabled)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SENDER_EMAIL=***REMOVED***
-SENDER_DISPLAY_NAME=DHP Systems
-APP_PASSWORD=your_app_password_here
-
-# Logging Configuration
-LOG_LEVEL=INFO
-LOG_FILE=$LOG_DIR/defrag_analyzer.log
-
-# Output Configuration
-OUTPUT_DIR=$INSTALL_DIR/output
-EOF
-
-chown $SERVICE_USER:$SERVICE_GROUP $CONFIG_DIR/config.env
-chmod 600 $CONFIG_DIR/config.env
-
-# Create output directory
-mkdir -p $INSTALL_DIR/output
-chown -R $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/output
-chmod -R 755 $INSTALL_DIR/output
-
-# Create wrapper script
-print_status "Creating wrapper script..."
-cat > $INSTALL_DIR/run_defragmentation.sh << 'EOF'
-#!/bin/bash
-# Wrapper script for BookingChartDefragmenter
-
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="/etc/bookingchart-defragmenter/config.env"
-
-# Load configuration
-if [ -f "$CONFIG_FILE" ]; then
-    echo "Loading configuration from: $CONFIG_FILE"
-    # Read and export variables manually to handle spaces in values
-    while IFS='=' read -r key value; do
-        # Skip comments and empty lines
-        [[ $key =~ ^[[:space:]]*# ]] && continue
-        [[ -z $key ]] && continue
-        
-        # Remove leading/trailing whitespace
-        key=$(echo "$key" | xargs)
-        value=$(echo "$value" | xargs)
-        
-        # Export the variable
-        export "$key=$value"
-        echo "Loaded: $key"
-    done < "$CONFIG_FILE"
-else
-    echo "Configuration file not found: $CONFIG_FILE"
-    exit 1
-fi
-
-# Activate virtual environment
-source "$SCRIPT_DIR/venv/bin/activate"
-
-# Build command arguments
-ARGS="--agent-id $AGENT_ID --agent-password $AGENT_PASSWORD --client-id $CLIENT_ID --client-password $CLIENT_PASSWORD"
-
-if [ "$TARGET_PROPERTIES" != "ALL" ]; then
-    ARGS="$ARGS -p $TARGET_PROPERTIES"
-else
-    ARGS="$ARGS -p ALL"
-fi
-
-if [ "$ENABLE_EMAILS" = "true" ]; then
-    ARGS="$ARGS -e"
-fi
-
-if [ "$USE_TRAINING_DB" = "true" ]; then
-    ARGS="$ARGS -t"
-fi
-
-echo "Running with arguments: $ARGS"
-
-# Run the defragmentation analysis
-cd "$SCRIPT_DIR"
-python3 start.py $ARGS
-EOF
-
-chmod +x $INSTALL_DIR/run_defragmentation.sh
-
-# Create cron job for automated runs
-print_status "Setting up cron job..."
-CRON_JOB="0 2 * * * $INSTALL_DIR/run_defragmentation.sh >> $LOG_DIR/cron.log 2>&1"
-(crontab -u $SERVICE_USER -l 2>/dev/null; echo "$CRON_JOB") | crontab -u $SERVICE_USER -
-
-# Reload systemd and enable service
-print_status "Configuring systemd service..."
-systemctl daemon-reload
-systemctl enable bookingchart-defragmenter.service
-
-# Set up firewall (if ufw is available)
-if command -v ufw >/dev/null 2>&1; then
-    print_status "Configuring firewall..."
-    ufw allow out 587/tcp  # SMTP
-    ufw allow out 443/tcp  # HTTPS for RMS API
-    ufw allow out 80/tcp   # HTTP for RMS API
-fi
-
-# Create health check script
-print_status "Creating health check script..."
-cat > $INSTALL_DIR/health_check.sh << 'EOF'
-#!/bin/bash
-# Health check script for BookingChartDefragmenter
-
-LOG_FILE="/var/log/bookingchart-defragmenter/defrag_analyzer.log"
-SERVICE_NAME="bookingchart-defragmenter"
-
-# Check if service is running
-if systemctl is-active --quiet $SERVICE_NAME; then
-    echo "✅ Service $SERVICE_NAME is running"
-else
-    echo "❌ Service $SERVICE_NAME is not running"
-    exit 1
-fi
-
-# Check if log file exists and is recent
-if [ -f "$LOG_FILE" ]; then
-    # Check if log file was modified in the last 24 hours
-    if [ $(find "$LOG_FILE" -mtime -1 | wc -l) -gt 0 ]; then
-        echo "✅ Log file is recent"
+print_step "Setting up installation directory..."
+if [ -d "$INSTALL_DIR" ]; then
+    print_warning "Installation directory already exists: $INSTALL_DIR"
+    read -p "Remove existing installation? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Stop existing containers
+        cd "$INSTALL_DIR" 2>/dev/null && {
+            print_info "Stopping existing containers..."
+            $DOCKER_COMPOSE -p "$COMPOSE_PROJECT" down --remove-orphans || true
+        }
+        rm -rf "$INSTALL_DIR"
+        print_status "Existing installation removed"
     else
-        echo "⚠️  Log file is older than 24 hours"
+        print_error "Installation aborted"
+        exit 1
     fi
+fi
+
+mkdir -p "$INSTALL_DIR"
+print_status "Installation directory created: $INSTALL_DIR"
+
+# Copy files to installation directory
+print_step "Installing application files..."
+cp -r "$TEMP_DIR/rms-defragmenter/"* "$INSTALL_DIR/"
+print_status "Application files installed"
+
+# Set up configuration
+cd "$INSTALL_DIR"
+print_step "Setting up configuration..."
+
+# Use configuration files
+if [ -f "env.example" ]; then
+    cp env.example .env
+    print_status "Environment configuration template created"
 else
-    echo "❌ Log file not found"
+    print_error "Configuration template not found"
     exit 1
 fi
 
-# Check disk space
-DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-if [ "$DISK_USAGE" -lt 90 ]; then
-    echo "✅ Disk usage is acceptable: ${DISK_USAGE}%"
-else
-    echo "⚠️  Disk usage is high: ${DISK_USAGE}%"
-fi
-
-echo "✅ Health check completed successfully"
-EOF
-
-chmod +x $INSTALL_DIR/health_check.sh
-
-# Create uninstall script
-print_status "Creating uninstall script..."
-cat > $INSTALL_DIR/uninstall.sh << 'EOF'
-#!/bin/bash
-# Uninstall script for BookingChartDefragmenter
-
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
-
-print_status() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
-
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   print_error "This script must be run as root (use sudo)"
-   exit 1
-fi
-
-print_status "Stopping and disabling service..."
-systemctl stop bookingchart-defragmenter.service || true
-systemctl disable bookingchart-defragmenter.service || true
-
-print_status "Removing systemd service file..."
-rm -f /etc/systemd/system/bookingchart-defragmenter.service
-
-print_status "Removing logrotate configuration..."
-rm -f /etc/logrotate.d/bookingchart-defragmenter
-
-print_status "Removing cron job..."
-crontab -u defrag -l 2>/dev/null | grep -v "run_defragmentation.sh" | crontab -u defrag - || true
-
-print_status "Removing installation files..."
-rm -rf /opt/bookingchart-defragmenter
-
-print_status "Removing log directory..."
-rm -rf /var/log/bookingchart-defragmenter
-
-print_status "Removing configuration directory..."
-rm -rf /etc/bookingchart-defragmenter
-
-print_status "Removing service user and group..."
-userdel defrag 2>/dev/null || true
-groupdel defrag 2>/dev/null || true
-
-print_status "Reloading systemd..."
-systemctl daemon-reload
-
-print_status "Uninstallation completed successfully!"
-EOF
-
-chmod +x $INSTALL_DIR/uninstall.sh
-
-# Final setup
-print_status "Finalizing installation..."
+# Create data directories
+print_step "Creating data directories..."
+mkdir -p logs output backups config
+print_status "Data directories created"
 
 # Set proper permissions
-chown -R $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR
-chmod -R 755 $INSTALL_DIR
-chmod 600 $INSTALL_DIR/uninstall.sh
+if [ "$OS" = "linux" ]; then
+    # Ensure current user owns the installation
+    chown -R "$USER:$USER" "$INSTALL_DIR" 2>/dev/null || {
+        print_warning "Could not set ownership - you may need to run: sudo chown -R $USER:$USER $INSTALL_DIR"
+    }
+fi
 
-# Create README for Linux
-cat > $INSTALL_DIR/README.md << EOF
-# BookingChartDefragmenter for Linux
+# Create convenience scripts
+print_step "Creating management scripts..."
 
-## Installation Complete
-
-The BookingChartDefragmenter has been successfully installed on your Linux server.
-
-## Quick Start
-
-1. **Configure the application**:
-   \`\`\`bash
-   sudo nano /etc/bookingchart-defragmenter/config.env
-   \`\`\`
-
-2. **Start the service**:
-   \`\`\`bash
-   sudo systemctl start bookingchart-defragmenter.service
-   sudo systemctl enable bookingchart-defragmenter.service
-   \`\`\`
-
-3. **Run health check**:
-   \`\`\`bash
-   sudo /opt/bookingchart-defragmenter/health_check.sh
-   \`\`\`
-
-## Service Management
-
-\`\`\`bash
-# Start/stop/restart service
-sudo /opt/bookingchart-defragmenter/manage.sh start
-sudo /opt/bookingchart-defragmenter/manage.sh stop
-sudo /opt/bookingchart-defragmenter/manage.sh restart
-
-# Check status and logs
-sudo /opt/bookingchart-defragmenter/manage.sh status
-sudo /opt/bookingchart-defragmenter/manage.sh logs
-
-# Run analysis manually
-sudo /opt/bookingchart-defragmenter/manage.sh run
-
-# Update from GitHub
-sudo /opt/bookingchart-defragmenter/manage.sh update
-\`\`\`
-
-## Automated Execution
-
-The system runs automatically at 2:00 AM daily via cron.
-
-## Documentation
-
-For complete documentation, visit: https://github.com/enaran74/RMS-Booking-Chart-Defragmenter
-
-## Support
-
-For issues or questions, check the logs and ensure the configuration is correct.
+# Create start script
+cat > start.sh << 'EOF'
+#!/bin/bash
+echo "🚀 Starting RMS Defragmenter..."
+docker compose -p rms-defragmenter up -d
+echo "✅ System started!"
+echo "🌐 Web Interface: http://localhost:8000"
+echo "📊 Health Check: http://localhost:8000/health"
+echo "📖 API Docs: http://localhost:8000/docs"
 EOF
 
-print_status "Installation completed successfully!"
+# Create stop script
+cat > stop.sh << 'EOF'
+#!/bin/bash
+echo "🛑 Stopping RMS Defragmenter..."
+docker compose -p rms-defragmenter down
+echo "✅ System stopped!"
+EOF
+
+# Create logs script
+cat > logs.sh << 'EOF'
+#!/bin/bash
+echo "📋 Showing logs (Ctrl+C to exit)..."
+docker compose -p rms-defragmenter logs -f
+EOF
+
+# Create update script
+cat > update.sh << 'EOF'
+#!/bin/bash
+set -e
+echo "🔄 Updating RMS Defragmenter..."
+
+# Backup current .env
+cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+
+# Pull latest changes
+git pull origin main
+
+# Rebuild and restart
+docker compose -p rms-defragmenter down
+docker compose -p rms-defragmenter build --no-cache
+docker compose -p rms-defragmenter up -d
+
+echo "✅ Update completed!"
+echo "🌐 Web Interface: http://localhost:8000"
+EOF
+
+# Create status script
+cat > status.sh << 'EOF'
+#!/bin/bash
+echo "📊 RMS Defragmenter Status:"
 echo ""
-echo -e "${BLUE}📋 Next Steps:${NC}"
-echo "1. Edit the configuration file: sudo nano /etc/bookingchart-defragmenter/config.env"
-echo "2. Update your RMS API credentials"
-echo "3. Start the service: sudo systemctl start bookingchart-defragmenter.service"
-echo "4. Check the status: sudo systemctl status bookingchart-defragmenter.service"
+docker compose -p rms-defragmenter ps
 echo ""
-echo -e "${BLUE}📚 Documentation:${NC}"
-echo "See /opt/bookingchart-defragmenter/README.md for local usage instructions"
+echo "🌐 Web Interface: http://localhost:8000"
+echo "📊 Health Check: http://localhost:8000/health"
+echo "📖 API Docs: http://localhost:8000/docs"
+EOF
+
+# Make scripts executable
+chmod +x *.sh
+print_status "Management scripts created"
+
+# Configuration guide
+print_header "CONFIGURATION REQUIRED"
+echo -e "${YELLOW}📝 Before starting the system, you need to configure your RMS credentials:${NC}"
 echo ""
-echo -e "${BLUE}🔧 Health Check:${NC}"
-echo "Run: sudo /opt/bookingchart-defragmenter/health_check.sh"
+echo "1. Edit the configuration file:"
+echo -e "   ${CYAN}nano .env${NC}"
+echo ""
+echo "2. Update the following required variables:"
+echo -e "   ${YELLOW}AGENT_ID=${NC}your_agent_id"
+echo -e "   ${YELLOW}AGENT_PASSWORD=${NC}your_agent_password"
+echo -e "   ${YELLOW}CLIENT_ID=${NC}your_client_id"
+echo -e "   ${YELLOW}CLIENT_PASSWORD=${NC}your_client_password"
+echo ""
+echo "3. Optional: Configure email notifications, database passwords, etc."
+echo ""
+
+# Installation complete
+print_header "INSTALLATION COMPLETE"
+print_status "RMS Booking Chart Defragmenter installed successfully!"
+echo ""
+echo -e "${BLUE}📁 Installation directory:${NC} $INSTALL_DIR"
+echo -e "${BLUE}🔧 Configuration file:${NC} $INSTALL_DIR/.env"
+echo ""
+echo -e "${CYAN}Next steps:${NC}"
+echo "1. Configure your RMS credentials: ${CYAN}cd $INSTALL_DIR && nano .env${NC}"
+echo "2. Start the system: ${CYAN}./start.sh${NC}"
+echo "3. Open web interface: ${CYAN}http://localhost:8000${NC}"
+echo ""
+echo -e "${CYAN}Management commands:${NC}"
+echo "  ${GREEN}./start.sh${NC}   - Start the system"
+echo "  ${GREEN}./stop.sh${NC}    - Stop the system"
+echo "  ${GREEN}./status.sh${NC}  - Check system status"
+echo "  ${GREEN}./logs.sh${NC}    - View system logs"
+echo "  ${GREEN}./update.sh${NC}  - Update to latest version"
+echo ""
+echo -e "${BLUE}🎉 Enjoy your unified RMS Defragmentation system!${NC}"
+echo ""
+print_info "Default login credentials: username=admin, password=admin123"
+print_warning "Change default passwords in production!"
+echo ""

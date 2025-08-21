@@ -1,39 +1,67 @@
-# BookingChartDefragmenter Python Dependencies
-# For Debian 12 Linux Server
+# ==============================================================================
+# RMS Booking Chart Defragmenter - Requirements
+# ==============================================================================
+# This file contains all dependencies for both the CLI application
+# and the web interface
 
-# Core data processing
+# Core Data Processing (Original App)
 pandas>=1.5.0
 numpy>=1.21.0
-
-# HTTP requests for RMS API
+openpyxl>=3.0.9
 requests>=2.28.0
 
-# Excel file generation
-openpyxl>=3.0.0
+# Web Framework (Web App)
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+jinja2>=3.1.2
+python-multipart>=0.0.6
 
-# Email functionality
-# Note: smtplib and email modules are part of Python standard library
+# Database (Web App)
+sqlalchemy>=2.0.23
+psycopg2-binary>=2.9.7
+alembic>=1.12.1
 
-# Date/time handling
-# Note: datetime module is part of Python standard library
+# Authentication & Security (Web App)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1
 
-# Type hints
-# Note: typing module is part of Python standard library
+# HTTP Client & API
+httpx>=0.25.2
+aiohttp>=3.9.1
 
-# Logging
-# Note: logging module is part of Python standard library
+# Date and Time Handling
+python-dateutil>=2.8.2
+pytz>=2023.3
 
-# Collections
-# Note: collections module is part of Python standard library
+# Email Support (Original App)
+smtplib2>=0.2.1
 
-# OS operations
-# Note: os module is part of Python standard library
+# File Format Support
+xlsxwriter>=3.1.9
+python-docx>=0.8.11
 
-# System operations
-# Note: sys module is part of Python standard library
+# Utilities
+click>=8.1.7
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
 
-# Time operations
-# Note: time module is part of Python standard library
+# Async Support
+asyncio-mqtt>=0.13.0
+websockets>=12.0
 
-# Argument parsing
-# Note: argparse module is part of Python standard library
+# Development Tools (Optional)
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
+
+# Monitoring and Logging
+structlog>=23.1.0
+
+# Additional Utilities
+schedule>=1.2.0
+croniter>=1.4.1
+
+# HTTP Tools
+curl-cffi>=0.5.10

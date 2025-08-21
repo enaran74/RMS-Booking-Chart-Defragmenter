@@ -1,0 +1,187 @@
+#!/bin/bash
+# ==============================================================================
+# RMS Booking Chart Defragmenter - Unified Entrypoint
+# ==============================================================================
+# This script manages both the web application and cron-scheduled analysis
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+# Environment setup
+log_info "🚀 Starting RMS Booking Chart Defragmenter Unified System"
+log_info "Container started at $(date)"
+
+# Set timezone
+if [ -n "${TZ}" ]; then
+    log_info "Setting timezone to ${TZ}"
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+fi
+
+# Create required directories
+log_info "Creating required directories..."
+mkdir -p /app/logs /app/output /app/backups /app/config
+
+# Environment validation
+log_info "Validating environment configuration..."
+
+# Check required RMS credentials
+if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
+    log_error "Missing required RMS API credentials"
+    log_error "Required: AGENT_ID, AGENT_PASSWORD, CLIENT_ID, CLIENT_PASSWORD"
+    exit 1
+fi
+
+# Database connectivity check
+log_info "Checking database connectivity..."
+if [ -n "${DB_HOST}" ]; then
+    DB_HOST=${DB_HOST:-postgres}
+    DB_PORT=${DB_PORT:-5432}
+    DB_USER=${DB_USER:-defrag_user}
+    DB_NAME=${DB_NAME:-defrag_db}
+    
+    # Wait for database to be ready
+    for i in {1..30}; do
+        if pg_isready -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} >/dev/null 2>&1; then
+            log_success "Database connection established"
+            break
+        fi
+        log_info "Waiting for database... (attempt $i/30)"
+        sleep 2
+    done
+    
+    if ! pg_isready -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} >/dev/null 2>&1; then
+        log_error "Failed to connect to database after 60 seconds"
+        exit 1
+    fi
+else
+    log_warning "No database configuration found - web app may not function properly"
+fi
+
+# Setup cron if enabled
+if [ "${ENABLE_CRON:-true}" = "true" ]; then
+    log_info "Setting up cron scheduling..."
+    CRON_SCHEDULE=${CRON_SCHEDULE:-"0 2 * * *"}
+    
+    # Create cron job for defragmentation analysis
+    echo "${CRON_SCHEDULE} cd /app && python3 scripts/cron_runner.py >> /app/logs/cron.log 2>&1" > /tmp/crontab
+    crontab /tmp/crontab
+    rm /tmp/crontab
+    
+    log_success "Cron job configured: ${CRON_SCHEDULE}"
+    
+    # Start cron daemon
+    service cron start
+    log_success "Cron daemon started"
+else
+    log_info "Cron scheduling disabled"
+fi
+
+# Setup logging
+LOG_LEVEL=${LOG_LEVEL:-INFO}
+log_info "Setting log level to ${LOG_LEVEL}"
+
+# Create unified startup script
+cat > /tmp/start_services.sh << 'EOF'
+#!/bin/bash
+
+# Function for logging
+log_info() {
+    echo -e "\033[0;34m[INFO]\033[0m $1" >&2
+}
+
+log_error() {
+    echo -e "\033[0;31m[ERROR]\033[0m $1" >&2
+}
+
+# Start the web application
+start_web_app() {
+    log_info "Starting FastAPI web application..."
+    cd /app/app/web
+    
+    # Wait a bit for database migrations if needed
+    sleep 5
+    
+    # Start the web server
+    exec uvicorn main:app \
+        --host ${WEB_APP_HOST:-0.0.0.0} \
+        --port ${WEB_APP_PORT:-8000} \
+        --log-level ${LOG_LEVEL,,} \
+        --access-log \
+        --reload \
+        2>&1 | tee -a /app/logs/web_app.log
+}
+
+# Trap signals for graceful shutdown
+cleanup() {
+    log_info "Received shutdown signal, cleaning up..."
+    pkill -f uvicorn || true
+    exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
+# Start web application
+start_web_app &
+WEB_PID=$!
+
+# Wait for web app process
+wait $WEB_PID
+EOF
+
+chmod +x /tmp/start_services.sh
+
+# Final system check
+log_info "Performing final system checks..."
+
+# Check Python environment
+python3 -c "import pandas, numpy, fastapi, sqlalchemy" 2>/dev/null || {
+    log_error "Failed to import required Python packages"
+    exit 1
+}
+
+# Check file permissions
+if [ ! -w "/app/logs" ] || [ ! -w "/app/output" ]; then
+    log_error "Insufficient permissions for output directories"
+    exit 1
+fi
+
+# System ready
+log_success "🎉 System initialization complete!"
+log_info "Web Interface: http://localhost:${WEB_APP_PORT:-8000}"
+log_info "Health Check: http://localhost:${WEB_APP_PORT:-8000}/health"
+log_info "API Documentation: http://localhost:${WEB_APP_PORT:-8000}/docs"
+
+if [ "${ENABLE_CRON:-true}" = "true" ]; then
+    log_info "Cron Schedule: ${CRON_SCHEDULE:-0 2 * * *}"
+fi
+
+log_info "Log files: /app/logs/"
+log_info "Output files: /app/output/"
+log_info "Configuration: /app/config/"
+
+# Start services
+log_info "Starting application services..."
+exec /tmp/start_services.sh
