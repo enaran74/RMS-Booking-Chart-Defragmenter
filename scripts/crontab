@@ -1,0 +1,5 @@
+# RMS Defragmenter Cron Jobs
+# Run defragmentation analysis daily at 2 AM
+0 2 * * * appuser /app/scripts/cron_runner.py >> /app/logs/defrag_cron.log 2>&1
+
+# Empty line required at end of crontab
