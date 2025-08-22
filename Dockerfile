@@ -108,5 +108,5 @@ VOLUME ["/app/logs", "/app/output", "/app/backups", "/app/config"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD ./health_check.sh
 
-# Default command
-CMD ["./entrypoint.sh"]
+# Set entrypoint to handle arguments properly
+ENTRYPOINT ["./entrypoint.sh"]
