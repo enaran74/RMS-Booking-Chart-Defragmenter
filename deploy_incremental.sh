@@ -80,7 +80,7 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOS
         echo '📋 Copying web app files to container...'
         docker cp web_app/main.py $CONTAINER_NAME:/app/
         docker cp web_app/app/. $CONTAINER_NAME:/app/app/
-        docker cp web_app/requirements.txt $CONTAINER_NAME:/app/
+        docker cp requirements.txt $CONTAINER_NAME:/app/
         
         if [ '$FILES_ONLY' != true ]; then
             echo '📦 Installing/updating Python dependencies...'
