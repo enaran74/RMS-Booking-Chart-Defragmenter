@@ -1,5 +1,6 @@
 """
-Defragmentation service for managing move suggestions and cache
+Defragmentation service for generating move suggestions
+Uses lightweight RMS API integration for live booking data analysis
 """
 
 import logging
@@ -10,241 +11,290 @@ from sqlalchemy.orm import Session
 from app.models.defrag_move import DefragMove
 from app.models.move_batch import MoveBatch
 from app.models.property import Property
-from app.services.rms_service import RMSService
 from app.core.websocket_manager import websocket_manager
+from app.core.config import settings
+from app.services.lightweight_rms_client import LightweightRMSClient
 
 logger = logging.getLogger(__name__)
 
 class DefragService:
-    """Service for managing defragmentation move suggestions"""
+    """Simplified service for managing defragmentation move suggestions using real RMS API"""
     
     def __init__(self):
-        self.rms_service = RMSService()
+        logger.info("Initializing DefragService with lightweight RMS integration")
+        self.rms_client = LightweightRMSClient()
     
     async def get_move_suggestions(self, property_code: str, force_refresh: bool = False, db: Session = None) -> Dict[str, Any]:
         """Generate fresh move suggestions from RMS API and store them permanently"""
-        logger.info(f"Getting move suggestions for {property_code} (force_refresh: {force_refresh})")
+        print(f"⭐⭐⭐ GET_MOVE_SUGGESTIONS CALLED FOR {property_code} ⭐⭐⭐")
+        logger.info(f"⭐ GET_MOVE_SUGGESTIONS CALLED FOR {property_code}")
+        logger.info(f"Generating move suggestions for {property_code}")
         
         # Send initial progress update
         await websocket_manager.send_progress_update(
             property_code, 
             "start", 
-            f"Starting move suggestions retrieval for {property_code}",
+            f"Starting move suggestions generation for {property_code}",
             progress=0.0
         )
         
         try:
-            # Check cache status first
-            cache_status = await self._check_cache_status(property_code, db)
+            # Get the property object first
+            from app.models.property import Property
+            property_obj = db.query(Property).filter(Property.property_code == property_code.upper()).first()
+            if not property_obj:
+                raise Exception(f"Property {property_code.upper()} not found in database")
             
+            # Always generate fresh suggestions from RMS API
             await websocket_manager.send_progress_update(
                 property_code, 
-                "cache_check", 
-                f"Cache status: {'Fresh' if cache_status['is_fresh'] else 'Stale'} (age: {cache_status['age_hours']:.1f}h)" if cache_status['age_hours'] is not None else f"Cache status: {'Fresh' if cache_status['is_fresh'] else 'Stale'} (no age data)",
-                progress=10.0,
-                data=cache_status
-            )
-            
-            # If cache is fresh and not forcing refresh, return cached data
-            if cache_status['has_cache'] and cache_status['is_fresh'] and not force_refresh:
-                await websocket_manager.send_progress_update(
-                    property_code, 
-                    "cache_hit", 
-                    f"Using cached data: {cache_status['move_count']} moves available",
-                    progress=100.0
-                )
-                
-                cached_moves = await self._get_cached_suggestions(property_code, db)
-                return {
-                    "move_count": cache_status['move_count'],
-                    "is_cached": True,
-                    "cache_age_hours": cache_status['age_hours'],
-                    "analysis_date": cache_status['last_analysis'],
-                    "moves": cached_moves
-                }
-            
-            # Cache is stale or forcing refresh, generate new suggestions
-            await websocket_manager.send_progress_update(
-                property_code, 
-                "generating", 
-                "Cache is stale, generating new move suggestions...",
+                "rms_connect", 
+                "Connecting to RMS API...",
                 progress=20.0
             )
             
-            new_suggestions = await self._generate_new_suggestions(property_code, db)
+            # Generate move suggestions using lightweight RMS API
+            suggestions = await self._generate_lightweight_rms_suggestions(property_code, property_obj)
             
             await websocket_manager.send_progress_update(
                 property_code, 
-                "completion", 
-                f"Successfully generated {new_suggestions['move_count']} new move suggestions",
-                progress=100.0,
-                data=new_suggestions
-            )
-            
-            return new_suggestions
-            
-        except Exception as e:
-            # Handle the error more robustly to avoid string formatting issues
-            try:
-                error_detail = str(e) if e else "Unknown error"
-            except:
-                error_detail = "Unknown error (string conversion failed)"
-            
-            error_msg = f"Failed to get move suggestions for {property_code}: {error_detail}"
-            logger.error(error_msg)
-            
-            await websocket_manager.send_error(
-                property_code, 
-                error_msg, 
-                "suggestions_retrieval"
-            )
-            
-            raise
-    
-    async def _check_cache_status(self, property_code: str, db: Session) -> Dict[str, Any]:
-        """Check if cached suggestions are fresh (< 1 hour old)"""
-        print(f"🔍 DEBUG: _check_cache_status called with property_code: {property_code!r}")
-        print(f"🔍 DEBUG: property_code type: {type(property_code)}")
-        print(f"🔍 DEBUG: property_code is None: {property_code is None}")
-        
-        logger.info(f"Checking cache status for {property_code}")
-        
-        # Get the latest analysis for this property
-        latest_move = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper()
-        ).order_by(DefragMove.analysis_date.desc()).first()
-        
-        print(f"🔍 DEBUG: latest_move: {latest_move}")
-        
-        if not latest_move:
-            print("🔍 DEBUG: No latest move found, returning no cache")
-            return {
-                "has_cache": False,
-                "is_fresh": False,
-                "last_analysis": None,
-                "age_hours": None,
-                "move_count": 0
-            }
-        
-        print(f"🔍 DEBUG: latest_move.analysis_date: {latest_move.analysis_date}")
-        print(f"🔍 DEBUG: latest_move.analysis_date type: {type(latest_move.analysis_date)}")
-        
-        # Calculate age
-        now = datetime.now().replace(tzinfo=None)  # Make naive for comparison
-        
-        # Check if analysis_date exists and handle None case
-        if latest_move.analysis_date is None:
-            print("🔍 DEBUG: analysis_date is None, returning no cache")
-            return {
-                "has_cache": False,
-                "is_fresh": False,
-                "last_analysis": None,
-                "age_hours": None,
-                "move_count": latest_move.move_count or 0
-            }
-        
-        analysis_date = latest_move.analysis_date.replace(tzinfo=None) if latest_move.analysis_date.tzinfo else latest_move.analysis_date
-        age = now - analysis_date
-        age_hours = age.total_seconds() / 3600
-        is_fresh = age_hours < 1
-        
-        print(f"🔍 DEBUG: Calculated age_hours: {age_hours}")
-        
-        return {
-            "has_cache": True,
-            "is_fresh": is_fresh,
-            "last_analysis": latest_move.analysis_date,
-            "age_hours": age_hours,
-            "move_count": latest_move.move_count
-        }
-    
-    async def _get_cached_suggestions(self, property_code: str, db: Session) -> List[Dict[str, Any]]:
-        """Get cached move suggestions from database"""
-        logger.info(f"Retrieving cached suggestions for {property_code}")
-        
-        moves = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper()
-        ).order_by(DefragMove.analysis_date.desc()).all()
-        
-        return [self._move_to_dict(move) for move in moves]
-    
-    async def _generate_new_suggestions(self, property_code: str, db: Session) -> Dict[str, Any]:
-        """Generate new move suggestions by calling RMS API"""
-        logger.info(f"Generating new suggestions for {property_code}")
-        
-        await websocket_manager.send_progress_update(
-            property_code, 
-            "rms_connection", 
-            "Connecting to RMS API...",
-            progress=25.0
-        )
-        
-        try:
-            # Run the defragmentation analysis
-            suggestions = await self._run_defragmentation_analysis(property_code, db)
-            
-            # Store the suggestions in database
-            await websocket_manager.send_progress_update(
-                property_code, 
-                "storing", 
-                f"Storing {len(suggestions)} suggestions in database...",
-                progress=80.0
-            )
-            
-            batch_info = await self._store_suggestions(property_code, suggestions, db)
-            
-            return {
-                "move_count": len(suggestions),
-                "is_cached": False,
-                "cache_age_hours": 0.0,
-                "analysis_date": datetime.now(),
-                "moves": suggestions,
-                "batch_info": batch_info
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to generate suggestions for {property_code}: {e}")
-            raise
-    
-    async def _run_defragmentation_analysis(self, property_code: str, db: Session) -> List[Dict[str, Any]]:
-        """Run the actual defragmentation analysis"""
-        logger.info(f"Running defragmentation analysis for {property_code}")
-        
-        await websocket_manager.send_progress_update(
-            property_code, 
-            "analysis_start", 
-            "Starting defragmentation analysis...",
-            progress=30.0
-        )
-        
-        try:
-            # For now, generate sample suggestions
-            # In the real implementation, this would call the actual defragmentation logic
-            await websocket_manager.send_progress_update(
-                property_code, 
-                "analysis_progress", 
-                "Analyzing booking patterns and calculating strategic moves...",
-                progress=50.0
-            )
-            
-            # Simulate some processing time
-            await asyncio.sleep(2)
-            
-            await websocket_manager.send_progress_update(
-                property_code, 
-                "analysis_complete", 
-                "Analysis complete, generating move suggestions...",
+                "rms_analysis", 
+                f"Analyzing suggestions for {property_code}...",
                 progress=70.0
             )
             
-            # Generate sample suggestions (replace with actual logic)
-            suggestions = await self._generate_sample_suggestions(property_code)
+            # Store the suggestions in the database
+            move_count = len(suggestions)
             
+            # Create MoveBatch first
+            from app.models.move_batch import MoveBatch
+            
+            batch = MoveBatch(
+                property_code=property_code.upper(),
+                total_moves=move_count,
+                status='completed'
+            )
+            db.add(batch)
+            db.commit()
+            db.refresh(batch)
+            
+            # Create DefragMove record with explicit boolean flags
+            defrag_move = DefragMove(
+                property_id=property_obj.id,
+                property_code=property_code.upper(),
+                analysis_date=datetime.now(),
+                move_count=move_count,
+                move_data={"moves": suggestions, "analysis_date": datetime.now().isoformat()},
+                status='pending',
+                batch_id=batch.id,
+                is_processed=False,
+                is_rejected=False
+            )
+            
+            db.add(defrag_move)
+            db.commit()
+            db.refresh(defrag_move)
+            
+            await websocket_manager.send_progress_update(
+                property_code, 
+                "storage", 
+                f"Stored {move_count} move suggestions",
+                progress=100.0
+            )
+            
+            logger.info(f"Successfully generated and stored {move_count} suggestions for {property_code}")
+            
+            return {
+                "move_count": move_count,
+                "is_cached": False,
+                "cache_age_hours": 0,
+                "property_code": property_code.upper(),
+                "analysis_date": defrag_move.analysis_date.isoformat(),
+                "moves": suggestions,
+                "batch_info": None
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to generate suggestions for {property_code}: {str(e)}")
+            await websocket_manager.send_error(
+                property_code,
+                f"Failed to generate suggestions: {str(e)}",
+                "generation_failed"
+            )
+            raise e
+    
+    async def _generate_lightweight_rms_suggestions(self, property_code: str, property_obj) -> List[Dict[str, Any]]:
+        """Generate move suggestions using lightweight RMS API integration"""
+        print(f"🔥🔥🔥 _GENERATE_LIGHTWEIGHT_RMS_SUGGESTIONS CALLED FOR {property_code} 🔥🔥🔥")
+        logger.info(f"🔥 _GENERATE_LIGHTWEIGHT_RMS_SUGGESTIONS CALLED FOR {property_code}")
+        logger.info(f"Generating lightweight RMS suggestions for {property_code}")
+        
+        try:
+            # Step 1: Authenticate with RMS API
+            await websocket_manager.send_progress_update(
+                property_code, 
+                "rms_auth", 
+                "Authenticating with RMS API...",
+                progress=25.0
+            )
+            
+            logger.info(f"Authenticating with RMS API for {property_code}")
+            auth_success = self.rms_client.authenticate()
+            if not auth_success:
+                error_msg = f"RMS authentication failed for {property_code}. Check your RMS credentials in config.env"
+                logger.error(error_msg)
+                await websocket_manager.send_progress_update(
+                    property_code,
+                    "rms_auth_failed",
+                    error_msg,
+                    progress=25.0
+                )
+                raise Exception(error_msg)
+            
+            # Step 2: Perform simple analysis using lightweight client
+            await websocket_manager.send_progress_update(
+                property_code, 
+                "rms_analysis", 
+                "Analyzing booking data for optimization opportunities...",
+                progress=60.0
+            )
+            
+            logger.info(f"Running simple defragmentation analysis for property ID {property_obj.id}")
+
+            # Send debug info about starting RMS API calls
+            await websocket_manager.send_progress_update(
+                property_code,
+                "rms_api_start",
+                f"🔍 Starting RMS API calls for property {property_obj.id}",
+                progress=65.0
+            )
+
+            # Use the lightweight client's analysis method
+            raw_suggestions = await self.rms_client.analyze_simple_defragmentation(property_obj.id, property_code)
+
+            # Send debug info about RMS API results
+            await websocket_manager.send_progress_update(
+                property_code,
+                "rms_api_complete",
+                f"📊 RMS API calls completed: {len(raw_suggestions)} suggestions generated",
+                progress=90.0
+            )
+            
+            # Convert suggestions to proper JSON format
+            logger.info(f"Converting {len(raw_suggestions)} raw suggestions to JSON format")
+            suggestions = self._convert_suggestions_to_json(raw_suggestions, property_code)
+            logger.info(f"Converted to {len(suggestions)} formatted suggestions")
+            
+            if not suggestions:
+                error_msg = f"No move suggestions generated by RMS API for {property_code}. Property may have no reservations or optimization opportunities."
+                logger.warning(error_msg)
+                await websocket_manager.send_progress_update(
+                    property_code,
+                    "no_suggestions",
+                    error_msg,
+                    progress=80.0
+                )
+                # Return empty list instead of sample data
+                return []
+            
+            logger.info(f"Generated {len(suggestions)} lightweight RMS suggestions for {property_code}")
             return suggestions
             
         except Exception as e:
-            logger.error(f"Analysis failed for {property_code}: {e}")
-            raise
+            error_msg = f"Failed to generate lightweight RMS suggestions for {property_code}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            await websocket_manager.send_progress_update(
+                property_code,
+                "rms_error",
+                error_msg,
+                progress=60.0
+            )
+            # Re-raise the exception instead of falling back to sample data
+            raise Exception(error_msg)
+    
+    def _convert_suggestions_to_json(self, raw_suggestions: List[Dict], property_code: str) -> List[Dict[str, Any]]:
+        """Convert raw defragmentation suggestions to our JSON format"""
+        logger.info(f"Converting {len(raw_suggestions)} raw suggestions for {property_code}")
+        
+        converted_suggestions = []
+        
+        for idx, suggestion in enumerate(raw_suggestions):
+            try:
+                # Extract key fields from the suggestion
+                converted_suggestion = {
+                    "from_unit": suggestion.get("current_unit", "N/A"),
+                    "to_unit": suggestion.get("target_unit", "N/A"),
+                    "guest": suggestion.get("guest_name", "N/A"),
+                    "check_in": suggestion.get("check_in", "N/A"),
+                    "check_out": suggestion.get("check_out", "N/A"),
+                    "strategic_importance": self._map_strategic_importance(suggestion.get("strategic_importance", 0.0)),
+                    "score": int(suggestion.get("score", 0)),
+                    "reason": suggestion.get("reason", "Optimization opportunity identified"),
+                    # Additional metadata
+                    "reservation_id": suggestion.get("reservation_id", None),
+                    "category": suggestion.get("category", "N/A"),
+                    "nights_freed": suggestion.get("nights_freed", 0),
+                    "analysis_date": datetime.now().isoformat()
+                }
+                
+                converted_suggestions.append(converted_suggestion)
+                
+            except Exception as e:
+                logger.warning(f"Failed to convert suggestion {idx} for {property_code}: {e}")
+                continue
+        
+        logger.info(f"Successfully converted {len(converted_suggestions)} suggestions for {property_code}")
+        
+        # Check for potential duplicates
+        reservations_seen = {}
+        duplicates_found = 0
+        for suggestion in converted_suggestions:
+            res_id = suggestion.get("reservation_id")
+            if res_id and res_id != "N/A":
+                if res_id in reservations_seen:
+                    duplicates_found += 1
+                    logger.warning(f"Potential duplicate found for reservation {res_id}: {suggestion.get('guest', 'Unknown')} from {suggestion.get('from_unit', 'Unknown')} to {suggestion.get('to_unit', 'Unknown')}")
+                else:
+                    reservations_seen[res_id] = suggestion
+        
+        if duplicates_found > 0:
+            logger.warning(f"Found {duplicates_found} potential duplicate suggestions for {property_code}")
+        
+        # CRITICAL FIX: Filter to keep only the BEST suggestion per reservation (like original defrag logic)
+        if duplicates_found > 0:
+            logger.info(f"Filtering {len(converted_suggestions)} suggestions to keep only best move per reservation")
+            
+            # Group suggestions by reservation ID
+            suggestions_by_reservation = {}
+            for suggestion in converted_suggestions:
+                res_id = suggestion.get("reservation_id")
+                if res_id and res_id != "N/A":
+                    if res_id not in suggestions_by_reservation:
+                        suggestions_by_reservation[res_id] = []
+                    suggestions_by_reservation[res_id].append(suggestion)
+            
+            # Keep only the highest scoring suggestion per reservation
+            filtered_suggestions = []
+            for res_id, reservation_suggestions in suggestions_by_reservation.items():
+                if len(reservation_suggestions) == 1:
+                    # Only one suggestion, keep it
+                    filtered_suggestions.append(reservation_suggestions[0])
+                else:
+                    # Multiple suggestions, keep the highest scoring one
+                    best_suggestion = max(reservation_suggestions, key=lambda s: s.get("score", 0))
+                    filtered_suggestions.append(best_suggestion)
+                    logger.info(f"Filtered reservation {res_id}: kept best scoring suggestion (score: {best_suggestion.get('score', 0)})")
+            
+            # Add any suggestions without reservation IDs
+            for suggestion in converted_suggestions:
+                res_id = suggestion.get("reservation_id")
+                if not res_id or res_id == "N/A":
+                    filtered_suggestions.append(suggestion)
+            
+            logger.info(f"Filtered from {len(converted_suggestions)} to {len(filtered_suggestions)} suggestions (1 per reservation)")
+            return filtered_suggestions
+        
+        return converted_suggestions
     
     async def _generate_sample_suggestions(self, property_code: str) -> List[Dict[str, Any]]:
         """Generate sample move suggestions for testing"""
@@ -286,129 +336,20 @@ class DefragService:
         
         return sample_suggestions
     
-    async def _store_suggestions(self, property_code: str, suggestions: List[Dict[str, Any]], db: Session) -> Dict[str, Any]:
-        """Store move suggestions in the database"""
-        logger.info(f"Storing {len(suggestions)} suggestions for {property_code}")
+    def _map_strategic_importance(self, importance_value) -> str:
+        """Map strategic importance to string category (handles both numeric and string inputs)"""
+        # If it's already a string, return it directly
+        if isinstance(importance_value, str):
+            return importance_value
         
+        # If it's numeric, convert to string category
         try:
-            # Create a new batch for these suggestions
-            batch = MoveBatch(
-                property_code=property_code.upper(),
-                status='completed',
-                total_moves=len(suggestions),
-                processed_moves=0,
-                rejected_moves=0
-            )
-            db.add(batch)
-            db.commit()
-            db.refresh(batch)
-            
-            # Store each suggestion
-            for suggestion in suggestions:
-                move = DefragMove(
-                    property_code=property_code.upper(),
-                    property_id=1,  # This should be looked up from the property code
-                    analysis_date=datetime.now(),
-                    move_data=suggestion,
-                    move_count=len(suggestions),
-                    batch_id=batch.id,
-                    is_processed=False,
-                    is_rejected=False
-                )
-                db.add(move)
-            
-            db.commit()
-            logger.info(f"Successfully stored {len(suggestions)} suggestions for {property_code}")
-            
-            # Return batch information
-            return {
-                "batch_id": batch.id,
-                "total_moves": len(suggestions),
-                "status": batch.status
-            }
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to store suggestions for {property_code}: {e}")
-            raise
-    
-    def _move_to_dict(self, move: DefragMove) -> Dict[str, Any]:
-        """Convert DefragMove model to dictionary"""
-        return {
-            "id": move.id,
-            "property_code": move.property_code,
-            "analysis_date": move.analysis_date,
-            "move_data": move.move_data,
-            "move_count": move.move_count,
-            "status": move.status,
-            "batch_id": move.batch_id,
-            "is_processed": move.is_processed,
-            "is_rejected": move.is_rejected,
-            "created_at": move.created_at
-        }
-    
-    async def get_property_summary(self, property_code: str, db: Session) -> Dict[str, Any]:
-        """Get summary of moves for a property"""
-        logger.info(f"Getting property summary for {property_code}")
-        
-        # Get the latest analysis
-        latest_move = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper()
-        ).order_by(DefragMove.analysis_date.desc()).first()
-        
-        if not latest_move:
-            return {
-                "property_code": property_code.upper(),
-                "has_moves": False,
-                "last_analysis": None,
-                "total_moves": 0
-            }
-        
-        # Get move counts by status
-        total_moves = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper()
-        ).count()
-        
-        processed_moves = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper(),
-            DefragMove.is_processed == True
-        ).count()
-        
-        rejected_moves = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper(),
-            DefragMove.is_rejected == True
-        ).count()
-        
-        pending_moves = total_moves - processed_moves - rejected_moves
-        
-        return {
-            "property_code": property_code.upper(),
-            "has_moves": True,
-            "last_analysis": latest_move.analysis_date,
-            "total_moves": total_moves,
-            "processed_moves": processed_moves,
-            "rejected_moves": rejected_moves,
-            "pending_moves": pending_moves
-        }
-    
-    async def refresh_all_properties(self, db: Session) -> Dict[str, Any]:
-        """Refresh move suggestions for all properties (admin only)"""
-        logger.info("Refreshing move suggestions for all properties")
-        
-        # Get all properties
-        properties = db.query(Property).all()
-        total_properties = len(properties)
-        refreshed = 0
-        
-        for property_obj in properties:
-            try:
-                await self.get_move_suggestions(property_obj.property_code, force_refresh=True, db=db)
-                refreshed += 1
-            except Exception as e:
-                logger.error(f"Failed to refresh {property_obj.property_code}: {e}")
-        
-        return {
-            "total_properties": total_properties,
-            "refreshed": refreshed,
-            "failed": total_properties - refreshed
-        }
+            importance_float = float(importance_value)
+            if importance_float >= 0.7:
+                return "High"
+            elif importance_float >= 0.4:
+                return "Medium"
+            else:
+                return "Low"
+        except (ValueError, TypeError):
+            return "Low"  # Default fallback

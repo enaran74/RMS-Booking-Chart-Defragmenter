@@ -15,7 +15,7 @@ from app.schemas.defrag_move import (
     DefragMoveCreate, DefragMoveResponse, DefragMoveUpdate, 
     DefragMoveApproval, DefragMoveSummary, DefragMoveDetail
 )
-from app.services.defrag_service_simple import SimpleDefragService
+from app.services.defrag_service import DefragService
 from datetime import datetime, timedelta
 import logging
 from app.core.websocket_manager import websocket_manager
@@ -23,8 +23,8 @@ from app.core.websocket_manager import websocket_manager
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Initialize the simplified defrag service
-defrag_service = SimpleDefragService()
+# Initialize the defrag service
+defrag_service = DefragService()
 
 @router.get("/", response_model=List[DefragMoveResponse])
 async def get_defrag_moves(

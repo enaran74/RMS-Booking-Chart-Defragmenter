@@ -12,9 +12,10 @@ pytz>=2023.3
 
 # Web Framework
 fastapi==0.104.1
+starlette>=0.40.0
 uvicorn[standard]==0.24.0
 jinja2>=3.1.6
-python-multipart==0.0.6
+python-multipart>=0.0.18
 aiofiles>=23.2.0
 
 # Database & ORM
