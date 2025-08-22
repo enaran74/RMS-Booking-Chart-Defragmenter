@@ -32,7 +32,6 @@ docker buildx create --name multiarch --use
 # Build and push
 docker buildx build \
     --platform linux/amd64,linux/arm64 \
-    -f Dockerfile.production \
     -t dhpsystems/rms-defragmenter:2.0.0 \
     -t dhpsystems/rms-defragmenter:latest \
     --push \

@@ -161,7 +161,7 @@ We regularly monitor our dependencies for security vulnerabilities:
 ### Web Application Dependencies
 - **SQLAlchemy**: ORM with SQL injection protection
 - **Pydantic**: Data validation and settings management
-- **PyJWT**: JWT token handling (secure alternative to python-jose)
+- **PyJWT**: JWT token handling with cryptographic security
 - **passlib**: Password hashing utilities
 - **uvicorn**: ASGI server with security features
 
