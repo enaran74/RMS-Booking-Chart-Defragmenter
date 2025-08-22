@@ -56,9 +56,9 @@ We welcome contributions to the RMS Booking Chart Defragmenter project! This doc
 
 ### Option 2: Docker Development
 
-1. **Use customer installation for testing**:
+1. **Use automated installation for testing**:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install-customer.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
    ```
 2. **Mount your development code**:
    ```bash
@@ -127,8 +127,8 @@ Use descriptive branch names:
    # Test Docker build
    docker build -f Dockerfile.production -t test-image .
    
-   # Test customer installation
-   ./install-customer.sh
+   # Test automated installation
+   ./install.sh
    ```
 3. **Push your branch** to your fork:
    ```bash
@@ -206,8 +206,8 @@ python3 start.py -t -p ALL --agent-id $AGENT_ID --agent-password "$AGENT_PASSWOR
 # Test production build
 docker build -f Dockerfile.production -t test-build .
 
-# Test customer installation
-./install-customer.sh
+# Test automated installation
+./install.sh
 
 # Test in different environments
 docker run --rm --network host test-build
@@ -216,9 +216,9 @@ docker run --rm --network host test-build
 ### Integration Testing
 
 #### End-to-End Testing
-1. **Install via customer script**:
+1. **Install via automated script**:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/your-fork/RMS-Booking-Chart-Defragmenter/your-branch/install-customer.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/your-fork/RMS-Booking-Chart-Defragmenter/your-branch/install.sh | bash
    ```
 2. **Configure with test credentials**
 3. **Run full analysis cycle**
@@ -226,7 +226,7 @@ docker run --rm --network host test-build
 5. **Check log outputs**
 
 #### Environment Testing
-- **Standard deployment**: Test with `docker-compose.customer.yml`
+- **Standard deployment**: Test with `docker-compose.yml`
 - **Host networking**: Test with `docker-compose.hostnet.yml`  
 - **Multi-architecture**: Test on different platforms if possible
 
@@ -263,7 +263,7 @@ docker run --rm --network host test-build
 1. **Code changes** → Local testing
 2. **Build production images** → `./build-pipeline.sh`
 3. **Push to Docker Hub** → Automated via build script
-4. **Test customer deployment** → Use install-customer.sh
+4. **Test automated deployment** → Use install.sh
 5. **Create pull request** → With testing documentation
 
 #### Customer Workflow
@@ -297,7 +297,7 @@ docker run --rm --network host test-build
 
 #### Before Submitting
 1. **Test locally**: Build and run images locally
-2. **Test installation**: Run customer installation script
+2. **Test installation**: Run automated installation script
 3. **Test different environments**: Various networking scenarios
 4. **Verify documentation**: Ensure all docs are updated
 
@@ -343,7 +343,7 @@ For feature requests, please:
 #### Minor Updates
 1. **Merge pull request** to main branch
 2. **Build and push images**: `./build-pipeline.sh`
-3. **Test customer installation** with new images
+3. **Test automated installation** with new images
 4. **Update documentation** if needed
 
 #### Major Releases

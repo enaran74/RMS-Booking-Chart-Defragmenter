@@ -44,7 +44,7 @@ docker buildx build \
 ### One-Command Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install-customer.sh | bash
+curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
 ### What the Installer Does

@@ -334,11 +334,11 @@ docker compose up -d
 
 ## File Locations
 
-### Customer Installation Structure
+### Installation Structure
 ```
 ~/rms-defragmenter/
-├── docker-compose.yml           # Downloaded deployment configuration
-├── .env                         # Production configuration
+├── docker-compose.yml           # Deployment configuration
+├── .env                         # Environment configuration
 ├── start.sh                    # Start system
 ├── stop.sh                     # Stop system
 ├── status.sh                   # Check status

@@ -53,15 +53,13 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser \
     && chown -R appuser:appuser /app
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
-COPY web_app/requirements.txt ./web_requirements.txt
+COPY web_app/requirements.txt ./requirements.txt
 
-# Merge requirements and install
+# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir --only-binary=all pandas>=1.5.0 numpy>=1.21.0 \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir -r web_requirements.txt \
-    && rm requirements.txt web_requirements.txt
+    && rm requirements.txt
 
 # Copy original application files
 COPY start.py defrag_analyzer.py rms_client.py excel_generator.py \

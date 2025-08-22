@@ -119,21 +119,24 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 
 ---
 
-## 🛠️ Installation Options
+## 🚀 **Installation**
 
-### Option 1: Smart Installation (Recommended)
+### Automated Installation (Recommended)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install-customer.sh | bash
+curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
-**What it does:**
-- ✅ **Detects environment issues** (Tailscale, VPN conflicts)
-- ✅ **Chooses deployment method** automatically
-- ✅ **Downloads pre-built images** (no compilation)
-- ✅ **Creates management scripts** for easy operation
-- ✅ **Fast deployment** (5-10 minutes vs 30-60 minutes)
+**Features:**
+- **Environment Detection**: Automatically detects networking requirements
+- **Docker Installation**: Installs Docker if not present
+- **Smart Configuration**: Downloads appropriate deployment configuration
+- **Pre-built Images**: Uses optimized container images (fast deployment)
+- **Management Scripts**: Creates convenient operation scripts
+- **Production Ready**: Complete system deployment in 5-10 minutes
 
-### Option 2: Manual Installation (Standard Networking)
+### Manual Installation
+
+#### Standard Deployment
 ```bash
 # Clone repository
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
@@ -143,14 +146,15 @@ cd RMS-Booking-Chart-Defragmenter
 cp env.example .env
 nano .env
 
-# Start system with standard networking
-docker compose -f docker-compose.customer.yml up -d
+# Start system
+docker compose up -d
 ```
 
-### Option 3: Manual Installation (Host Network for Networking Issues)
+#### Host Network Deployment
+For environments with Tailscale, VPN, or networking conflicts:
+
 ```bash
-# If you have Tailscale, VPN, or networking conflicts
-# Clone repository (if not already done)
+# Clone repository
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
 cd RMS-Booking-Chart-Defragmenter
 
@@ -158,11 +162,11 @@ cd RMS-Booking-Chart-Defragmenter
 cp env.example .env
 nano .env
 
-# Start system with host networking
+# Start with host networking
 docker compose -f docker-compose.hostnet.yml up -d
 ```
 
-### Option 4: Development Setup
+### Development Setup
 See [DEPLOYMENT.md](DEPLOYMENT.md) for developer build pipeline instructions.
 
 ---
@@ -311,12 +315,12 @@ docker exec defrag-app python3 /app/app/original/start.py \
 
 ### **Docker Commands**
 ```bash
-# Direct Docker Compose management (specify config file)
-docker compose -f docker-compose.customer.yml up -d     # Start (standard)
-docker compose -f docker-compose.hostnet.yml up -d      # Start (host network)
-docker compose down                                      # Stop
-docker compose ps                                        # Status
-docker compose logs -f                                   # Logs
+# Direct Docker Compose management
+docker compose up -d                                # Start (standard)
+docker compose -f docker-compose.hostnet.yml up -d  # Start (host network)
+docker compose down                                  # Stop
+docker compose ps                                    # Status
+docker compose logs -f                               # Logs
 
 # Container access
 docker exec -it defrag-app bash          # Shell access
