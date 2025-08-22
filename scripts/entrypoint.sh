@@ -30,6 +30,49 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Handle help requests
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "RMS Booking Chart Defragmenter - Unified System"
+    echo ""
+    echo "DESCRIPTION:"
+    echo "    Complete defragmentation solution with web interface and automated analysis"
+    echo ""
+    echo "USAGE:"
+    echo "    docker run [options] <image>"
+    echo ""
+    echo "ENVIRONMENT VARIABLES:"
+    echo "    Required RMS API Credentials:"
+    echo "        AGENT_ID          - RMS Agent ID"
+    echo "        AGENT_PASSWORD    - RMS Agent Password"
+    echo "        CLIENT_ID         - RMS Client ID"
+    echo "        CLIENT_PASSWORD   - RMS Client Password"
+    echo ""
+    echo "    Optional Configuration:"
+    echo "        WEB_APP_PORT      - Web interface port (default: 8000)"
+    echo "        WEB_APP_HOST      - Web interface host (default: 0.0.0.0)"
+    echo "        DB_HOST          - Database host (default: postgres)"
+    echo "        DB_PORT          - Database port (default: 5432)"
+    echo "        ENABLE_CRON      - Enable scheduled analysis (default: true)"
+    echo "        CRON_SCHEDULE    - Cron schedule (default: '0 2 * * *')"
+    echo "        LOG_LEVEL        - Logging level (default: INFO)"
+    echo "        TZ               - Timezone (default: system)"
+    echo ""
+    echo "SERVICES:"
+    echo "    - Web Interface: http://localhost:8000"
+    echo "    - API Documentation: http://localhost:8000/docs"
+    echo "    - Health Check: http://localhost:8000/health"
+    echo "    - Automated Analysis: Via cron schedule"
+    echo ""
+    echo "VOLUMES:"
+    echo "    /app/logs     - Application logs"
+    echo "    /app/output   - Analysis output files"
+    echo "    /app/backups  - Database backups"
+    echo ""
+    echo "For more information, visit:"
+    echo "    https://github.com/enaran74/RMS-Booking-Chart-Defragmenter"
+    exit 0
+fi
+
 # Environment setup
 log_info "🚀 Starting RMS Booking Chart Defragmenter Unified System"
 log_info "Container started at $(date)"
