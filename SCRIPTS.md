@@ -406,6 +406,80 @@ else
 fi
 ```
 
+## Development Deployment Scripts
+
+### `deploy.sh` - **Unified Deployment (Recommended)**
+
+Intelligent deployment script that handles ANY type of change across the entire project.
+
+**Usage:**
+```bash
+./deploy.sh [OPTIONS]
+```
+
+**Options:**
+- `--full`: Force full deployment (rebuild containers)
+- `--files-only`: Update files without restarting services  
+- `--quick`: Skip dependency updates (fastest)
+- `--check`: Show what would be deployed without deploying
+- `--help`: Show help message
+
+**Intelligent Features:**
+- 🧠 **Auto-detection**: Analyzes git changes to determine optimal deployment strategy
+- 🎯 **Smart Targeting**: Only deploys what actually changed
+- ⚡ **Multiple Strategies**: Hot updates, service restarts, or full rebuilds as needed
+- 🔍 **Change Analysis**: Shows exactly what components changed
+- 🚀 **Universal Coverage**: Handles web app, CLI, Docker, scripts, config, docs
+
+**Deployment Strategies:**
+- **Hot Update**: Updates running containers (web app, CLI changes)
+- **Service Restart**: Restarts services (config, requirement changes)  
+- **Full Rebuild**: Rebuilds containers (Docker, script changes)
+- **Quick Update**: Fast file-only updates
+- **Docs Only**: Documentation changes (no deployment needed)
+
+**Example Output:**
+```bash
+$ ./deploy.sh --check
+[STEP] Analyzing project changes...
+[INFO] Change analysis results:
+  🐳 Docker configs: unchanged
+  ⚙️  Core CLI app: CHANGED
+  🌐 Web application: CHANGED
+  📜 Scripts: unchanged
+  ⚙️  Configuration: unchanged
+  🚀 Deployment: unchanged
+  📚 Documentation: unchanged
+[STEP] Determining deployment strategy...
+[INFO] Strategy: Hot update (application changes only)
+[SUCCESS] Check complete - would deploy using strategy: HOT_UPDATE
+```
+
+### `deploy_incremental.sh` - **Legacy (Limited Scope)**
+
+Quick deployment for web app and core files only.
+
+**Limitations:**
+- ❌ Doesn't handle Docker config changes
+- ❌ Doesn't handle script updates  
+- ❌ Limited to web app + core files
+
+**Usage:**
+```bash
+./deploy_incremental.sh [--full] [--files-only]
+```
+
+### `deploy_web_app.sh` - **Legacy (Web Only)**
+
+Full web application deployment only.
+
+**Limitations:**
+- ❌ Doesn't handle CLI analyzer updates
+- ❌ Doesn't handle shared utilities
+- ❌ Web app focused only
+
+**Recommendation:** Use `deploy.sh` for all new deployments as it provides comprehensive coverage and intelligent deployment strategies.
+
 ## Best Practices
 
 ### Script Management
