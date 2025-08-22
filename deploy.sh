@@ -36,16 +36,14 @@ FILES_ONLY=false
 QUICK_DEPLOY=false
 CHECK_ONLY=false
 
-# File categories for intelligent deployment
-declare -A FILE_CATEGORIES=(
-    ["DOCKER"]="Dockerfile* docker-compose*.yml .dockerignore"
-    ["CORE_CLI"]="start.py defrag_analyzer.py rms_client.py excel_generator.py email_sender.py holiday_client.py school_holiday_client.py utils.py school_holidays.json"
-    ["WEB_APP"]="web_app/"
-    ["SCRIPTS"]="scripts/ entrypoint.sh health_check.sh"
-    ["CONFIG"]="requirements.txt env.example .env"
-    ["DEPLOYMENT"]="install.sh deploy*.sh manage.sh setup*.sh"
-    ["DOCS"]="*.md docs/"
-)
+# File categories for intelligent deployment (defined as variables for compatibility)
+DOCKER_FILES="Dockerfile* docker-compose*.yml .dockerignore"
+CORE_CLI_FILES="start.py defrag_analyzer.py rms_client.py excel_generator.py email_sender.py holiday_client.py school_holiday_client.py utils.py school_holidays.json"
+WEB_APP_FILES="web_app/"
+SCRIPT_FILES="scripts/ entrypoint.sh health_check.sh"
+CONFIG_FILES="requirements.txt env.example .env"
+DEPLOYMENT_FILES="install.sh deploy*.sh manage.sh setup*.sh"
+DOCS_FILES="*.md docs/"
 
 # Function to print colored output
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
