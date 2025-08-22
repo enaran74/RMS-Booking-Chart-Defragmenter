@@ -1,0 +1,94 @@
+# ==============================================================================
+# RMS Booking Chart Defragmenter - Production Docker Image
+# ==============================================================================
+# Multi-stage build for optimized production deployment
+# Built for multiple architectures: linux/amd64, linux/arm64
+
+# Stage 1: Build environment
+FROM python:3.11-slim-bookworm as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create wheel directory
+WORKDIR /wheels
+
+# Copy requirements and build wheels to avoid recompilation
+COPY requirements.txt web_app/requirements.txt ./
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels \
+    -r requirements.txt && \
+    pip wheel --no-cache-dir --no-deps --wheel-dir /wheels \
+    -r web_app/requirements.txt
+
+# Stage 2: Production image
+FROM python:3.11-slim-bookworm
+
+LABEL maintainer="DHP Operations Systems"
+LABEL description="RMS Booking Chart Defragmenter - Production Ready"
+LABEL version="2.0.0"
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create app user and directories
+RUN groupadd -r appuser && useradd -r -g appuser appuser \
+    && mkdir -p /app/logs /app/output /app/backups /app/config \
+    && mkdir -p /app/app/original /app/app/web /app/app/shared \
+    && chown -R appuser:appuser /app
+
+# Copy wheels from builder stage and install
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir --find-links /wheels \
+    pandas numpy fastapi uvicorn sqlalchemy psycopg2-binary \
+    python-jose passlib bcrypt jinja2 python-dotenv \
+    pydantic pydantic-settings aiofiles httpx requests \
+    && rm -rf /wheels
+
+# Copy application files
+COPY start.py defrag_analyzer.py rms_client.py excel_generator.py \
+     email_sender.py holiday_client.py school_holiday_client.py \
+     utils.py school_holidays.json ./app/original/
+
+COPY web_app/main.py ./app/web/
+COPY web_app/app/ ./app/web/app/
+
+COPY env.example ./app/shared/env.example
+
+# Copy and set up scripts
+COPY scripts/ ./scripts/
+RUN chmod +x ./scripts/*.sh
+
+# Create health check script
+COPY scripts/health_check.sh ./
+RUN chmod +x ./health_check.sh
+
+# Set proper ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD ./health_check.sh
+
+# Default command - can be overridden in docker-compose
+CMD ["uvicorn", "app.web.main:app", "--host", "0.0.0.0", "--port", "8000"]
