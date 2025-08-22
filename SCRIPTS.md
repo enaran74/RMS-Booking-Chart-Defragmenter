@@ -337,13 +337,13 @@ docker compose up -d
 ### Customer Installation Structure
 ```
 ~/rms-defragmenter/
-├── docker-compose.yml     # Active docker-compose configuration
-├── .env                   # Production configuration
-├── start.sh              # Start system
-├── stop.sh               # Stop system
-├── status.sh             # Check status
-├── logs.sh               # View logs
-└── update.sh             # Update system
+├── docker-compose.yml           # Downloaded deployment configuration
+├── .env                         # Production configuration
+├── start.sh                    # Start system
+├── stop.sh                     # Stop system
+├── status.sh                   # Check status
+├── logs.sh                     # View logs
+└── update.sh                   # Update system
 ```
 
 ### Docker Volume Mounts

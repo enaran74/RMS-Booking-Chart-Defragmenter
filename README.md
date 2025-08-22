@@ -133,28 +133,33 @@ curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragme
 - ✅ **Creates management scripts** for easy operation
 - ✅ **Fast deployment** (5-10 minutes vs 30-60 minutes)
 
-### Option 2: Manual Installation
+### Option 2: Manual Installation (Standard Networking)
 ```bash
 # Clone repository
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
 cd RMS-Booking-Chart-Defragmenter
 
-# Use customer deployment files
-cp docker-compose.customer.yml docker-compose.yml
+# Configure credentials
+cp env.example .env
+nano .env
+
+# Start system with standard networking
+docker compose -f docker-compose.customer.yml up -d
+```
+
+### Option 3: Manual Installation (Host Network for Networking Issues)
+```bash
+# If you have Tailscale, VPN, or networking conflicts
+# Clone repository (if not already done)
+git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
+cd RMS-Booking-Chart-Defragmenter
 
 # Configure credentials
 cp env.example .env
 nano .env
 
-# Start system
-docker compose up -d
-```
-
-### Option 3: Host Network (For Networking Issues)
-```bash
-# If you have Tailscale, VPN, or networking conflicts
-cp docker-compose.hostnet.yml docker-compose.yml
-docker compose up -d
+# Start system with host networking
+docker compose -f docker-compose.hostnet.yml up -d
 ```
 
 ### Option 4: Development Setup
@@ -306,11 +311,12 @@ docker exec defrag-app python3 /app/app/original/start.py \
 
 ### **Docker Commands**
 ```bash
-# Direct Docker Compose management
-docker compose up -d     # Start
-docker compose down      # Stop
-docker compose ps        # Status
-docker compose logs -f   # Logs
+# Direct Docker Compose management (specify config file)
+docker compose -f docker-compose.customer.yml up -d     # Start (standard)
+docker compose -f docker-compose.hostnet.yml up -d      # Start (host network)
+docker compose down                                      # Stop
+docker compose ps                                        # Status
+docker compose logs -f                                   # Logs
 
 # Container access
 docker exec -it defrag-app bash          # Shell access
