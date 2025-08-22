@@ -3,7 +3,7 @@
 ## Table of Contents
 1. [Project Overview](#project-overview)
 2. [System Architecture](#system-architecture)
-3. [RMS API Integration](#rms-api-integration)
+3. [Production Pipeline](#production-pipeline)
 4. [Core Modules](#core-modules)
 5. [Data Flow](#data-flow)
 6. [Business Logic](#business-logic)
@@ -12,7 +12,7 @@
 
 ## Project Overview
 
-The RMS Defragmentation Analyzer is a sophisticated system designed to optimize accommodation bookings across multiple properties by identifying and suggesting reservation moves that reduce fragmentation. The system analyzes current booking patterns and recommends strategic moves to consolidate scattered availability into bookable blocks, thereby maximizing revenue potential. **Now enhanced with holiday-aware analysis for optimal optimization during peak holiday periods.**
+The RMS Defragmentation Analyzer is a sophisticated system designed to optimize accommodation bookings across multiple properties by identifying and suggesting reservation moves that reduce fragmentation. The system analyzes current booking patterns and recommends strategic moves to consolidate scattered availability into bookable blocks, thereby maximizing revenue potential.
 
 ### Key Objectives
 - **Revenue Optimization**: Consolidate scattered availability into longer, more profitable stays
@@ -20,40 +20,65 @@ The RMS Defragmentation Analyzer is a sophisticated system designed to optimize 
 - **Guest Experience**: Improve guest satisfaction through longer, uninterrupted stays
 - **Multi-Property Scalability**: Handle entire property portfolios with flexible selection
 - **🎄 Holiday-Aware Optimization**: Optimize during peak holiday periods for maximum revenue
-- **State-Specific Analysis**: Provide holiday-aware analysis for all Australian states
+- **Production Ready**: Reliable deployment pipeline with pre-built Docker images
 
 ## System Architecture
 
-The system follows a modular architecture with clear separation of concerns:
+The system follows a hybrid architecture combining CLI analysis with modern web interface:
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   start.py      │    │  rms_client.py  │    │defrag_analyzer.py│
-│   (Orchestrator)│◄──►│  (API Client)   │◄──►│  (Core Logic)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│excel_generator.py│    │  email_sender.py│    │    utils.py     │
-│  (Output Gen)   │    │  (Notifications)│    │   (Utilities)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│holiday_client.py│    │  (Holiday Data) │    │  (State Codes)  │
-│  (Holiday API)  │◄──►│  (Nager.Date)   │◄──►│  (Property)     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                Production Docker Container                      │
+│                                                                 │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐ │
+│  │   Web App       │    │   CLI Analyzer  │    │ PostgreSQL  │ │
+│  │   (FastAPI)     │◄──►│   (Cron/Manual) │◄──►│ Database    │ │
+│  │   Port: 8000    │    │   Holiday-Aware │    │ Port: 5432  │ │
+│  └─────────────────┘    └─────────────────┘    └─────────────┘ │
+│           │                       │                      │     │
+│           ▼                       ▼                      ▼     │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Shared Components                              │ │
+│  │  • RMS API Client  • Excel Generator  • Email Sender      │ │
+│  │  • Holiday Client  • Logging System   • Config Manager    │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Module Responsibilities
+### Component Integration
+- **Pre-Built Images**: Production-ready Docker images from Docker Hub (`dhpsystems/rms-defragmenter`)
+- **Smart Installation**: Automatic environment detection and deployment method selection
+- **Unified Configuration**: Single `.env` file for all components
+- **Shared Business Logic**: Common defragmentation algorithms and RMS integration
+- **Centralized Logging**: All components log to `/app/logs/`
 
-1. **start.py**: Main orchestrator, handles command-line arguments, coordinates analysis flow
-2. **rms_client.py**: RMS API integration, authentication, data retrieval, caching, state code detection
-3. **defrag_analyzer.py**: Core defragmentation algorithm, occupancy analysis, move suggestions, holiday analysis
-4. **excel_generator.py**: Excel report generation with visual charts and data tables, holiday-enhanced outputs
-5. **email_sender.py**: Email notifications with HTML formatting and file attachments, holiday-enhanced content
-6. **holiday_client.py**: Holiday data integration, Nager.Date API client, state-specific holiday analysis
-7. **utils.py**: Common utility functions, data validation, formatting helpers, comprehensive logging system
+## Production Pipeline
+
+### Build and Deployment Architecture
+
+```
+Developer Machine                  Docker Hub                    Customer Environment
+┌─────────────────┐               ┌─────────────────┐           ┌─────────────────┐
+│                 │               │                 │           │                 │
+│ 1. Code Changes │──build────────► 2. Multi-Arch   │──pull─────► 3. Smart        │
+│ 2. ./build-     │   pipeline    │    Images       │   images  │    Installation │
+│    pipeline.sh  │               │    (AMD64/ARM64)│           │    (5-10 min)   │
+│ 3. Push Images  │               │                 │           │                 │
+└─────────────────┘               └─────────────────┘           └─────────────────┘
+```
+
+#### Developer Workflow
+1. **Local Development**: Standard Python development with virtual environments
+2. **Production Build**: `./build-pipeline.sh` creates multi-architecture images
+3. **Image Push**: Automated push to `dhpsystems/rms-defragmenter` on Docker Hub
+4. **Customer Testing**: Test deployment with `install-customer.sh`
+
+#### Customer Workflow
+1. **One-Command Install**: `curl -fsSL <url> | bash`
+2. **Environment Detection**: Automatic detection of Tailscale/VPN/networking issues
+3. **Image Download**: Pull pre-built images (no compilation)
+4. **Smart Configuration**: Automatic selection of deployment method
+5. **Management Scripts**: Convenient start/stop/update scripts
 
 ## RMS API Integration
 
