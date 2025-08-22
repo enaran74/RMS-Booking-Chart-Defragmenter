@@ -22,7 +22,7 @@ psycopg2-binary>=2.9.7
 alembic>=1.12.1
 
 # Authentication & Security (Web App)
-python-jose[cryptography]>=3.3.0
+# python-jose removed due to security vulnerabilities - using PyJWT instead
 passlib[bcrypt]>=1.7.4
 bcrypt>=4.0.1
 
