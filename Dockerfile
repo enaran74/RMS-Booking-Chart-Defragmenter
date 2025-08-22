@@ -1,16 +1,32 @@
 # ==============================================================================
-# RMS Booking Chart Defragmenter - Docker Image
+# RMS Booking Chart Defragmenter - Production Docker Image
 # ==============================================================================
-# This Dockerfile creates a container running both:
-# 1. Original CLI defragmentation analyzer with cron scheduling
-# 2. FastAPI web interface for move management
-# 3. PostgreSQL client for database connectivity
+# Multi-stage build for optimized deployment with both CLI and Web interface
+# Supports multiple architectures: linux/amd64, linux/arm64
 
+# Stage 1: Build environment
+FROM python:3.11-slim-bookworm as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create wheel directory
+WORKDIR /wheels
+
+# Copy requirements and build wheels to avoid recompilation
+COPY requirements.txt ./
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels \
+    -r requirements.txt
+
+# Stage 2: Production image
 FROM python:3.11-slim-bookworm
 
-# Metadata
 LABEL maintainer="DHP Operations Systems"
-LABEL description="RMS Booking Chart Defragmenter with CLI and Web Interface"
+LABEL description="RMS Booking Chart Defragmenter - Complete System"
 LABEL version="2.0.0"
 
 # Set working directory
@@ -22,75 +38,66 @@ ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
-RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \
-    # Build tools
-    gcc \
-    g++ \
-    # PostgreSQL client
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # PostgreSQL client for database connectivity
     postgresql-client \
-    # Network tools
+    # Network utilities
     curl \
-    wget \
     # Process management
-    supervisor \
-    # Cron scheduling
-    cron \
-    # System utilities
     procps \
+    # Cron for scheduled tasks
+    cron \
+    # System monitoring
     htop \
+    # Text editor for debugging
     nano \
     # Timezone data
     tzdata \
-    # Clean up
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create application user and directories
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
-    && mkdir -p /app/logs /app/output /app/backups /app/config \
+# Create application user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create application directories
+RUN mkdir -p /app/logs /app/output /app/backups /app/config \
     && mkdir -p /app/app/original /app/app/web /app/app/shared \
     && mkdir -p /app/scripts \
     && chown -R appuser:appuser /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt ./requirements.txt
-
-# Install Python dependencies
+# Copy wheels from builder stage and install Python dependencies
+COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --only-binary=all pandas>=1.5.0 numpy>=1.21.0 \
-    && pip install --no-cache-dir -r requirements.txt \
-    && rm requirements.txt
+    && pip install --no-cache-dir --find-links /wheels \
+    pandas numpy openpyxl python-dateutil pytz \
+    fastapi uvicorn sqlalchemy psycopg2-binary alembic \
+    PyJWT cryptography passlib bcrypt \
+    requests httpx aiohttp \
+    pydantic pydantic-settings python-dotenv \
+    jinja2 python-multipart aiofiles \
+    xlsxwriter python-docx click \
+    websockets schedule croniter \
+    pytest pytest-asyncio pytest-cov structlog \
+    email-validator \
+    && rm -rf /wheels
 
-# Copy original application files
+# Copy application files
 COPY start.py defrag_analyzer.py rms_client.py excel_generator.py \
      email_sender.py holiday_client.py school_holiday_client.py \
      utils.py school_holidays.json ./app/original/
 
-# Copy web application files
 COPY web_app/main.py ./app/web/
 COPY web_app/app/ ./app/web/app/
 
-# Copy shared configuration and utilities
 COPY env.example ./app/shared/env.example
 
-# Copy management scripts
-COPY scripts/ ./scripts/
-RUN chmod +x ./scripts/*.sh
+# Copy scripts
+COPY scripts/entrypoint.sh scripts/health_check.sh scripts/cron_runner.py scripts/crontab ./scripts/
+RUN chmod +x ./scripts/entrypoint.sh ./scripts/health_check.sh
 
-# Create supervisor configuration
-RUN mkdir -p /etc/supervisor/conf.d
-
-# Create entrypoint script
-COPY scripts/entrypoint.sh ./
-RUN chmod +x ./entrypoint.sh
-
-# Create cron configuration
+# Set up cron
 COPY scripts/crontab /etc/cron.d/defrag-cron
 RUN chmod 0644 /etc/cron.d/defrag-cron && crontab /etc/cron.d/defrag-cron
-
-# Create health check script
-COPY scripts/health_check.sh ./
-RUN chmod +x ./health_check.sh
 
 # Set proper ownership
 RUN chown -R appuser:appuser /app
@@ -98,15 +105,12 @@ RUN chown -R appuser:appuser /app
 # Switch to application user
 USER appuser
 
-# Expose ports
+# Expose port
 EXPOSE 8000
-
-# Volume mounts for persistent data
-VOLUME ["/app/logs", "/app/output", "/app/backups", "/app/config"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD ./health_check.sh
+    CMD ./scripts/health_check.sh
 
 # Set entrypoint to handle arguments properly
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./scripts/entrypoint.sh"]

@@ -41,7 +41,6 @@ echo -e "${BLUE}📦 Building production image...${NC}"
 echo "Building for linux/amd64 and linux/arm64..."
 docker buildx build \
     --platform linux/amd64,linux/arm64 \
-    -f Dockerfile.production \
     -t ${DOCKER_REPO}:${VERSION} \
     -t ${DOCKER_REPO}:${LATEST_TAG} \
     --push \

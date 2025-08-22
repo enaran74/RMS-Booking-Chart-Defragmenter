@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production-success.svg)
@@ -23,8 +23,8 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 
 ### Installation
 ```bash
-# Download and run the smart installer
-curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install-customer.sh | bash
+# Download and run the automated installer
+curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
 ### Configuration & Launch
