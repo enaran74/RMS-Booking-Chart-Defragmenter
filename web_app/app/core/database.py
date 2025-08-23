@@ -15,7 +15,7 @@ engine = create_engine(
     pool_size=3,          # Conservative pool size to handle concurrent requests
     max_overflow=2,       # Allow overflow connections
     pool_timeout=30,      # Reasonable timeout for connections
-    pool_pre_ping=True,   # Enable ping to check connection health
+    pool_pre_ping=False,  # Disable ping to avoid transaction conflicts
     echo=False,           # Disable query logging to reduce overhead
     # Remove isolation_level to use default PostgreSQL behavior
 )
