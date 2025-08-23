@@ -133,19 +133,20 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
            docker cp /opt/defrag-app/main.py defrag-app:/app/main.py 2>/dev/null || echo "⚠️ Could not copy main.py (container may not be ready yet)"
            echo "   📁 Copying entire app directory (templates, static, API, models, core, etc.)"
            docker cp /opt/defrag-app/app/ defrag-app:/app/ 2>/dev/null || echo "⚠️ Could not copy app directory (container may not be ready yet)"
-           docker cp /opt/defrag-app/health_check.sh defrag-app:/app/health_check.sh 2>/dev/null || echo "⚠️ Could not copy health_check.sh (container may not be ready yet)"
-           docker exec defrag-app chmod +x /app/health_check.sh 2>/dev/null || echo "⚠️ Could not make health_check.sh executable"
            
-           # Force-copy CLI components for defragmentation functionality
            echo "🔄 Ensuring CLI components are active in container..."
+           echo "   📁 Copying CLI Python files (defrag_analyzer, rms_client, etc.)"
            docker cp /opt/defrag-app/defrag_analyzer.py defrag-app:/app/defrag_analyzer.py 2>/dev/null || echo "⚠️ Could not copy defrag_analyzer.py"
            docker cp /opt/defrag-app/rms_client.py defrag-app:/app/rms_client.py 2>/dev/null || echo "⚠️ Could not copy rms_client.py"
-           docker cp /opt/defrag-app/utils.py defrag-app:/app/utils.py 2>/dev/null || echo "⚠️ Could not copy utils.py"
-           docker cp /opt/defrag-app/excel_generator.py defrag-app:/app/excel_generator.py 2>/dev/null || echo "⚠️ Could not copy excel_generator.py"
            docker cp /opt/defrag-app/email_sender.py defrag-app:/app/email_sender.py 2>/dev/null || echo "⚠️ Could not copy email_sender.py"
+           docker cp /opt/defrag-app/excel_generator.py defrag-app:/app/excel_generator.py 2>/dev/null || echo "⚠️ Could not copy excel_generator.py"
            docker cp /opt/defrag-app/holiday_client.py defrag-app:/app/holiday_client.py 2>/dev/null || echo "⚠️ Could not copy holiday_client.py"
            docker cp /opt/defrag-app/school_holiday_client.py defrag-app:/app/school_holiday_client.py 2>/dev/null || echo "⚠️ Could not copy school_holiday_client.py"
-           docker cp /opt/defrag-app/school_holidays.json defrag-app:/app/school_holidays.json 2>/dev/null || echo "⚠️ Could not copy school_holidays.json"
+           docker cp /opt/defrag-app/utils.py defrag-app:/app/utils.py 2>/dev/null || echo "⚠️ Could not copy utils.py"
+           docker cp /opt/defrag-app/health_check.sh defrag-app:/app/health_check.sh 2>/dev/null || echo "⚠️ Could not copy health_check.sh (container may not be ready yet)"
+           docker exec defrag-app chmod +x /app/health_check.sh 2>/dev/null || echo "⚠️ Could not make health_check.sh executable"
+
+
            
            # Restart container to ensure all changes take effect
            echo "🔄 Restarting container to apply latest code..."
