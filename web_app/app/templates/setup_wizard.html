@@ -455,6 +455,13 @@
                                     <i class="fas fa-spinner fa-spin me-2"></i>Loading properties...
                                 </div>
                             </div>
+                            
+                            <div id="propertyRefresh" class="mt-2" style="display: none;">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadProperties()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh Properties from RMS
+                                </button>
+                                <small class="text-muted ms-2">Click to reload properties with current RMS credentials</small>
+                            </div>
                         </div>
                     </div>
                     
@@ -525,11 +532,14 @@
         document.querySelectorAll('input[name="propertyMode"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 const propertyList = document.getElementById('propertyList');
+                const propertyRefresh = document.getElementById('propertyRefresh');
                 if (this.value === 'SPECIFIC') {
                     propertyList.style.display = 'grid';
+                    propertyRefresh.style.display = 'block';
                     loadProperties();
                 } else {
                     propertyList.style.display = 'none';
+                    propertyRefresh.style.display = 'none';
                 }
             });
         });
@@ -538,38 +548,94 @@
         async function loadProperties() {
             const propertyList = document.getElementById('propertyList');
             
+            // Show loading state
+            propertyList.innerHTML = `
+                <div class="text-center p-3">
+                    <i class="fas fa-spinner fa-spin me-2"></i>Loading properties from RMS...
+                </div>
+            `;
+            
             try {
-                // For now, use common property codes - in real implementation, 
-                // this would fetch from RMS API using the provided credentials
-                const commonProperties = [
-                    { code: 'SADE', name: 'Adelaide Beachfront' },
-                    { code: 'QROC', name: 'Rockhampton' },
-                    { code: 'TCRA', name: 'Cradle Mountain' },
-                    { code: 'CKAT', name: 'Katherine' },
-                    { code: 'WCOO', name: 'Coogee Beach' },
-                    { code: 'WHED', name: 'Hedland' },
-                    { code: 'WKAR', name: 'Karratha' },
-                    { code: 'CALI', name: 'Alice Springs' },
-                    { code: 'VMEL', name: 'Melbourne' },
-                    { code: 'CDAR', name: 'Darwin' }
-                ];
+                // Get RMS credentials from the form
+                const rmsData = {
+                    agentId: document.getElementById('agentId').value.trim(),
+                    agentPassword: document.getElementById('agentPassword').value.trim(),
+                    clientId: document.getElementById('clientId').value.trim(),
+                    clientPassword: document.getElementById('clientPassword').value.trim(),
+                    systemMode: document.getElementById('systemMode').value || 'training'
+                };
                 
-                propertyList.innerHTML = commonProperties.map(prop => `
-                    <div class="property-option">
-                        <input type="checkbox" id="prop_${prop.code}" name="selectedProperties" value="${prop.code}">
-                        <label for="prop_${prop.code}">
-                            <strong>${prop.code}</strong><br>
-                            <small class="text-muted">${prop.name}</small>
-                        </label>
-                    </div>
-                `).join('');
+                // Validate that we have credentials
+                if (!rmsData.agentId || !rmsData.agentPassword || !rmsData.clientId || !rmsData.clientPassword) {
+                    propertyList.innerHTML = `
+                        <div class="text-center p-3 text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Please fill in your RMS API credentials first, then try selecting specific properties.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Fetch properties from RMS API
+                const response = await fetch('/api/v1/setup-wizard/fetch-rms-properties', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(rmsData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.properties && result.properties.length > 0) {
+                    // Display the properties from RMS
+                    propertyList.innerHTML = result.properties.map(prop => `
+                        <div class="property-option">
+                            <input type="checkbox" id="prop_${prop.code}" name="selectedProperties" value="${prop.code}">
+                            <label for="prop_${prop.code}">
+                                <strong>${prop.code}</strong><br>
+                                <small class="text-muted">${prop.name}</small>
+                                ${prop.is_active ? '' : '<br><small class="text-warning">(Inactive)</small>'}
+                            </label>
+                        </div>
+                    `).join('');
+                    
+                    // Add a success message
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'alert alert-success mt-2';
+                    successMsg.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Successfully loaded ${result.properties.length} properties from RMS API
+                    `;
+                    propertyList.prepend(successMsg);
+                    
+                } else {
+                    // Handle errors or no properties
+                    const errorMessage = result.message || 'Failed to load properties from RMS';
+                    propertyList.innerHTML = `
+                        <div class="text-center p-3 text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${errorMessage}
+                        </div>
+                        <div class="text-center p-2">
+                            <small class="text-muted">
+                                You can configure properties later in the Setup page, or verify your RMS credentials and try again.
+                            </small>
+                        </div>
+                    `;
+                }
                 
             } catch (error) {
                 console.error('Error loading properties:', error);
                 propertyList.innerHTML = `
                     <div class="text-center p-3 text-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Unable to load properties. You can configure them later in the Setup page.
+                        Network error loading properties. Please check your connection and try again.
+                    </div>
+                    <div class="text-center p-2">
+                        <small class="text-muted">
+                            You can configure properties later in the Setup page.
+                        </small>
                     </div>
                 `;
             }

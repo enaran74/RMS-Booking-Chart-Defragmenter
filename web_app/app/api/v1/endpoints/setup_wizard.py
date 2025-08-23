@@ -13,6 +13,7 @@ from pathlib import Path
 from app.core.database import get_db
 from app.core.security import get_password_hash, create_access_token
 from app.models.user import User
+from app.models.property import Property
 from app.schemas.setup_wizard import SetupWizardData, SetupWizardResponse
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,19 @@ async def complete_setup_wizard(
         
         logger.info(f"Admin user created successfully: {admin_user.username}")
         
-        # 2. Generate comprehensive .env file
+        # 2. Load properties into database from RMS API
+        logger.info("Loading properties from RMS API into database...")
+        try:
+            properties_loaded = await load_properties_into_database(setup_data, db)
+            if properties_loaded > 0:
+                logger.info(f"Successfully loaded {properties_loaded} properties into database")
+            else:
+                logger.warning("No properties were loaded into database - this may affect functionality")
+        except Exception as e:
+            logger.warning(f"Failed to load properties from RMS API: {e}")
+            # Don't fail setup if property loading fails - it can be done later
+        
+        # 3. Generate comprehensive .env file
         logger.info("Generating environment configuration...")
         env_content = generate_complete_env_file(setup_data)
         
@@ -101,7 +114,7 @@ async def complete_setup_wizard(
             except Exception as e:
                 logger.warning(f"Could not write to {env_path}: {e}")
         
-        # 3. Create access token for immediate login
+        # 4. Create access token for immediate login
         access_token = create_access_token(data={"sub": admin_user.username})
         
         logger.info("Setup wizard completed successfully")
@@ -444,4 +457,240 @@ async def test_rms_connection_wizard(test_data: RMSTestRequest):
                 "error": str(error)[:300],
                 "type": type(error).__name__
             }
+        }
+
+
+def extract_property_info_wizard(property_data: dict) -> dict:
+    """Extract property code, name, and RMS ID from RMS property data (wizard version)"""
+    try:
+        # Extract RMS property ID (this is the key field we need!)
+        rms_property_id = None
+        if 'id' in property_data and property_data['id']:
+            rms_property_id = int(property_data['id'])
+        
+        # Try different possible field names for property code
+        property_code = None
+        for code_field in ['code', 'propertyCode', 'Code', 'PropertyCode']:
+            if code_field in property_data and property_data[code_field]:
+                property_code = str(property_data[code_field]).strip()
+                break
+        
+        # Try different possible field names for property name
+        property_name = None
+        for name_field in ['name', 'propertyName', 'Name', 'PropertyName']:
+            if name_field in property_data and property_data[name_field]:
+                property_name = str(property_data[name_field]).strip()
+                break
+        
+        # Extract active status - RMS API returns 'inactive' field, convert to 'is_active'
+        is_active = True  # Default to active
+        if 'inactive' in property_data:
+            is_active = not property_data['inactive']  # Convert inactive to is_active
+        
+        if property_code and property_name and rms_property_id:
+            # Clean property code by removing trailing hyphens
+            clean_code = property_code.rstrip('- _').strip()
+            
+            return {
+                'code': clean_code,
+                'name': property_name,
+                'rms_id': rms_property_id,
+                'is_active': is_active
+            }
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error extracting property info: {e}")
+        return None
+
+
+async def load_properties_into_database(setup_data: SetupWizardData, db: Session) -> int:
+    """Load properties from RMS API into database during setup wizard completion"""
+    try:
+        # Create a test request data object for fetching properties
+        from pydantic import BaseModel
+        
+        test_request = RMSTestRequest(
+            agentId=setup_data.agentId,
+            agentPassword=setup_data.agentPassword,
+            clientId=setup_data.clientId,
+            clientPassword=setup_data.clientPassword,
+            systemMode=setup_data.systemMode
+        )
+        
+        # Fetch properties from RMS
+        properties_response = await fetch_rms_properties_wizard(test_request)
+        
+        if not properties_response.get("success") or not properties_response.get("properties"):
+            logger.warning("Failed to fetch properties from RMS API during setup")
+            return 0
+        
+        properties_data = properties_response["properties"]
+        properties_loaded = 0
+        
+        # Load each property into the database
+        for prop_data in properties_data:
+            try:
+                # Check if property already exists by code
+                existing_property = db.query(Property).filter(
+                    Property.property_code == prop_data['code']
+                ).first()
+                
+                if existing_property:
+                    # Update existing property with RMS ID and details
+                    existing_property.property_name = prop_data['name']
+                    existing_property.rms_property_id = prop_data['rms_id']
+                    existing_property.is_active = prop_data['is_active']
+                    logger.info(f"Updated existing property: {prop_data['code']} - {prop_data['name']}")
+                else:
+                    # Create new property
+                    new_property = Property(
+                        property_code=prop_data['code'],
+                        property_name=prop_data['name'],
+                        rms_property_id=prop_data['rms_id'],
+                        is_active=prop_data['is_active']
+                    )
+                    db.add(new_property)
+                    logger.info(f"Added new property: {prop_data['code']} - {prop_data['name']} (RMS ID: {prop_data['rms_id']})")
+                
+                properties_loaded += 1
+                
+            except Exception as e:
+                logger.error(f"Error loading property {prop_data.get('code', 'unknown')}: {e}")
+                continue
+        
+        # Commit all property changes
+        db.commit()
+        
+        logger.info(f"Successfully loaded {properties_loaded} properties into database")
+        return properties_loaded
+        
+    except Exception as e:
+        logger.error(f"Error loading properties into database: {e}")
+        db.rollback()
+        return 0
+
+
+@router.post("/fetch-rms-properties")
+async def fetch_rms_properties_wizard(test_data: RMSTestRequest):
+    """Fetch properties from RMS API using provided credentials during setup wizard"""
+    try:
+        logger.info("Fetching properties from RMS API during setup wizard")
+        
+        # Validate required credentials
+        if not all([test_data.agentId, test_data.agentPassword, test_data.clientId, test_data.clientPassword]):
+            return {
+                "success": False,
+                "message": "Missing required RMS credentials",
+                "properties": []
+            }
+        
+        # Use the same RMS connection logic as the main service
+        import requests
+        
+        base_url = "https://restapi12.rmscloud.com"
+        use_training_db = test_data.systemMode == "training"
+        
+        auth_payload = {
+            "AgentId": test_data.agentId,
+            "AgentPassword": test_data.agentPassword,
+            "ClientId": test_data.clientId,
+            "ClientPassword": test_data.clientPassword,
+            "UseTrainingDatabase": use_training_db,
+            "ModuleType": ["distribution"]
+        }
+        
+        # Step 1: Authenticate
+        auth_response = requests.post(f"{base_url}/authToken", json=auth_payload, timeout=30)
+        
+        if auth_response.status_code != 200:
+            return {
+                "success": False,
+                "message": "Failed to authenticate with RMS API",
+                "properties": []
+            }
+        
+        auth_data = auth_response.json()
+        token = auth_data.get('token')
+        
+        if not token:
+            return {
+                "success": False,
+                "message": "No authentication token received",
+                "properties": []
+            }
+        
+        headers = {
+            'authtoken': token,
+            'Content-Type': 'application/json'
+        }
+        
+        # Step 2: Fetch properties using the same logic as RMSService
+        endpoints_to_try = [
+            "/properties",
+            "/api/v1/properties", 
+            "/property"
+        ]
+        
+        params = {
+            'modelType': 'Full',
+            'limit': 2000
+        }
+        
+        properties_data = []
+        
+        for endpoint in endpoints_to_try:
+            logger.info(f"Trying RMS endpoint: {endpoint}")
+            try:
+                response = requests.get(f"{base_url}{endpoint}", headers=headers, params=params, timeout=30)
+                
+                if response.status_code == 200:
+                    raw_properties = response.json()
+                    if raw_properties:
+                        logger.info(f"Successfully fetched {len(raw_properties)} properties from {endpoint}")
+                        
+                        # Extract property information using the same logic as RMSService
+                        for prop_data in raw_properties:
+                            property_info = extract_property_info_wizard(prop_data)
+                            if property_info:
+                                properties_data.append(property_info)
+                        
+                        break
+                else:
+                    logger.warning(f"Endpoint {endpoint} failed: Status {response.status_code}")
+            except Exception as e:
+                logger.warning(f"Error trying endpoint {endpoint}: {e}")
+                continue
+        
+        if not properties_data:
+            return {
+                "success": False,
+                "message": "No properties could be fetched from RMS API",
+                "properties": []
+            }
+        
+        # Sort properties by code for consistent display
+        properties_data.sort(key=lambda x: x['code'])
+        
+        logger.info(f"Successfully extracted {len(properties_data)} valid properties")
+        
+        return {
+            "success": True,
+            "message": f"Successfully fetched {len(properties_data)} properties from RMS",
+            "properties": properties_data
+        }
+        
+    except requests.exceptions.Timeout:
+        return {
+            "success": False,
+            "message": "Connection timeout to RMS API",
+            "properties": []
+        }
+    except Exception as error:
+        logger.error(f"Error fetching RMS properties: {error}")
+        return {
+            "success": False,
+            "message": f"Error fetching properties: {str(error)}",
+            "properties": []
         }
