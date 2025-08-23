@@ -27,7 +27,7 @@ FROM python:3.11-slim-bookworm
 
 LABEL maintainer="DHP Operations Systems"
 LABEL description="RMS Booking Chart Defragmenter - Complete System"
-LABEL version="2.0.0"
+LABEL version="2.1.0"
 
 # Set working directory
 WORKDIR /app
