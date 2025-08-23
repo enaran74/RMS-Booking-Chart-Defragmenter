@@ -73,6 +73,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 async def setup_redirect_middleware(request: Request, call_next):
     """Redirect to setup wizard if no admin users exist"""
     
+    logging.info(f"Setup middleware called for path: {request.url.path}")
+    
     # Skip middleware for certain paths
     skip_paths = [
         "/api/",
@@ -86,6 +88,7 @@ async def setup_redirect_middleware(request: Request, call_next):
     
     # Check if we should skip this request
     if any(request.url.path.startswith(path) for path in skip_paths):
+        logging.info(f"Skipping setup check for path: {request.url.path}")
         return await call_next(request)
     
     try:
@@ -96,12 +99,14 @@ async def setup_redirect_middleware(request: Request, call_next):
         admin_count = result.scalar()
         db.close()
         
+        logging.info(f"Admin user count: {admin_count}")
+        
         # If no admin users exist, redirect to setup wizard
         if admin_count == 0:
             logging.info(f"No admin users found ({admin_count}), redirecting to setup wizard")
             return RedirectResponse(url="/setup-wizard", status_code=302)
         else:
-            logging.debug(f"Found {admin_count} admin users, allowing normal access")
+            logging.info(f"Found {admin_count} admin users, allowing normal access")
             
     except Exception as e:
         # If there's a database error, let the request proceed
