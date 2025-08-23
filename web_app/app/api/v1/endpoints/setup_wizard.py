@@ -101,18 +101,22 @@ async def complete_setup_wizard(
         logger.info("Generating environment configuration...")
         env_content = generate_complete_env_file(setup_data)
         
-        # Write to multiple locations for compatibility
-        env_paths = [
-            "/app/.env",  # Container location
-            "/opt/defrag-app/.env"  # Host shared location (if mounted)
-        ]
-        
-        for env_path in env_paths:
-            try:
-                write_env_file(env_path, env_content)
-                logger.info(f"Environment file written to: {env_path}")
-            except Exception as e:
-                logger.warning(f"Could not write to {env_path}: {e}")
+        # Write .env file using the proper sync function (same as setup page)
+        try:
+            from pathlib import Path
+            primary_env_path = Path("/app/.env")  # Container location as primary
+            
+            # Write to primary location
+            primary_env_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(primary_env_path, 'w', encoding='utf-8') as f:
+                f.write(env_content)
+            logger.info(f"Environment file written to: {primary_env_path}")
+            
+            # Synchronize to other locations using the same function as setup page
+            sync_env_files_wizard(primary_env_path, env_content)
+            
+        except Exception as e:
+            logger.warning(f"Could not write environment file: {e}")
         
         # 4. Create access token for immediate login
         access_token = create_access_token(data={"sub": admin_user.username})
@@ -570,6 +574,28 @@ async def load_properties_into_database(setup_data: SetupWizardData, db: Session
         logger.error(f"Error loading properties into database: {e}")
         db.rollback()
         return 0
+
+
+def sync_env_files_wizard(primary_path: Path, content: str) -> None:
+    """Synchronize .env file between host and container locations (wizard version)"""
+    try:
+        # Define both locations (same as setup page)
+        host_path = Path("/opt/defrag-app/.env")
+        container_path = Path("/app/.env")
+        
+        # Sync to all locations
+        for path in [host_path, container_path]:
+            if path != primary_path:  # Don't write to the same file we just wrote
+                try:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    logger.info(f"Synchronized .env file to {path}")
+                except Exception as error:
+                    logger.warning(f"Could not sync to {path}: {error}")
+                    
+    except Exception as error:
+        logger.warning(f"Error during .env file synchronization: {error}")
 
 
 @router.post("/fetch-rms-properties")
