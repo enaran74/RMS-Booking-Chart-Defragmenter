@@ -8,8 +8,9 @@ from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, WebSocke
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 import logging
@@ -31,10 +32,11 @@ from app.models.user_property import UserProperty
 from app.models.move_batch import MoveBatch
 from app.models.defrag_move import DefragMove
 
-from app.core.database import engine, Base
+from app.core.database import engine, Base, get_db
 from app.api.v1.api import api_router
 from app.core.security import create_access_token, get_current_user
 from app.schemas.auth import TokenResponse
+from app.models.user import User
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -48,6 +50,15 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
+)
+
 # Security
 security = HTTPBearer()
 
@@ -56,6 +67,43 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Setup detection middleware
+@app.middleware("http")
+async def setup_redirect_middleware(request: Request, call_next):
+    """Redirect to setup wizard if no admin users exist"""
+    
+    # Skip middleware for certain paths
+    skip_paths = [
+        "/api/",
+        "/static/",
+        "/setup-wizard",
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json"
+    ]
+    
+    # Check if we should skip this request
+    if any(request.url.path.startswith(path) for path in skip_paths):
+        return await call_next(request)
+    
+    try:
+        # Check if any admin users exist
+        db = next(get_db())
+        admin_count = db.query(User).filter(User.is_admin == True).count()
+        db.close()
+        
+        # If no admin users exist, redirect to setup wizard
+        if admin_count == 0:
+            return RedirectResponse(url="/setup-wizard", status_code=302)
+            
+    except Exception as e:
+        # If there's a database error, let the request proceed
+        # This prevents the middleware from breaking the app
+        logging.warning(f"Setup middleware database check failed: {e}")
+    
+    return await call_next(request)
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
@@ -69,6 +117,11 @@ async def read_root():
 async def read_setup():
     """Serve the admin setup page"""
     return FileResponse("app/templates/setup.html")
+
+@app.get("/setup-wizard")
+async def read_setup_wizard():
+    """Serve the first-time setup wizard page"""
+    return FileResponse("app/templates/setup_wizard.html")
 
 @app.get("/move-history")
 async def read_move_history():

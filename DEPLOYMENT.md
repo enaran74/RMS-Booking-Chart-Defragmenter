@@ -70,10 +70,10 @@ curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragme
 - **Network**: Bridge networking
 - **Use Case**: Most customer environments
 
-### Host Network Deployment
-- **File**: `docker-compose.hostnet.yml`
-- **Network**: Host networking
-- **Use Case**: Tailscale, VPN, or networking conflicts
+### Deployment Configuration
+- **File**: `docker-compose.yml` (uses host networking by default)
+- **Network**: Host networking (prevents Tailscale, VPN, or networking conflicts)
+- **Use Case**: All deployments (recommended for VPS environments)
 
 ## 🔧 Configuration
 
@@ -126,9 +126,9 @@ JWT_SECRET_KEY=your-jwt-secret-key-change-in-production
 If installation fails with networking errors:
 
 1. **Automatic Detection**: The installer detects most issues automatically
-2. **Manual Override**: Force host networking:
+2. **Standard Deployment**: Use the single deployment script:
    ```bash
-   docker compose -f docker-compose.hostnet.yml up -d
+   ./deploy_app.sh
    ```
 
 ### Common Issues

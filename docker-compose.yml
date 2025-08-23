@@ -1,16 +1,16 @@
 version: "3.8"
 
+# Host network version for environments with networking conflicts (Tailscale, VPNs, etc.)
 services:
   # RMS Defragmenter Web Application
   defrag-app:
     image: dhpsystems/rms-defragmenter:latest
     container_name: defrag-app
     restart: unless-stopped
-    ports:
-      - "${WEB_APP_PORT:-8000}:8000"
+    network_mode: host
     environment:
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
+      - DB_HOST=localhost
+      - DB_PORT=5433
       - DB_NAME=${DB_NAME:-defrag_db}
       - DB_USER=${DB_USER:-defrag_user}
       - DB_PASSWORD=${DB_PASSWORD:-DefragDB2024!}
@@ -34,30 +34,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - defrag-network
 
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: defrag-postgres
     restart: unless-stopped
+    network_mode: host
     environment:
       POSTGRES_DB: ${DB_NAME:-defrag_db}
       POSTGRES_USER: ${DB_USER:-defrag_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-DefragDB2024!}
+      PGPORT: 5433
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-defrag_user} -d ${DB_NAME:-defrag_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-defrag_user} -d ${DB_NAME:-defrag_db} -p 5433"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - defrag-network
 
 volumes:
   postgres_data:
@@ -66,10 +62,3 @@ volumes:
     driver: local
   defrag_output:
     driver: local
-
-networks:
-  defrag-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

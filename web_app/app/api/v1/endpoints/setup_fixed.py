@@ -35,21 +35,18 @@ class EnvironmentVariableResponse(BaseModel):
     file_path: str
 
 def get_env_file_path() -> Path:
-    """Get the path to the .env file - use shared location for both CLI and web app"""
-    # Priority order for shared configuration
+    """Get the path to the .env file"""
+    # Try current working directory first, then project root
     possible_paths = [
-        Path("/opt/defrag-app/.env"),  # Docker shared volume location
-        Path("/etc/bookingchart-defragmenter/config.env"),  # CLI config location  
-        Path("/app/.env"),  # Web app container location
-        Path.cwd() / ".env",  # Current working directory
-        Path(__file__).parent.parent.parent.parent.parent / ".env"  # Project root
+        Path.cwd() / ".env",
+        Path(__file__).parent.parent.parent.parent.parent / ".env"
     ]
     
     for path in possible_paths:
         if path.exists():
             return path
     
-    # Return the primary shared location if none exist
+    # Return the first one (current directory) if none exist
     return possible_paths[0]
 
 def parse_env_file(file_path: Path) -> Dict[str, str]:
@@ -81,8 +78,8 @@ def parse_env_file(file_path: Path) -> Dict[str, str]:
                     
                     variables[key] = value
                     
-    except Exception as error:
-        logger.error(f"Error parsing .env file: {error}")
+    except Exception as e:
+        logger.error(f"Error parsing .env file: {e}")
     
     return variables
 
@@ -109,12 +106,9 @@ def validate_environment_variables(variables: Dict[str, str]) -> None:
             except ValueError:
                 errors.append(f"{key}: must be a valid port number")
         
-        # Only validate specific email address fields
-        email_fields = ['SENDER_EMAIL', 'CONSOLIDATED_EMAIL_RECIPIENT', 'TEST_RECIPIENT']
-        if key in email_fields and value:
-            import re as regex_module
+        if key.endswith('_EMAIL') and value:
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not regex_module.match(email_pattern, value):
+            if not re.match(email_pattern, value):
                 errors.append(f"{key}: must be a valid email address")
         
         # Security checks
@@ -164,36 +158,15 @@ async def restart_application_containers() -> None:
                 else:
                     logger.error(f"Failed to start containers: {stderr.decode()}")
                     
-            except Exception as error:
-                logger.error(f"Error during delayed restart: {error}")
+            except Exception as e:
+                logger.error(f"Error during delayed restart: {e}")
         
         # Run the restart in the background
         asyncio.create_task(delayed_restart())
         
-    except Exception as error:
-        logger.error(f"Error initiating application restart: {error}")
+    except Exception as e:
+        logger.error(f"Error initiating application restart: {e}")
         # Don't raise the exception as this shouldn't fail the save operation
-
-def sync_env_files(primary_path: Path, content: str) -> None:
-    """Synchronize .env file between host and container locations"""
-    try:
-        # Define both locations
-        host_path = Path("/opt/defrag-app/.env")
-        container_path = Path("/app/.env")
-        
-        # Ensure both locations have the same content
-        for path in [host_path, container_path]:
-            if path != primary_path:  # Don't write to the same file we just wrote
-                try:
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    logger.info(f"Synchronized .env file to {path}")
-                except Exception as error:
-                    logger.warning(f"Could not sync to {path}: {error}")
-                    
-    except Exception as error:
-        logger.warning(f"Error during .env file synchronization: {error}")
 
 def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
     """Write environment variables to .env file with proper formatting and defaults"""
@@ -415,11 +388,8 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
             
         logger.info(f"Successfully wrote .env file to {file_path} with {len(final_variables)} variables")
         
-        # Ensure synchronization between host and container locations
-        sync_env_files(file_path, '\n'.join(lines))
-        
-    except Exception as error:
-        logger.error(f"Error writing .env file: {error}")
+    except Exception as e:
+        logger.error(f"Error writing .env file: {e}")
         raise
 
 @router.get("/environment", response_model=EnvironmentVariableResponse)
@@ -437,11 +407,11 @@ async def get_environment_variables(
             "file_path": str(env_path)
         }
         
-    except Exception as error:
-        logger.error(f"Error reading environment variables: {error}")
+    except Exception as e:
+        logger.error(f"Error reading environment variables: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to read environment variables: {str(error)}"
+            detail=f"Failed to read environment variables: {str(e)}"
         )
 
 @router.post("/environment")
@@ -479,8 +449,8 @@ async def update_environment_variables(
             "restart_initiated": True
         }
         
-    except Exception as error:
-        logger.error(f"Error updating environment variables: {error}")
+    except Exception as e:
+        logger.error(f"Error updating environment variables: {e}")
         
         # Try to restore backup if something went wrong
         try:
@@ -492,9 +462,9 @@ async def update_environment_variables(
         except Exception as restore_error:
             logger.error(f"Failed to restore backup: {restore_error}")
         
-            raise HTTPException(
-                status_code=500,
-            detail=f"Failed to update environment variables: {str(error)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update environment variables: {str(e)}"
         )
 
 @router.get("/test-db")
@@ -518,379 +488,10 @@ async def test_database_connection(
             "message": "Database connection successful"
         }
         
-    except Exception as error:
-        logger.error(f"Database connection test failed: {error}")
+    except Exception as e:
+        logger.error(f"Database connection test failed: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Database connection failed: {str(error)}"
+            detail=f"Database connection failed: {str(e)}"
         )
 
-@router.get("/database/tables")
-async def get_database_tables(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get database table information"""
-    try:
-        # Get table names and record counts - using known table list to avoid SQLAlchemy issues
-        known_tables = ["defrag_moves", "move_batches", "properties", "user_properties", "users"]
-        tables = []
-        
-        for table_name in known_tables:
-            try:
-                # Get record count for each table
-                count_query = text(f"SELECT COUNT(*) FROM {table_name}")
-                count_result = db.execute(count_query)
-                record_count = count_result.scalar()
-                
-                # Get column information using a simpler approach
-                try:
-                    # Use a simple query to get column names
-                    inspect_query = text(f"SELECT * FROM {table_name} LIMIT 0")
-                    inspect_result = db.execute(inspect_query)
-                    columns = list(inspect_result.keys())
-                    logger.info(f"Retrieved {len(columns)} columns for table {table_name}")
-                except Exception as col_error:
-                    logger.warning(f"Could not get columns for {table_name}: {col_error}")
-                    columns = ["id", "..."]  # Fallback
-                
-                # Skip sample records for now to avoid RMKeyView errors
-                sample_records = []
-                
-                tables.append({
-                    "name": table_name,
-                    "record_count": record_count,
-                    "columns": columns,
-                    "sample_records": sample_records
-                })
-            except Exception as e:
-                # Log the actual error that's causing tables to show 0 records
-                logger.error(f"❌ ERROR processing table {table_name}: {e}")
-                import traceback
-                logger.error(f"Full traceback: {traceback.format_exc()}")
-                # If anything fails, still include the table with minimal info
-                tables.append({
-                    "name": table_name,
-                    "record_count": 0,
-                    "columns": [],
-                    "sample_records": [],
-                    "error": str(e)
-                })
-        
-        response_data = {"tables": tables}
-        logger.info(f"Returning database tables response: {len(tables)} tables found")
-        for table in tables[:3]:  # Log first 3 tables
-            logger.info(f"  Table: {table['name']} - {table['record_count']} records")
-        return response_data
-        
-    except Exception as error:
-        logger.error(f"Failed to get database tables: {error}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get database tables: {str(error)}"
-        )
-
-@router.get("/database/table/{table_name}/records")
-async def get_table_records(
-    table_name: str,
-    offset: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get records from a specific table"""
-    try:
-        # Validate table name to prevent SQL injection
-        allowed_tables = ['users', 'properties', 'user_properties', 'defrag_moves', 'move_batches']
-        if table_name not in allowed_tables:
-            raise HTTPException(status_code=400, detail=f"Table {table_name} not allowed")
-        
-        # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")
-        total_result = db.execute(count_query)
-        total_count = total_result.scalar()
-        
-        # Get records with pagination
-        records_query = text(f"SELECT * FROM {table_name} ORDER BY id LIMIT {limit} OFFSET {offset}")
-        records_result = db.execute(records_query)
-        
-        # Convert to list of dictionaries
-        columns = list(records_result.keys())  # Convert RMKeyView to list
-        records = []
-        for row in records_result:
-            record = {}
-            for i, value in enumerate(row):
-                if value is not None:
-                    # Convert datetime objects to strings
-                    if hasattr(value, 'isoformat'):
-                        record[columns[i]] = value.isoformat()
-                    else:
-                        record[columns[i]] = str(value)
-                else:
-                    record[columns[i]] = None
-            records.append(record)
-        
-        return {
-            "table_name": table_name,
-            "total_count": total_count,
-            "offset": offset,
-            "limit": limit,
-            "records": records,
-            "has_more": (offset + limit) < total_count
-        }
-        
-    except Exception as error:
-        logger.error(f"Failed to get records from table {table_name}: {error}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get records from table {table_name}: {str(error)}"
-        )
-
-
-@router.delete("/database/table/{table_name}/delete-all")
-async def delete_all_records_from_table(
-    table_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Delete all records from a specific table (admin only)"""
-    
-    # Security check - only admin users can delete all records
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="Only admin users can delete all records from tables"
-        )
-    
-    # Validate table name to prevent SQL injection
-    allowed_tables = ["defrag_moves", "move_batches", "properties", "user_properties", "users"]
-    if table_name not in allowed_tables:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Table '{table_name}' is not allowed for deletion operations"
-        )
-    
-    # Prevent deletion of critical system tables
-    protected_tables = ["users"]  # Don't allow deleting all users
-    if table_name in protected_tables:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Table '{table_name}' is protected and cannot have all records deleted"
-        )
-    
-    try:
-        logger.info(f"Admin user {current_user.username} is deleting all records from table {table_name}")
-        
-        # Get count before deletion
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")
-        count_result = db.execute(count_query)
-        record_count = count_result.scalar()
-        
-        # Delete all records
-        delete_query = text(f"DELETE FROM {table_name}")
-        db.execute(delete_query)
-        db.commit()
-        
-        logger.info(f"Successfully deleted {record_count} records from table {table_name}")
-        
-        return {
-            "success": True,
-            "table_name": table_name,
-            "deleted_count": record_count,
-            "message": f"Successfully deleted all {record_count} records from {table_name}"
-        }
-        
-    except Exception as error:
-        db.rollback()
-        logger.error(f"Failed to delete records from table {table_name}: {error}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete records from table {table_name}: {str(error)}"
-        )
-
-
-@router.post("/test-rms-connection")
-async def test_rms_connection(
-    test_data: EnvironmentVariableUpdate,
-    current_user: User = Depends(get_current_user)
-):
-    """Test RMS API connection using provided credentials"""
-    try:
-        logger.info(f"Testing RMS API connection for user {current_user.username}")
-        
-        # Extract RMS credentials from the test data
-        variables = test_data.variables
-        agent_id = variables.get('AGENT_ID')
-        agent_password = variables.get('AGENT_PASSWORD')
-        client_id = variables.get('CLIENT_ID')
-        client_password = variables.get('CLIENT_PASSWORD')
-        use_training_db = variables.get('USE_TRAINING_DB', 'true').lower() == 'true'
-        
-        # Validate required credentials
-        if not all([agent_id, agent_password, client_id, client_password]):
-            raise HTTPException(
-                status_code=400,
-                detail="Missing required RMS credentials (Agent ID, Agent Password, Client ID, Client Password)"
-            )
-        
-        # Test RMS API connection
-        import requests
-        from datetime import datetime, timedelta
-        
-        base_url = "https://restapi12.rmscloud.com"
-        
-        auth_payload = {
-            "AgentId": agent_id,
-            "AgentPassword": agent_password,
-            "ClientId": client_id,
-            "ClientPassword": client_password,
-            "UseTrainingDatabase": use_training_db,
-            "ModuleType": ["distribution"]
-        }
-        
-        logger.info(f"Testing authentication with RMS API at {base_url}/authToken")
-        
-        # Test authentication
-        response = requests.post(f"{base_url}/authToken", json=auth_payload, timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            token = data.get('token')
-            
-            if token:
-                # Test a simple API call to verify the token works
-                headers = {
-                    'authtoken': token,
-                    'Content-Type': 'application/json'
-                }
-                
-                # Try to fetch properties to verify full API access
-                try:
-                    properties_response = requests.get(
-                        f"{base_url}/properties",
-                        headers=headers,
-                        params={'modelType': 'Full', 'limit': 10},
-                        timeout=30
-                    )
-                    
-                    if properties_response.status_code == 200:
-                        properties = properties_response.json()
-                        properties_count = len(properties) if properties else 0
-                        
-                        database_type = "Training Database" if use_training_db else "Live Database"
-                        
-                        return {
-                            "success": True,
-                            "message": f"RMS API connection successful! Connected to {database_type}.",
-                            "details": {
-                                "authentication": "✅ Successful",
-                                "database_mode": database_type,
-                                "properties_accessible": f"✅ {properties_count} properties found",
-                                "token_expiry": data.get('expiryDate', 'Not specified'),
-                                "api_endpoint": base_url
-                            }
-                        }
-                    else:
-                        return {
-                            "success": False,
-                            "message": "Authentication successful but failed to access RMS data",
-                            "details": {
-                                "authentication": "✅ Successful",
-                                "api_access": f"❌ Failed ({properties_response.status_code})",
-                                "error": properties_response.text[:200] if properties_response.text else "Unknown error"
-                            }
-                        }
-                        
-                except requests.exceptions.Timeout:
-                    return {
-                        "success": False,
-                        "message": "Authentication successful but RMS API is not responding",
-                        "details": {
-                            "authentication": "✅ Successful",
-                            "api_access": "❌ Timeout",
-                            "error": "RMS API did not respond within 30 seconds"
-                        }
-                    }
-                except Exception as api_error:
-                    return {
-                        "success": False,
-                        "message": "Authentication successful but failed to verify API access",
-                        "details": {
-                            "authentication": "✅ Successful", 
-                            "api_access": "❌ Error",
-                            "error": str(api_error)[:200]
-                        }
-                    }
-            else:
-                return {
-                    "success": False,
-                    "message": "RMS API authentication failed - no token received",
-                    "details": {
-                        "authentication": "❌ Failed",
-                        "error": "No authentication token in response",
-                        "response": str(data)[:200] if data else "Empty response"
-                    }
-                }
-        else:
-            error_message = "Unknown error"
-            try:
-                error_data = response.json()
-                error_message = error_data.get('message', str(error_data))
-            except:
-                error_message = response.text[:200] if response.text else f"HTTP {response.status_code}"
-            
-            return {
-                "success": False,
-                "message": f"RMS API authentication failed (HTTP {response.status_code})",
-                "details": {
-                    "authentication": "❌ Failed",
-                    "status_code": response.status_code,
-                    "error": error_message,
-                    "credentials_check": {
-                        "agent_id": f"✅ Provided ({agent_id})" if agent_id else "❌ Missing",
-                        "agent_password": "✅ Provided" if agent_password else "❌ Missing",
-                        "client_id": f"✅ Provided ({client_id})" if client_id else "❌ Missing",
-                        "client_password": "✅ Provided" if client_password else "❌ Missing"
-                    }
-                }
-            }
-            
-    except requests.exceptions.Timeout:
-        return {
-            "success": False,
-            "message": "RMS API connection timeout - server not responding",
-            "details": {
-                "error": "Connection timeout after 30 seconds",
-                "possible_causes": [
-                    "RMS API server is down",
-                    "Network connectivity issues",
-                    "Firewall blocking the connection"
-                ]
-            }
-        }
-    except requests.exceptions.ConnectionError:
-        return {
-            "success": False,
-            "message": "Cannot connect to RMS API server",
-            "details": {
-                "error": "Connection failed",
-                "api_endpoint": "https://restapi12.rmscloud.com",
-                "possible_causes": [
-                    "No internet connection",
-                    "RMS API server is unreachable",
-                    "DNS resolution issues"
-                ]
-            }
-        }
-    except Exception as error:
-        logger.error(f"Error testing RMS connection: {error}")
-        return {
-            "success": False,
-            "message": f"RMS API test failed: {str(error)}",
-            "details": {
-                "error": str(error)[:300],
-                "type": type(error).__name__
-            }
-        }

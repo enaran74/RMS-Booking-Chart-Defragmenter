@@ -149,8 +149,13 @@ class RMSService:
         return code.rstrip('- _').strip()
     
     def _extract_property_info(self, property_data: Dict) -> Optional[Dict]:
-        """Extract property code, name, and active status from RMS property data"""
+        """Extract property code, name, RMS ID, and active status from RMS property data"""
         try:
+            # Extract RMS property ID (this is the key field we need!)
+            rms_property_id = None
+            if 'id' in property_data and property_data['id']:
+                rms_property_id = int(property_data['id'])
+            
             # Try different possible field names for property code
             property_code = None
             for code_field in ['code', 'propertyCode', 'Code', 'PropertyCode']:
@@ -170,10 +175,11 @@ class RMSService:
             if 'inactive' in property_data:
                 is_active = not property_data['inactive']  # Convert inactive to is_active
             
-            if property_code and property_name:
+            if property_code and property_name and rms_property_id:
                 return {
                     'code': self._clean_property_code(property_code),
                     'name': property_name.strip(),
+                    'rms_id': rms_property_id,
                     'is_active': is_active
                 }
             
@@ -242,6 +248,10 @@ class RMSService:
                     if existing_property.property_name != prop_info['name']:
                         existing_property.property_name = prop_info['name']
                         updated = True
+                    if existing_property.rms_property_id != prop_info['rms_id']:
+                        existing_property.rms_property_id = prop_info['rms_id']
+                        updated = True
+                        logger.info(f"🔧 Updated RMS property ID for {prop_info['code']}: {prop_info['rms_id']}")
                     if existing_property.is_active != prop_info['is_active']:
                         existing_property.is_active = prop_info['is_active']
                         updated = True
@@ -252,10 +262,12 @@ class RMSService:
                     new_property = Property(
                         property_code=prop_info['code'],
                         property_name=prop_info['name'],
+                        rms_property_id=prop_info['rms_id'],
                         is_active=prop_info['is_active']
                     )
                     db.add(new_property)
                     properties_created += 1
+                    logger.info(f"🔧 Created new property {prop_info['code']} with RMS ID: {prop_info['rms_id']}")
             
             # Commit changes
             db.commit()

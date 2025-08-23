@@ -43,6 +43,47 @@ class Settings(BaseSettings):
     CORS_ALLOW_METHODS: list = ["*"]
     CORS_ALLOW_HEADERS: list = ["*"]
     
+    # =============================================================================
+    # CLI APPLICATION CONFIGURATION (Additional variables for unified config)
+    # =============================================================================
+    # Analysis settings for the original CLI application
+    TARGET_PROPERTIES: str = "ALL"
+    
+    # Email Configuration
+    ENABLE_EMAILS: bool = False
+    SEND_CONSOLIDATED_EMAIL: bool = False
+    CONSOLIDATED_EMAIL_RECIPIENT: str = "operations@discoveryparks.com.au"
+    
+    # SMTP Configuration
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SENDER_EMAIL: str = "your_email@yourdomain.com"
+    SENDER_DISPLAY_NAME: str = "DHP Defragmentation System"
+    APP_PASSWORD: str = "your_gmail_app_password_here"
+    TEST_RECIPIENT: str = "your_test_email@yourdomain.com"
+    
+    # Scheduling Configuration
+    CRON_SCHEDULE: str = "0 2 * * *"
+    ENABLE_CRON: bool = True
+    
+    # Output Configuration
+    OUTPUT_DIR: str = "/app/output"
+    LOG_DIR: str = "/app/logs"
+    
+    # Container Configuration
+    TZ: str = "Australia/Sydney"
+    CONTAINER_USER: str = "appuser"
+    CONTAINER_GROUP: str = "appuser"
+    
+    # Health Check Configuration
+    HEALTH_CHECK_INTERVAL: str = "30s"
+    HEALTH_CHECK_TIMEOUT: str = "10s"
+    HEALTH_CHECK_RETRIES: str = "3"
+    
+    # Backup Configuration
+    BACKUP_RETENTION_DAYS: str = "30"
+    BACKUP_ENABLED: bool = True
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

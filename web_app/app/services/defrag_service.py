@@ -24,6 +24,27 @@ class DefragService:
         logger.info("Initializing DefragService with lightweight RMS integration")
         self.rms_client = LightweightRMSClient()
     
+    def _get_rms_property_id(self, property_obj) -> int:
+        """Get RMS property ID from database property object"""
+        if hasattr(property_obj, 'rms_property_id') and property_obj.rms_property_id:
+            logger.info(f"🔧 Using stored RMS Property ID: {property_obj.property_code} -> {property_obj.rms_property_id}")
+            return property_obj.rms_property_id
+        else:
+            # Fallback to hardcoded mapping for properties that haven't been refreshed yet
+            logger.warning(f"⚠️ No RMS property ID stored for {property_obj.property_code}, using fallback mapping")
+            rms_id_mapping = {
+                'CKAT': 128,  # Katherine - was incorrectly mapped to 81
+                'WCOO': 81,   # Coogee Beach - correctly mapped
+            }
+            
+            clean_code = property_obj.property_code.rstrip('-').upper()
+            if clean_code in rms_id_mapping:
+                logger.info(f"🔧 Using fallback RMS Property ID mapping: {clean_code} -> {rms_id_mapping[clean_code]}")
+                return rms_id_mapping[clean_code]
+            else:
+                logger.error(f"❌ No RMS property ID available for {property_obj.property_code}. Please refresh properties in Setup page.")
+                return None
+    
     async def get_move_suggestions(self, property_code: str, force_refresh: bool = False, db: Session = None) -> Dict[str, Any]:
         """Generate fresh move suggestions from RMS API and store them permanently"""
         print(f"⭐⭐⭐ GET_MOVE_SUGGESTIONS CALLED FOR {property_code} ⭐⭐⭐")
@@ -53,8 +74,13 @@ class DefragService:
                 progress=20.0
             )
             
-            # Generate move suggestions using lightweight RMS API
-            suggestions = await self._generate_lightweight_rms_suggestions(property_code, property_obj)
+            # Get the correct RMS property ID from the database property object
+            rms_property_id = self._get_rms_property_id(property_obj)
+            if rms_property_id is None:
+                raise Exception(f"Unable to determine correct RMS property ID for {property_code}. Please refresh properties in Setup page.")
+            
+            # Generate move suggestions using lightweight RMS API with correct property ID
+            suggestions = await self._generate_lightweight_rms_suggestions(property_code, property_obj, rms_property_id)
             
             await websocket_manager.send_progress_update(
                 property_code, 
@@ -123,7 +149,7 @@ class DefragService:
             )
             raise e
     
-    async def _generate_lightweight_rms_suggestions(self, property_code: str, property_obj) -> List[Dict[str, Any]]:
+    async def _generate_lightweight_rms_suggestions(self, property_code: str, property_obj, rms_property_id: int) -> List[Dict[str, Any]]:
         """Generate move suggestions using lightweight RMS API integration"""
         print(f"🔥🔥🔥 _GENERATE_LIGHTWEIGHT_RMS_SUGGESTIONS CALLED FOR {property_code} 🔥🔥🔥")
         logger.info(f"🔥 _GENERATE_LIGHTWEIGHT_RMS_SUGGESTIONS CALLED FOR {property_code}")
@@ -159,18 +185,18 @@ class DefragService:
                 progress=60.0
             )
             
-            logger.info(f"Running simple defragmentation analysis for property ID {property_obj.id}")
+            logger.info(f"Running simple defragmentation analysis for RMS property ID {rms_property_id} (was using incorrect DB ID {property_obj.id})")
 
             # Send debug info about starting RMS API calls
             await websocket_manager.send_progress_update(
                 property_code,
                 "rms_api_start",
-                f"🔍 Starting RMS API calls for property {property_obj.id}",
+                f"🔍 Starting RMS API calls for RMS property {rms_property_id}",
                 progress=65.0
             )
 
-            # Use the lightweight client's analysis method
-            raw_suggestions = await self.rms_client.analyze_simple_defragmentation(property_obj.id, property_code)
+            # Use the lightweight client's analysis method with CORRECT RMS property ID
+            raw_suggestions = await self.rms_client.analyze_simple_defragmentation(rms_property_id, property_code)
 
             # Send debug info about RMS API results
             await websocket_manager.send_progress_update(

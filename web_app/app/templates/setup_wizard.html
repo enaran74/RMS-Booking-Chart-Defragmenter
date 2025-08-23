@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First-Time Setup - RMS Booking Chart Defragmenter - Discovery Holiday Parks</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/images/dhp_circle_logo.svg">
+    <link rel="icon" type="image/png" href="/static/images/dhp_circle_logo.svg">
+    <link rel="apple-touch-icon" href="/static/images/dhp_circle_logo.svg">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --dhp-primary: #2E8B57;
+            --dhp-secondary: #20B2AA;
+            --dhp-accent: #FFD700;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .setup-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        
+        .setup-card {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .setup-header {
+            background: linear-gradient(135deg, var(--dhp-primary) 0%, var(--dhp-secondary) 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .setup-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 300;
+        }
+        
+        .setup-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .dhp-logo {
+            height: 40px;
+            margin-right: 1rem;
+        }
+        
+        .setup-body {
+            padding: 2.5rem;
+        }
+        
+        .setup-section {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .setup-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--dhp-primary), var(--dhp-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            margin-right: 1rem;
+        }
+        
+        .section-title {
+            flex: 1;
+        }
+        
+        .section-title h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .section-title p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--dhp-primary);
+            box-shadow: 0 0 0 0.2rem rgba(46, 139, 87, 0.25);
+        }
+        
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .mode-option {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .mode-option:hover {
+            border-color: var(--dhp-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mode-option.selected {
+            border-color: var(--dhp-primary);
+            background: rgba(46, 139, 87, 0.05);
+        }
+        
+        .mode-option .mode-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .mode-option.training .mode-icon {
+            color: #28a745;
+        }
+        
+        .mode-option.live .mode-icon {
+            color: #dc3545;
+        }
+        
+        .mode-option h5 {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .mode-option p {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        .property-selector {
+            margin-top: 1rem;
+        }
+        
+        .property-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .property-option {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .property-option:hover {
+            background: #f8f9fa;
+            border-color: var(--dhp-primary);
+        }
+        
+        .property-option input[type="checkbox"] {
+            margin-right: 0.75rem;
+        }
+        
+        .btn-setup {
+            background: linear-gradient(135deg, var(--dhp-primary), var(--dhp-secondary));
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-setup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(46, 139, 87, 0.3);
+            color: white;
+        }
+        
+        .btn-setup:disabled {
+            opacity: 0.6;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .alert-info {
+            background: rgba(46, 139, 87, 0.1);
+            border: 1px solid rgba(46, 139, 87, 0.2);
+            border-radius: 10px;
+            color: #2c3e50;
+        }
+        
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        .advanced-toggle {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .advanced-toggle summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--dhp-primary);
+            outline: none;
+        }
+        
+        .advanced-toggle summary:hover {
+            color: var(--dhp-secondary);
+        }
+        
+        .advanced-content {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-card">
+            <!-- Header -->
+            <div class="setup-header">
+                <div class="d-flex align-items-center justify-content-center mb-3">
+                    <img src="/static/images/dhp_logo_white.svg" alt="Discovery Holiday Parks" class="dhp-logo">
+                    <h1>Welcome!</h1>
+                </div>
+                <p>Let's set up your RMS Defragmenter in just a few steps</p>
+            </div>
+            
+            <!-- Setup Form -->
+            <div class="setup-body">
+                <form id="setupForm">
+                    <!-- Step 1: Admin Account -->
+                    <div class="setup-section">
+                        <div class="section-header">
+                            <div class="section-icon">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div class="section-title">
+                                <h3>Admin Account</h3>
+                                <p>Create your administrator account for system management</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="adminUsername" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Username
+                                </label>
+                                <input type="text" class="form-control" id="adminUsername" name="adminUsername" 
+                                       value="admin" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="adminPassword" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Password
+                                </label>
+                                <input type="password" class="form-control" id="adminPassword" name="adminPassword" 
+                                       placeholder="Enter secure password" required>
+                                <div class="form-text">Minimum 8 characters with uppercase, lowercase, and numbers</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: RMS API Credentials -->
+                    <div class="setup-section">
+                        <div class="section-header">
+                            <div class="section-icon">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <div class="section-title">
+                                <h3>RMS API Credentials</h3>
+                                <p>Your RMS system credentials for data access</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="agentId" class="form-label">
+                                    <i class="fas fa-id-badge me-1"></i>Agent ID
+                                </label>
+                                <input type="text" class="form-control" id="agentId" name="agentId" 
+                                       placeholder="Your RMS Agent ID" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="agentPassword" class="form-label">
+                                    <i class="fas fa-key me-1"></i>Agent Password
+                                </label>
+                                <input type="password" class="form-control" id="agentPassword" name="agentPassword" 
+                                       placeholder="Your RMS Agent Password" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="clientId" class="form-label">
+                                    <i class="fas fa-building me-1"></i>Client ID
+                                </label>
+                                <input type="text" class="form-control" id="clientId" name="clientId" 
+                                       placeholder="Your RMS Client ID" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="clientPassword" class="form-label">
+                                    <i class="fas fa-shield-alt me-1"></i>Client Password
+                                </label>
+                                <input type="password" class="form-control" id="clientPassword" name="clientPassword" 
+                                       placeholder="Your RMS Client Password" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Test RMS Connection Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-plug me-2"></i>Test RMS Connection
+                                        </h6>
+                                        <small class="text-muted">Verify your credentials work with the RMS API</small>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="testRmsButton" onclick="testRmsConnection()">
+                                        <i class="fas fa-flask me-1"></i>Test Connection
+                                    </button>
+                                </div>
+                                <div id="rmsTestResult" class="mt-2" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: System Mode -->
+                    <div class="setup-section">
+                        <div class="section-header">
+                            <div class="section-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="section-title">
+                                <h3>System Mode</h3>
+                                <p>Choose between training mode (safe testing) or live mode (real data)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mode-selector">
+                            <div class="mode-option training selected" data-mode="training">
+                                <i class="fas fa-graduation-cap mode-icon"></i>
+                                <h5>Training Mode</h5>
+                                <p>Safe testing environment<br>Recommended for initial setup</p>
+                            </div>
+                            <div class="mode-option live" data-mode="live">
+                                <i class="fas fa-rocket mode-icon"></i>
+                                <h5>Live Mode</h5>
+                                <p>Real production data<br>Use when ready for production</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="systemMode" name="systemMode" value="training">
+                    </div>
+                    
+                    <!-- Step 4: Target Properties -->
+                    <div class="setup-section">
+                        <div class="section-header">
+                            <div class="section-icon">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div class="section-title">
+                                <h3>Target Properties</h3>
+                                <p>Select which properties to analyze for defragmentation</p>
+                            </div>
+                        </div>
+                        
+                        <div class="property-selector">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="propertyMode" id="allProperties" value="ALL" checked>
+                                <label class="form-check-label fw-bold" for="allProperties">
+                                    <i class="fas fa-globe me-1"></i>All Properties
+                                    <small class="text-muted d-block">Analyze all available properties (recommended)</small>
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="propertyMode" id="specificProperties" value="SPECIFIC">
+                                <label class="form-check-label fw-bold" for="specificProperties">
+                                    <i class="fas fa-list me-1"></i>Specific Properties
+                                    <small class="text-muted d-block">Choose individual properties to analyze</small>
+                                </label>
+                            </div>
+                            
+                            <div id="propertyList" class="property-options" style="display: none;">
+                                <!-- Will be populated dynamically -->
+                                <div class="text-center p-3">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Loading properties...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Next Steps Info -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>What's Next?</h6>
+                        <p class="mb-2">After completing this setup, you can:</p>
+                        <ul class="mb-0">
+                            <li><strong>Review all settings</strong> in the Setup page for advanced configuration</li>
+                            <li><strong>Configure email notifications</strong> for automated reports</li>
+                            <li><strong>Set up scheduling</strong> for automatic defragmentation analysis</li>
+                            <li><strong>Manage user accounts</strong> and property assignments</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Advanced Settings (Collapsed) -->
+                    <details class="advanced-toggle">
+                        <summary><i class="fas fa-cog me-2"></i>Advanced Settings (Optional)</summary>
+                        <div class="advanced-content">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="adminEmail" class="form-label">Admin Email</label>
+                                    <input type="email" class="form-control" id="adminEmail" name="adminEmail" 
+                                           placeholder="admin@yourdomain.com">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="timezone" class="form-label">Timezone</label>
+                                    <select class="form-select" id="timezone" name="timezone">
+                                        <option value="Australia/Sydney" selected>Australia/Sydney</option>
+                                        <option value="Australia/Melbourne">Australia/Melbourne</option>
+                                        <option value="Australia/Brisbane">Australia/Brisbane</option>
+                                        <option value="Australia/Perth">Australia/Perth</option>
+                                        <option value="Australia/Adelaide">Australia/Adelaide</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-setup mt-4" id="setupButton">
+                        <i class="fas fa-rocket me-2"></i>Complete Setup & Start System
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Mode selection
+        document.querySelectorAll('.mode-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove selected class from all options
+                document.querySelectorAll('.mode-option').forEach(opt => opt.classList.remove('selected'));
+                
+                // Add selected class to clicked option
+                this.classList.add('selected');
+                
+                // Update hidden input
+                document.getElementById('systemMode').value = this.dataset.mode;
+            });
+        });
+        
+        // Property mode selection
+        document.querySelectorAll('input[name="propertyMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const propertyList = document.getElementById('propertyList');
+                if (this.value === 'SPECIFIC') {
+                    propertyList.style.display = 'grid';
+                    loadProperties();
+                } else {
+                    propertyList.style.display = 'none';
+                }
+            });
+        });
+        
+        // Load properties from RMS API
+        async function loadProperties() {
+            const propertyList = document.getElementById('propertyList');
+            
+            try {
+                // For now, use common property codes - in real implementation, 
+                // this would fetch from RMS API using the provided credentials
+                const commonProperties = [
+                    { code: 'SADE', name: 'Adelaide Beachfront' },
+                    { code: 'QROC', name: 'Rockhampton' },
+                    { code: 'TCRA', name: 'Cradle Mountain' },
+                    { code: 'CKAT', name: 'Katherine' },
+                    { code: 'WCOO', name: 'Coogee Beach' },
+                    { code: 'WHED', name: 'Hedland' },
+                    { code: 'WKAR', name: 'Karratha' },
+                    { code: 'CALI', name: 'Alice Springs' },
+                    { code: 'VMEL', name: 'Melbourne' },
+                    { code: 'CDAR', name: 'Darwin' }
+                ];
+                
+                propertyList.innerHTML = commonProperties.map(prop => `
+                    <div class="property-option">
+                        <input type="checkbox" id="prop_${prop.code}" name="selectedProperties" value="${prop.code}">
+                        <label for="prop_${prop.code}">
+                            <strong>${prop.code}</strong><br>
+                            <small class="text-muted">${prop.name}</small>
+                        </label>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading properties:', error);
+                propertyList.innerHTML = `
+                    <div class="text-center p-3 text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Unable to load properties. You can configure them later in the Setup page.
+                    </div>
+                `;
+            }
+        }
+        
+        // Form submission
+        document.getElementById('setupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const button = document.getElementById('setupButton');
+            const originalText = button.innerHTML;
+            
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Setting up system...';
+            
+            try {
+                // Collect form data
+                const formData = new FormData(this);
+                const setupData = {
+                    adminUsername: formData.get('adminUsername'),
+                    adminPassword: formData.get('adminPassword'),
+                    adminEmail: formData.get('adminEmail') || `${formData.get('adminUsername')}@dhpsystems.com`,
+                    agentId: formData.get('agentId'),
+                    agentPassword: formData.get('agentPassword'),
+                    clientId: formData.get('clientId'),
+                    clientPassword: formData.get('clientPassword'),
+                    systemMode: formData.get('systemMode'),
+                    propertyMode: formData.get('propertyMode'),
+                    timezone: formData.get('timezone') || 'Australia/Sydney'
+                };
+                
+                // Handle property selection
+                if (setupData.propertyMode === 'ALL') {
+                    setupData.targetProperties = 'ALL';
+                } else {
+                    const selectedProperties = Array.from(document.querySelectorAll('input[name="selectedProperties"]:checked'))
+                        .map(cb => cb.value);
+                    setupData.targetProperties = selectedProperties.length > 0 ? selectedProperties.join(',') : 'ALL';
+                }
+                
+                console.log('Submitting setup data:', setupData);
+                
+                // Submit to API
+                const response = await fetch('/api/v1/setup-wizard/complete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(setupData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Show success message
+                    button.innerHTML = '<i class="fas fa-check me-2"></i>Setup Complete!';
+                    button.classList.remove('btn-setup');
+                    button.classList.add('btn-success');
+                    
+                    // Store the access token if provided
+                    if (result.access_token) {
+                        localStorage.setItem('authToken', result.access_token);
+                    }
+                    
+                    // Redirect to main application after a brief delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Setup failed');
+                }
+                
+            } catch (error) {
+                console.error('Setup error:', error);
+                
+                // Show error state
+                button.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Setup Failed - Try Again';
+                button.classList.remove('btn-setup');
+                button.classList.add('btn-danger');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    button.classList.remove('btn-danger');
+                    button.classList.add('btn-setup');
+                }, 3000);
+                
+                alert(`Setup failed: ${error.message}`);
+            }
+        });
+        
+        // Form validation
+        document.querySelectorAll('input[required]').forEach(input => {
+            input.addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    this.classList.add('is-invalid');
+                } else {
+                    this.classList.remove('is-invalid');
+                }
+            });
+            
+            input.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    this.classList.remove('is-invalid');
+                }
+            });
+        });
+        
+        // Password strength validation
+        document.getElementById('adminPassword').addEventListener('input', function() {
+            const password = this.value;
+            const isValid = password.length >= 8 && 
+                           /[A-Z]/.test(password) && 
+                           /[a-z]/.test(password) && 
+                           /[0-9]/.test(password);
+            
+            if (password.length > 0) {
+                if (isValid) {
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                } else {
+                    this.classList.remove('is-valid');
+                    this.classList.add('is-invalid');
+                }
+            } else {
+                this.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+        
+        // Test RMS Connection function
+        async function testRmsConnection() {
+            const button = document.getElementById('testRmsButton');
+            const resultDiv = document.getElementById('rmsTestResult');
+            const originalButtonText = button.innerHTML;
+            
+            // Get credential values
+            const agentId = document.getElementById('agentId').value.trim();
+            const agentPassword = document.getElementById('agentPassword').value.trim();
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientPassword = document.getElementById('clientPassword').value.trim();
+            const systemMode = document.getElementById('systemMode').value;
+            
+            // Validate that all fields are filled
+            if (!agentId || !agentPassword || !clientId || !clientPassword) {
+                showTestResult(false, 'Please fill in all RMS credential fields before testing.', {});
+                return;
+            }
+            
+            try {
+                // Show loading state
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Testing...';
+                resultDiv.style.display = 'none';
+                
+                // Make API call
+                const response = await fetch('/api/v1/setup-wizard/test-rms-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        agentId: agentId,
+                        agentPassword: agentPassword,
+                        clientId: clientId,
+                        clientPassword: clientPassword,
+                        systemMode: systemMode
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showTestResult(result.success, result.message, result.details || {});
+                } else {
+                    showTestResult(false, result.message || 'Test failed', result.details || {});
+                }
+                
+            } catch (error) {
+                console.error('RMS test error:', error);
+                showTestResult(false, `Test failed: ${error.message}`, { error: error.message });
+            } finally {
+                // Restore button state
+                button.disabled = false;
+                button.innerHTML = originalButtonText;
+            }
+        }
+        
+        function showTestResult(success, message, details) {
+            const resultDiv = document.getElementById('rmsTestResult');
+            
+            const alertClass = success ? 'alert-success' : 'alert-danger';
+            const iconClass = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            
+            let detailsHtml = '';
+            if (details && Object.keys(details).length > 0) {
+                detailsHtml = '<div class="mt-2 small">';
+                for (const [key, value] of Object.entries(details)) {
+                    if (key !== 'error' && key !== 'possible_causes') {
+                        detailsHtml += `<div><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</div>`;
+                    }
+                }
+                
+                if (details.possible_causes && Array.isArray(details.possible_causes)) {
+                    detailsHtml += '<div class="mt-1"><strong>Possible Causes:</strong><ul class="mb-0 ms-3">';
+                    details.possible_causes.forEach(cause => {
+                        detailsHtml += `<li>${cause}</li>`;
+                    });
+                    detailsHtml += '</ul></div>';
+                }
+                
+                detailsHtml += '</div>';
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="alert ${alertClass} mb-0">
+                    <div class="d-flex align-items-start">
+                        <i class="${iconClass} me-2 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <div><strong>${success ? 'Success!' : 'Test Failed'}</strong></div>
+                            <div>${message}</div>
+                            ${detailsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.style.display = 'block';
+            
+            // Auto-hide success messages after 10 seconds
+            if (success) {
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 10000);
+            }
+        }
+    </script>
+</body>
+</html>

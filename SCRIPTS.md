@@ -469,16 +469,17 @@ Quick deployment for web app and core files only.
 ./deploy_incremental.sh [--full] [--files-only]
 ```
 
-### `deploy_web_app.sh` - **Legacy (Web Only)**
+### `deploy_app.sh` - **Complete Application Deployment**
 
-Full web application deployment only.
+Deploys the entire application stack including web app, database, and all services.
 
-**Limitations:**
-- ❌ Doesn't handle CLI analyzer updates
-- ❌ Doesn't handle shared utilities
-- ❌ Web app focused only
+**Features:**
+- ✅ Deploys complete application stack
+- ✅ Uses host networking (VPS compatible)
+- ✅ Handles database and web services
+- ✅ Automatic configuration management
 
-**Recommendation:** Use `deploy.sh` for all new deployments as it provides comprehensive coverage and intelligent deployment strategies.
+**Recommendation:** Use `deploy_app.sh` for all deployments as it provides reliable, streamlined deployment of the complete application stack.
 
 ## Best Practices
 
