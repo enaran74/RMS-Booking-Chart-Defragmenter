@@ -12,12 +12,12 @@ from app.core.config import DATABASE_URL, settings
 engine = create_engine(
     DATABASE_URL,
     pool_recycle=3600,    # Recycle connections every hour
-    pool_size=5,          # Increase pool size to handle concurrent requests
-    max_overflow=5,       # Allow more overflow connections
+    pool_size=3,          # Conservative pool size to handle concurrent requests
+    max_overflow=2,       # Allow overflow connections
     pool_timeout=30,      # Reasonable timeout for connections
-    pool_pre_ping=False,  # Disable ping to avoid transaction conflicts
+    pool_pre_ping=True,   # Enable ping to check connection health
     echo=False,           # Disable query logging to reduce overhead
-    isolation_level="AUTOCOMMIT"  # Set isolation level to prevent transaction conflicts
+    # Remove isolation_level to use default PostgreSQL behavior
 )
 
 # Create session factory
