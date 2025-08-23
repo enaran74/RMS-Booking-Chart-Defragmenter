@@ -8,15 +8,16 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import DATABASE_URL, settings
 
-# Create database engine with limited concurrency to avoid transaction conflicts
+# Create database engine with configuration to avoid transaction conflicts
 engine = create_engine(
     DATABASE_URL,
     pool_recycle=3600,    # Recycle connections every hour
-    pool_size=2,          # Small pool to handle concurrent requests
-    max_overflow=1,       # Allow one extra connection for long operations
-    pool_timeout=60,      # Increase timeout for long operations
+    pool_size=5,          # Increase pool size to handle concurrent requests
+    max_overflow=5,       # Allow more overflow connections
+    pool_timeout=30,      # Reasonable timeout for connections
     pool_pre_ping=False,  # Disable ping to avoid transaction conflicts
-    echo=False            # Disable query logging to reduce overhead
+    echo=False,           # Disable query logging to reduce overhead
+    isolation_level="AUTOCOMMIT"  # Set isolation level to prevent transaction conflicts
 )
 
 # Create session factory
