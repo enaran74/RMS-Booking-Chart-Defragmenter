@@ -118,6 +118,9 @@ main() {
     curl -fsSL "https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/${COMPOSE_FILE}" \
         -o docker-compose.yml
     
+    # Update to use latest stable image with database fixes
+    sed -i 's/dhpsystems\/rms-defragmenter:latest/dhpsystems\/rms-defragmenter:2.1.0/g' docker-compose.yml
+    
     # Download environment template
     curl -fsSL "https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/env.example" \
         -o env.example
@@ -137,6 +140,8 @@ main() {
     
     print_header "🎉 Installation Complete!"
     echo ""
+    print_status "✅ Installed with v2.1.0 (includes database stability fixes)"
+    echo ""
     print_info "Next steps:"
     echo "1. Configure your RMS credentials:"
     echo "   ${CYAN}cd $INSTALL_DIR && nano .env${NC}"
@@ -149,6 +154,11 @@ main() {
     echo ""
     print_warning "Default login: username=admin, password=admin123"
     print_warning "Change these credentials in production!"
+    echo ""
+    print_info "🔧 This version includes important database stability fixes:"
+    echo "   • Resolved authentication issues"
+    echo "   • Fixed move history functionality"
+    echo "   • Improved session management"
 }
 
 create_management_scripts() {
