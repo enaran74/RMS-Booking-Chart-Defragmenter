@@ -70,8 +70,6 @@ templates = Jinja2Templates(directory="app/templates")
 async def setup_redirect_middleware(request: Request, call_next):
     """Redirect to setup wizard if no admin users exist"""
     
-    logging.info(f"Setup middleware called for path: {request.url.path}")
-    
     # Skip middleware for certain paths
     skip_paths = [
         "/api/",
@@ -85,7 +83,6 @@ async def setup_redirect_middleware(request: Request, call_next):
     
     # Check if we should skip this request
     if any(request.url.path.startswith(path) for path in skip_paths):
-        logging.info(f"Skipping setup check for path: {request.url.path}")
         return await call_next(request)
     
     try:
@@ -96,19 +93,14 @@ async def setup_redirect_middleware(request: Request, call_next):
         admin_count = result.scalar()
         db.close()
         
-        logging.info(f"Admin user count: {admin_count}")
-        
         # If no admin users exist, redirect to setup wizard
         if admin_count == 0:
-            logging.info(f"No admin users found ({admin_count}), redirecting to setup wizard")
             return RedirectResponse(url="/setup-wizard", status_code=302)
-        else:
-            logging.info(f"Found {admin_count} admin users, allowing normal access")
             
     except Exception as e:
         # If there's a database error, let the request proceed
         # This prevents the middleware from breaking the app
-        logging.error(f"Setup middleware database check failed: {e}")
+        logging.warning(f"Setup middleware database check failed: {e}")
     
     return await call_next(request)
 
@@ -131,12 +123,7 @@ async def read_setup():
 @app.get("/setup-wizard")
 async def read_setup_wizard():
     """Serve the first-time setup wizard page"""
-    # Temporary test to see if route works
-    try:
-        return FileResponse("app/templates/setup_wizard.html")
-    except Exception as e:
-        logging.error(f"Error serving setup wizard: {e}")
-        return HTMLResponse(content="<h1>Setup Wizard Test - Route Working!</h1><p>File error: " + str(e) + "</p>")
+    return FileResponse("app/templates/setup_wizard.html")
 
 @app.get("/move-history")
 async def read_move_history():
