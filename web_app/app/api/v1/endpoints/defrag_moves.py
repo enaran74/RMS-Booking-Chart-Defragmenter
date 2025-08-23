@@ -652,7 +652,9 @@ async def get_move_history(
     current_user: User = Depends(get_current_user)
 ):
     """Get move history with date range filtering and pagination"""
-    logger.info(f"Getting move history for user {current_user.username}")
+    logger.info(f"Getting move history for user {current_user.username} with params: start_date={start_date}, end_date={end_date}, property_code={property_code}, status={status}, limit={limit}, offset={offset}")
+    
+    try:
     
     # Build query
     query = db.query(DefragMove)
@@ -740,13 +742,16 @@ async def get_move_history(
     
     logger.info(f"Retrieved {len(moves)} moves from history for user {current_user.username}")
     
-    return {
-        "success": True,
-        "total_count": total_count,
-        "moves": move_responses,
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "has_more": offset + limit < total_count
+        return {
+            "success": True,
+            "total_count": total_count,
+            "moves": move_responses,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + limit < total_count
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"Error in get_move_history: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error retrieving move history: {str(e)}")
