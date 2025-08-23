@@ -129,6 +129,8 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
            
            # Force-copy all web application code to container to override any Docker caching
            echo "🔄 Ensuring all web application code is up-to-date..."
+           echo "   📁 Copying main.py (FastAPI app entry point)"
+           docker cp /opt/defrag-app/main.py defrag-app:/app/main.py 2>/dev/null || echo "⚠️ Could not copy main.py (container may not be ready yet)"
            echo "   📁 Copying entire app directory (templates, static, API, models, core, etc.)"
            docker cp /opt/defrag-app/app/ defrag-app:/app/ 2>/dev/null || echo "⚠️ Could not copy app directory (container may not be ready yet)"
            docker cp /opt/defrag-app/health_check.sh defrag-app:/app/health_check.sh 2>/dev/null || echo "⚠️ Could not copy health_check.sh (container may not be ready yet)"
