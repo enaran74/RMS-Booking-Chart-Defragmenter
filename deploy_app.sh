@@ -167,9 +167,18 @@ sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" <
                docker exec defrag-app python migrate_user_properties.py
            fi
            
-           # Restore .env synchronization (copy host .env to container if it exists)
+           # Ensure .env synchronization between container and host
+           echo "🔄 Ensuring environment configuration synchronization..."
+           
+           # First, check if container has .env file and copy to host if missing
+           if ! [ -f .env ]; then
+               echo "   📂 Copying .env from container to host for docker-compose compatibility"
+               docker cp defrag-app:/app/.env .env 2>/dev/null || echo "⚠️ No .env file found in container yet"
+           fi
+           
+           # Then ensure container has the latest .env file
            if [ -f .env ]; then
-               echo "🔄 Restoring environment configuration synchronization..."
+               echo "   📂 Syncing .env file to container"
                docker cp .env defrag-app:/app/.env || echo "⚠️ Note: Container .env sync will happen on next configuration save"
            fi
            
