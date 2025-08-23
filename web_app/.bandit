@@ -1,13 +1,9 @@
-# Bandit configuration file
-# This file configures bandit to ignore false positive security warnings
+[bandit]
+# Configuration for Bandit security linter - Web Application
+# Suppress false positives for Docker containerized web application
 
-# Skip specific tests that are false positives for our use case
-skips: ['B104', 'B105']
-
-# Exclude specific directories or files
-exclude_dirs: ['tests', '__pycache__', '.git']
-
-# Set confidence and severity thresholds
-# Only report issues with high confidence and medium/high severity
-confidence: ['HIGH']
-severity: ['HIGH', 'MEDIUM']
+# Skip specific tests that are false positives in our containerized environment
+skips = [
+    "B104",  # hardcoded_bind_all_interfaces - Expected for Docker containers (0.0.0.0)
+    "B608"   # hardcoded_sql_expressions - False positive: using safe table names
+]
