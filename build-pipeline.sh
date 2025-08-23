@@ -8,7 +8,7 @@ set -e
 
 # Configuration
 DOCKER_REPO="dhpsystems/rms-defragmenter"
-VERSION="2.0.0"
+VERSION="2.1.0"  # Database stability fixes: pool_pre_ping=False, optimized connection settings
 LATEST_TAG="latest"
 
 # Colors for output
