@@ -197,6 +197,45 @@ cd ~/rms-defragmenter
 - Automatic health checks
 - Rollback capability if needed
 
+## ⚠️ Critical Database Configuration Fix
+
+**IMPORTANT FOR ALL DEPLOYMENTS**: The current Docker image contains database configuration that can cause stability issues. Apply this fix for reliable operation:
+
+### Required Database Engine Configuration
+
+Update `web_app/app/core/database.py` with these settings to prevent authentication and stability issues:
+
+```python
+# Create database engine with configuration to avoid transaction conflicts
+engine = create_engine(
+    DATABASE_URL,
+    pool_recycle=3600,    # Recycle connections every hour
+    pool_size=3,          # Conservative pool size to handle concurrent requests
+    max_overflow=2,       # Allow overflow connections
+    pool_timeout=30,      # Reasonable timeout for connections
+    pool_pre_ping=False,  # Disable ping to avoid transaction conflicts
+    echo=False,           # Disable query logging to reduce overhead
+    # Remove isolation_level to use default PostgreSQL behavior
+)
+```
+
+### Issues This Fixes
+
+- ✅ **Authentication Problems**: Prevents "set_session cannot be used inside a transaction" errors
+- ✅ **Move History**: Fixes 422 Unprocessable Entity errors in search functionality  
+- ✅ **Session Stability**: Prevents redirects to login page
+- ✅ **Database Connections**: Eliminates "connection already closed" errors
+
+### Deployment Commands
+
+```bash
+# Copy fixed database configuration to running container
+docker cp app/core/database.py defrag-app:/app/app/core/database.py
+
+# Restart application to apply changes
+docker-compose restart defrag-app
+```
+
 ## 🛡️ Security Considerations
 
 1. **Image Security**: Multi-stage builds, minimal attack surface
