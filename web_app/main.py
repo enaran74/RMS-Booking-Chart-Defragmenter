@@ -131,7 +131,12 @@ async def read_setup():
 @app.get("/setup-wizard")
 async def read_setup_wizard():
     """Serve the first-time setup wizard page"""
-    return FileResponse("app/templates/setup_wizard.html")
+    # Temporary test to see if route works
+    try:
+        return FileResponse("app/templates/setup_wizard.html")
+    except Exception as e:
+        logging.error(f"Error serving setup wizard: {e}")
+        return HTMLResponse(content="<h1>Setup Wizard Test - Route Working!</h1><p>File error: " + str(e) + "</p>")
 
 @app.get("/move-history")
 async def read_move_history():
