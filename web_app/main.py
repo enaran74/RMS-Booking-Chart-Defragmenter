@@ -65,10 +65,7 @@ security = HTTPBearer()
 # Templates
 templates = Jinja2Templates(directory="app/templates")
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-# Setup detection middleware
+# Setup detection middleware (MUST be before static file mounting)
 @app.middleware("http")
 async def setup_redirect_middleware(request: Request, call_next):
     """Redirect to setup wizard if no admin users exist"""
@@ -114,6 +111,9 @@ async def setup_redirect_middleware(request: Request, call_next):
         logging.error(f"Setup middleware database check failed: {e}")
     
     return await call_next(request)
+
+# Mount static files (AFTER middleware)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
