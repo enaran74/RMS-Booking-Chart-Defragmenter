@@ -89,19 +89,24 @@ async def setup_redirect_middleware(request: Request, call_next):
         return await call_next(request)
     
     try:
-        # Check if any admin users exist
+        # Check if any admin users exist using raw SQL to avoid relationship issues
+        from sqlalchemy import text
         db = next(get_db())
-        admin_count = db.query(User).filter(User.is_admin == True).count()
+        result = db.execute(text("SELECT COUNT(*) FROM users WHERE is_admin = true"))
+        admin_count = result.scalar()
         db.close()
         
         # If no admin users exist, redirect to setup wizard
         if admin_count == 0:
+            logging.info(f"No admin users found ({admin_count}), redirecting to setup wizard")
             return RedirectResponse(url="/setup-wizard", status_code=302)
+        else:
+            logging.debug(f"Found {admin_count} admin users, allowing normal access")
             
     except Exception as e:
         # If there's a database error, let the request proceed
         # This prevents the middleware from breaking the app
-        logging.warning(f"Setup middleware database check failed: {e}")
+        logging.error(f"Setup middleware database check failed: {e}")
     
     return await call_next(request)
 
