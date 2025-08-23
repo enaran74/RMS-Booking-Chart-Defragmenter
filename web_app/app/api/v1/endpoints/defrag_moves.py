@@ -655,92 +655,91 @@ async def get_move_history(
     logger.info(f"Getting move history for user {current_user.username} with params: start_date={start_date}, end_date={end_date}, property_code={property_code}, status={status}, limit={limit}, offset={offset}")
     
     try:
-    
-    # Build query
-    query = db.query(DefragMove)
-    
-    # Apply filters
-    if property_code:
-        query = query.filter(DefragMove.property_code == property_code.upper())
-    
-    if status:
-        if status == "processed":
-            query = query.filter(DefragMove.is_processed == True)
-        elif status == "rejected":
-            query = query.filter(DefragMove.is_rejected == True)
-        elif status == "pending":
-            query = query.filter(DefragMove.is_processed == False, DefragMove.is_rejected == False)
-    
-    # Apply date filters
-    if start_date:
-        try:
-            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-            query = query.filter(DefragMove.analysis_date >= start_dt)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
-    
-    if end_date:
-        try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-            query = query.filter(DefragMove.analysis_date < end_dt)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
-    
-    # If no date range specified, default to last 7 days
-    if not start_date and not end_date:
-        default_start = datetime.now() - timedelta(days=7)
-        query = query.filter(DefragMove.analysis_date >= default_start)
-    
-    # If user is not admin, only show moves for their assigned properties
-    if not current_user.is_admin:
-        from app.models.user_property import UserProperty
-        user_properties = db.query(UserProperty).filter(UserProperty.user_id == current_user.id).all()
-        if user_properties:
-            property_ids = [up.property_id for up in user_properties]
-            query = query.filter(DefragMove.property_id.in_(property_ids))
-        else:
-            # User has no properties assigned, return empty list
-            return {
-                "success": True,
-                "total_count": 0,
-                "moves": [],
-                "pagination": {
-                    "limit": limit,
-                    "offset": offset,
-                    "has_more": False
-                }
-            }
-    
-    # Get total count for pagination
-    total_count = query.count()
-    
-    # Apply pagination and ordering
-    moves = query.order_by(DefragMove.analysis_date.desc(), DefragMove.created_at.desc()).offset(offset).limit(limit).all()
-    
-    # Prepare response
-    move_responses = []
-    for move in moves:
-        move_data = DefragMoveResponse.model_validate(move)
+        # Build query
+        query = db.query(DefragMove)
         
-        # Add additional history information
-        history_info = {
-            "move_id": move.id,
-            "property_code": move.property_code,
-            "analysis_date": move.analysis_date,
-            "move_data": move.move_data,
-            "strategic_importance": move.move_data.get("strategic_importance", "N/A") if move.move_data else "N/A",
-            "score": move.move_data.get("score", "N/A") if move.move_data else "N/A",
-            "status": move.status,
-            "is_processed": move.is_processed,
-            "is_rejected": move.is_rejected,
-            "processed_at": move.processed_at,
-            "rejected_at": move.rejected_at,
-            "batch_id": move.batch_id,
-            "created_at": move.created_at
-        }
-        move_responses.append(history_info)
-    
-    logger.info(f"Retrieved {len(moves)} moves from history for user {current_user.username}")
+        # Apply filters
+        if property_code:
+            query = query.filter(DefragMove.property_code == property_code.upper())
+        
+        if status:
+            if status == "processed":
+                query = query.filter(DefragMove.is_processed == True)
+            elif status == "rejected":
+                query = query.filter(DefragMove.is_rejected == True)
+            elif status == "pending":
+                query = query.filter(DefragMove.is_processed == False, DefragMove.is_rejected == False)
+        
+        # Apply date filters
+        if start_date:
+            try:
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                query = query.filter(DefragMove.analysis_date >= start_dt)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if end_date:
+            try:
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                query = query.filter(DefragMove.analysis_date < end_dt)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        
+        # If no date range specified, default to last 7 days
+        if not start_date and not end_date:
+            default_start = datetime.now() - timedelta(days=7)
+            query = query.filter(DefragMove.analysis_date >= default_start)
+        
+        # If user is not admin, only show moves for their assigned properties
+        if not current_user.is_admin:
+            from app.models.user_property import UserProperty
+            user_properties = db.query(UserProperty).filter(UserProperty.user_id == current_user.id).all()
+            if user_properties:
+                property_ids = [up.property_id for up in user_properties]
+                query = query.filter(DefragMove.property_id.in_(property_ids))
+            else:
+                # User has no properties assigned, return empty list
+                return {
+                    "success": True,
+                    "total_count": 0,
+                    "moves": [],
+                    "pagination": {
+                        "limit": limit,
+                        "offset": offset,
+                        "has_more": False
+                    }
+                }
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Apply pagination and ordering
+        moves = query.order_by(DefragMove.analysis_date.desc(), DefragMove.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Prepare response
+        move_responses = []
+        for move in moves:
+            move_data = DefragMoveResponse.model_validate(move)
+            
+            # Add additional history information
+            history_info = {
+                "move_id": move.id,
+                "property_code": move.property_code,
+                "analysis_date": move.analysis_date,
+                "move_data": move.move_data,
+                "strategic_importance": move.move_data.get("strategic_importance", "N/A") if move.move_data else "N/A",
+                "score": move.move_data.get("score", "N/A") if move.move_data else "N/A",
+                "status": move.status,
+                "is_processed": move.is_processed,
+                "is_rejected": move.is_rejected,
+                "processed_at": move.processed_at,
+                "rejected_at": move.rejected_at,
+                "batch_id": move.batch_id,
+                "created_at": move.created_at
+            }
+            move_responses.append(history_info)
+        
+        logger.info(f"Retrieved {len(moves)} moves from history for user {current_user.username}")
     
         return {
             "success": True,
