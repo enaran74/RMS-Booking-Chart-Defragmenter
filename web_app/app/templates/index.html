@@ -913,15 +913,25 @@
                            currentUser = user;
                            document.getElementById('username').textContent = user.username;
                            
-                           // Show/hide user management link for admins (guard if element not present)
+                           // Show/hide admin elements based on user role
+                           const userMgmtLink = document.getElementById('user-management-link');
+                           const adminSetupCard = document.getElementById('admin-setup-card');
+                           
                            if (user.is_admin) {
-                               const userMgmtLink = document.getElementById('user-management-link');
+                               // Show admin elements for admin users
                                if (userMgmtLink) {
                                    userMgmtLink.style.display = 'block';
                                }
-                               const adminSetupCard = document.getElementById('admin-setup-card');
                                if (adminSetupCard) {
                                    adminSetupCard.classList.remove('d-none');
+                               }
+                           } else {
+                               // Hide admin elements for non-admin users
+                               if (userMgmtLink) {
+                                   userMgmtLink.style.display = 'none';
+                               }
+                               if (adminSetupCard) {
+                                   adminSetupCard.classList.add('d-none');
                                }
                            }
                            
