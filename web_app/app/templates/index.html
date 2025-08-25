@@ -879,22 +879,62 @@
         function logout() {
             authToken = null;
             currentUser = null;
+            
             // Clear token from localStorage
             localStorage.removeItem('authToken');
+            
+            // Clear all cached data
+            window.availableProperties = null;
+            
+            // Clear property filter dropdown
+            const propertyFilter = document.getElementById('property-filter');
+            if (propertyFilter) {
+                propertyFilter.innerHTML = '<option value="">Select Property</option>';
+            }
+            
+            // Clear move suggestions display
+            const movesContainer = document.getElementById('moves-container');
+            if (movesContainer) {
+                movesContainer.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                        <p>Select a property and click "Load Move Suggestions" to begin</p>
+                    </div>`;
+            }
+            
+            // Reset cache status badge
+            const cacheStatus = document.getElementById('cache-status');
+            if (cacheStatus) {
+                cacheStatus.textContent = 'No data loaded';
+                cacheStatus.className = 'badge bg-secondary ms-2';
+            }
+            
+            // Hide admin elements immediately
+            const userMgmtLink = document.getElementById('user-management-link');
+            const adminSetupCard = document.getElementById('admin-setup-card');
+            if (userMgmtLink) {
+                userMgmtLink.style.display = 'none';
+            }
+            if (adminSetupCard) {
+                adminSetupCard.classList.add('d-none');
+            }
+            
+            // Switch UI back to login screen
             document.getElementById('login-section').classList.remove('d-none');
             document.getElementById('main-app').classList.add('d-none');
             document.getElementById('login-btn').classList.remove('d-none');
             document.getElementById('user-dropdown').classList.add('d-none');
-            // Move history button is now in left sidebar
             document.getElementById('username').textContent = 'Guest';
             
-            // Reset any form states
+            // Reset login form
             if (document.getElementById('username-input')) {
                 document.getElementById('username-input').value = '';
             }
             if (document.getElementById('password-input')) {
                 document.getElementById('password-input').value = '';
             }
+            
+            console.log('User logged out and all data cleared');
         }
 
                        // Load user information
