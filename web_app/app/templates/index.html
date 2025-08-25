@@ -223,7 +223,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Property</label>
                                 <select class="form-select" id="property-filter">
-                                    <option value="">All Properties</option>
+                                    <option value="">Select Property</option>
                                     <!-- Properties will be populated dynamically -->
                                 </select>
                             </div>
@@ -1000,8 +1000,8 @@
                        return;
                    }
                    
-                   // Clear existing options except "All Properties"
-                   propertyFilter.innerHTML = '<option value="">All Properties</option>';
+                   // Clear existing options except placeholder
+                   propertyFilter.innerHTML = '<option value="">Select Property</option>';
                    
                    if (userProperties && userProperties.length > 0) {
                        console.log(`Adding ${userProperties.length} properties to filter`);
