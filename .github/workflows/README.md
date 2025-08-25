@@ -5,15 +5,18 @@ This directory contains GitHub Actions workflows for automated testing, security
 ## 🔄 Workflows Overview
 
 ### 1. **CI Pipeline** (`ci.yml`)
+
 **Triggers:** Push to main/develop, Pull Requests, Manual dispatch
 
 **Jobs:**
+
 - **Code Quality & Security**: Linting, formatting, security scans
 - **Unit Tests**: Automated testing with PostgreSQL
 - **Build Validation**: Docker build verification
 - **Documentation Quality**: Markdown linting and structure validation
 
 **Features:**
+
 - Python code quality checks (Black, isort, flake8, MyPy)
 - Security scanning (Bandit, Safety)
 - Import validation and basic functionality tests
@@ -21,14 +24,17 @@ This directory contains GitHub Actions workflows for automated testing, security
 - Markdown documentation quality checks
 
 ### 2. **Docker Build & Push** (`docker-build.yml`)
+
 **Triggers:** Version tags (v*), Main branch pushes, Manual dispatch
 
 **Jobs:**
+
 - **Build & Push**: Multi-platform Docker image build and push
 - **Security Scan**: Container vulnerability scanning with Trivy
 - **Notify Success**: Build completion notifications
 
 **Features:**
+
 - Multi-platform builds (linux/amd64, linux/arm64)
 - Automatic version extraction from Git tags
 - Docker Hub integration with proper tagging

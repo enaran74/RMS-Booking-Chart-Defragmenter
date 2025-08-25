@@ -90,11 +90,19 @@ mkdir -p /app/logs /app/output /app/backups /app/config
 # Environment validation
 log_info "Validating environment configuration..."
 
-# Check required RMS credentials
-if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
-    log_error "Missing required RMS API credentials"
-    log_error "Required: AGENT_ID, AGENT_PASSWORD, CLIENT_ID, CLIENT_PASSWORD"
-    exit 1
+# Check required RMS credentials (only for CLI mode, web app gets them from user setup)
+if [ "$#" -gt 0 ] && [ "$1" != "web" ]; then
+    # CLI mode requires credentials
+    if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
+        log_error "Missing required RMS API credentials for CLI mode"
+        log_error "Required: AGENT_ID, AGENT_PASSWORD, CLIENT_ID, CLIENT_PASSWORD"
+        exit 1
+    fi
+else
+    # Web mode - credentials are optional (provided through setup wizard)
+    if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
+        log_warning "RMS API credentials not set - will need to be configured through web interface"
+    fi
 fi
 
 # Database connectivity check
