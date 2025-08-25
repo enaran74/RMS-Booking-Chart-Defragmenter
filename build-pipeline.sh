@@ -7,7 +7,7 @@
 set -e
 
 # Configuration
-DOCKER_REPO="dhpsystems/rms-defragmenter"
+DOCKER_REPO="enaran/rms-defragmenter"
 VERSION="2.1.0"  # Database stability fixes: pool_pre_ping=False, optimized connection settings
 LATEST_TAG="latest"
 

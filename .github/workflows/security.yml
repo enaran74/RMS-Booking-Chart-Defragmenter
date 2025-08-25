@@ -210,7 +210,7 @@ jobs:
     - name: Run Trivy vulnerability scanner on latest image
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: 'dhpsystems/rms-defragmenter:latest'
+        image-ref: 'enaran/rms-defragmenter:latest'
         format: 'table'
         severity: 'CRITICAL,HIGH,MEDIUM'
         

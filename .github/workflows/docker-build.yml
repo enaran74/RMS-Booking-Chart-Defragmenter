@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: dhpsystems/rms-defragmenter
+  IMAGE_NAME: enaran/rms-defragmenter
 
 jobs:
   build-and-push:

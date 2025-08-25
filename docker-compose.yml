@@ -5,7 +5,7 @@ services:
   # RMS Defragmenter Web Application
   defrag-app:
     # Use prebuilt image but bind-mount code to avoid rebuilds over Tailscale
-    image: dhpsystems/rms-defragmenter:latest
+    image: enaran/rms-defragmenter:latest
     container_name: defrag-app
     restart: unless-stopped
     network_mode: host

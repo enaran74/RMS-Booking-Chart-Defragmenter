@@ -98,11 +98,11 @@ git push origin v2.2.0
 **This triggers:**
 1. Full CI pipeline validation
 2. Docker image build with version tags:
-   - `dhpsystems/rms-defragmenter:v2.2.0`
-   - `dhpsystems/rms-defragmenter:2.2.0`
-   - `dhpsystems/rms-defragmenter:2.2`
-   - `dhpsystems/rms-defragmenter:2`
-   - `dhpsystems/rms-defragmenter:latest`
+   - `enaran/rms-defragmenter:v2.2.0`
+   - `enaran/rms-defragmenter:2.2.0`
+   - `enaran/rms-defragmenter:2.2`
+   - `enaran/rms-defragmenter:2`
+   - `enaran/rms-defragmenter:latest`
 
 ### Development Builds
 ```bash
@@ -113,8 +113,8 @@ git push origin main
 **This triggers:**
 1. CI pipeline validation
 2. Docker image build with development tags:
-   - `dhpsystems/rms-defragmenter:main`
-   - `dhpsystems/rms-defragmenter:latest`
+   - `enaran/rms-defragmenter:main`
+   - `enaran/rms-defragmenter:latest`
 
 ## 🔍 Monitoring Your Pipeline
 
@@ -184,7 +184,7 @@ Add staging deployments:
 
 **❌ "Permission denied pushing to Docker Hub"**
 - Verify access token has `Read, Write, Delete` permissions
-- Check repository name `dhpsystems/rms-defragmenter` exists
+- Check repository name `enaran/rms-defragmenter` exists
 - Ensure you have push access to the repository
 
 **❌ "Security scan failed"**

@@ -17,7 +17,7 @@ NC='\033[0m'
 
 # Configuration
 INSTALL_DIR="$HOME/rms-defragmenter"
-DOCKER_REPO="dhpsystems/rms-defragmenter:latest"
+DOCKER_REPO="enaran/rms-defragmenter:latest"
 
 # Helper functions
 print_header() { echo -e "${BLUE}$1${NC}"; }
