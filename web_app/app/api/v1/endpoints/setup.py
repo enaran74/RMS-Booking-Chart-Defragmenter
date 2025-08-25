@@ -234,13 +234,13 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         'SEND_CONSOLIDATED_EMAIL': 'false',
         'CONSOLIDATED_EMAIL_RECIPIENT': 'operations@discoveryparks.com.au',
         
-        # SMTP settings - use user values or defaults
+        # SMTP settings - MUST be provided by user via Setup wizard
         'SMTP_SERVER': 'smtp.gmail.com',
         'SMTP_PORT': '587',
-        'SENDER_EMAIL': '***REMOVED***',
+        'SENDER_EMAIL': 'YOUR_EMAIL@YOURDOMAIN.COM',
         'SENDER_DISPLAY_NAME': 'DHP Defragmentation System',
-        'APP_PASSWORD': '***REMOVED***',
-        'TEST_RECIPIENT': 'operations@discoveryparks.com.au',
+        'APP_PASSWORD': 'YOUR_GMAIL_APP_PASSWORD_HERE',
+        'TEST_RECIPIENT': 'YOUR_TEST_EMAIL@YOURDOMAIN.COM',
         
         # Scheduling - use sensible production defaults
         'CRON_SCHEDULE': '0 2 * * *',  # 2 AM daily

@@ -22,14 +22,14 @@ class EmailSender:
         # Gmail SMTP configuration (with environment variable support)
         self.smtp_server = os.environ.get('SMTP_SERVER', "smtp.gmail.com")
         self.smtp_port = int(os.environ.get('SMTP_PORT', "587"))
-        self.sender_email = os.environ.get('SENDER_EMAIL', "***REMOVED***")
+        self.sender_email = os.environ.get('SENDER_EMAIL', "YOUR_EMAIL@YOURDOMAIN.COM")
         self.app_password = os.environ.get('APP_PASSWORD')
         
         # Custom display name for the sender (optional)
         self.sender_display_name = os.environ.get('SENDER_DISPLAY_NAME', "DHP Systems")
         
         # Test recipient (for testing purposes)
-        self.test_recipient = os.environ.get('TEST_RECIPIENT', "***REMOVED***")
+        self.test_recipient = os.environ.get('TEST_RECIPIENT', "YOUR_TEST_EMAIL@YOURDOMAIN.COM")
         
         # Email statistics
         self.emails_sent = 0

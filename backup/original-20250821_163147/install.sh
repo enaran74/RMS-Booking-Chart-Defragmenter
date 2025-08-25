@@ -162,7 +162,7 @@ USE_TRAINING_DB=false
 # Email Configuration (if enabled)
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-SENDER_EMAIL=***REMOVED***
+SENDER_EMAIL=YOUR_EMAIL@YOURDOMAIN.COM
 SENDER_DISPLAY_NAME=DHP Systems
 APP_PASSWORD=your_app_password_here
 

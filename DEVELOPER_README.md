@@ -166,9 +166,9 @@ The RMS API uses a token-based authentication system with the following flow:
 ```python
 # Authentication payload structure
 auth_payload = {
-    "AgentId": "***REMOVED***",                    # RMS Agent identifier
+    "AgentId": "224",                    # RMS Agent identifier
     "AgentPassword": "********",         # Agent authentication
-    "ClientId": "***REMOVED***",                  # Client identifier
+    "ClientId": "2998",                  # Client identifier
     "ClientPassword": "********",        # Client authentication
     "UseTrainingDatabase": False,        # Live vs Training mode
     "ModuleType": ["distribution"]       # Required module access

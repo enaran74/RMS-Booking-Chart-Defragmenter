@@ -520,10 +520,10 @@ python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --cli
 python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -e -p ALL
 
 # Analyze specific properties with email notifications
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE,QROC,TCRA
+python3 start.py --agent-id 224 --agent-password "********" --client-id 2998 --client-password "********" -e -p SADE,QROC,TCRA
 
 # Analyze single property with email notification
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE
+python3 start.py --agent-id 224 --agent-password "********" --client-id 2998 --client-password "********" -e -p SADE
 ```
 
 #### Training Database Analysis
@@ -532,7 +532,7 @@ python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-i
 python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -p ALL
 
 # Analyze specific properties using training database
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p SADE,QROC,TCRA
+python3 start.py --agent-id 224 --agent-password "********" --client-id 2998 --client-password "********" -t -p SADE,QROC,TCRA
 
 # Analyze with training database and email notifications
 python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -e -p ALL

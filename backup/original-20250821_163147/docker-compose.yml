@@ -25,9 +25,9 @@ services:
       # Email Configuration (if enabled)
       - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SENDER_EMAIL=${SENDER_EMAIL:-***REMOVED***}
+      - SENDER_EMAIL=${SENDER_EMAIL:-YOUR_EMAIL@YOURDOMAIN.COM}
       - APP_PASSWORD=${APP_PASSWORD}
-      - TEST_RECIPIENT=${TEST_RECIPIENT:-***REMOVED***}
+      - TEST_RECIPIENT=${TEST_RECIPIENT:-YOUR_TEST_EMAIL@YOURDOMAIN.COM}
       
       # Logging Configuration
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
