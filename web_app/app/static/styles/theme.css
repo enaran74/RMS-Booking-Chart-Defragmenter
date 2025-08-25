@@ -62,20 +62,25 @@ body {
   align-items: center;
 }
 
+/* Header profile aesthetic: link-style, no border box with consistent baseline */
 .navbar-dhp .profile-toggle {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: baseline; /* Use baseline alignment for text consistency */
+  line-height: 1;
   position: relative;
-  top: 2px; /* nudge down slightly for visual alignment */
+  top: 0; /* Remove any top offset for consistent baseline */
 }
 
-/* Header profile aesthetic: link-style, no border box */
 .navbar-dhp .btn-link.profile-toggle {
   text-decoration: none;
   display: inline-flex;
-  align-items: center;
+  align-items: baseline; /* Use baseline alignment for text consistency */
   line-height: 1;
   position: relative;
-  top: 0; /* unified baseline across pages */
+  top: 0; /* Remove any top offset for consistent baseline */
 }
+
 .navbar-dhp .btn-link.profile-toggle:hover,
 .navbar-dhp .btn-link.profile-toggle:focus {
   opacity: 0.9;
@@ -93,9 +98,22 @@ body {
   vertical-align: middle;
 }
 
-/* Ensure username text aligns nicely with avatar and button */
-.navbar-dhp #user-info { display:inline-flex; align-items:center; line-height:1; }
-.navbar-dhp #user-info #username { line-height: 1; position: relative; top: 0; }
+/* Ensure username text aligns nicely with avatar and button using baseline alignment */
+.navbar-dhp #user-info { 
+  display: inline-flex; 
+  align-items: baseline; /* Use baseline for text alignment consistency */
+  line-height: 1; 
+}
+.navbar-dhp #user-info #username { 
+  line-height: 1; 
+  position: relative; 
+  top: 0; 
+}
+
+/* Ensure the dropdown container aligns with username baseline */
+.navbar-dhp .navbar-nav {
+  align-items: baseline !important; /* Override Bootstrap's center alignment for text baseline consistency */
+}
 
 /* Buttons */
 .btn-dhp-primary {
