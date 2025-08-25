@@ -18,6 +18,7 @@ from sqlalchemy import text
 from app.core.database import get_db
 from app.models.user import User
 from app.core.security import get_current_user
+from app.core import config as app_config
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -33,15 +34,19 @@ class EnvironmentVariableResponse(BaseModel):
     variables: Dict[str, str]
     file_exists: bool
     file_path: str
+    # Optional sync diagnostics
+    host_exists: bool | None = None
+    container_exists: bool | None = None
+    in_sync: bool | None = None
 
 def get_env_file_path() -> Path:
     """Get the path to the .env file - use shared location for both CLI and web app"""
     # Priority order for shared configuration
     possible_paths = [
-        Path("/opt/defrag-app/.env"),  # Docker shared volume location
+        Path("/opt/defrag-app/.env"),  # Preferred host-mounted location
+        Path("/app/.env"),            # In-container fallback
         Path("/etc/bookingchart-defragmenter/config.env"),  # CLI config location  
-        Path("/app/.env"),  # Web app container location
-        Path.cwd() / ".env",  # Current working directory
+        Path.cwd() / ".env",          # Current working directory
         Path(__file__).parent.parent.parent.parent.parent / ".env"  # Project root
     ]
     
@@ -270,6 +275,9 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
             final_variables[key] = value
     
     try:
+        logger.info(f"WRITE_ENV: Target path={file_path}")
+        logger.info(f"WRITE_ENV: Incoming USE_TRAINING_DB={variables.get('USE_TRAINING_DB')}")
+        logger.info(f"WRITE_ENV: Final USE_TRAINING_DB={final_variables.get('USE_TRAINING_DB')}")
         # Create directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -430,11 +438,25 @@ async def get_environment_variables(
     try:
         env_path = get_env_file_path()
         variables = parse_env_file(env_path)
+        # Sync diagnostics
+        host_path = Path("/opt/defrag-app/.env")
+        container_path = Path("/app/.env")
+        host_exists = host_path.exists()
+        container_exists = container_path.exists()
+        in_sync = False
+        try:
+            if host_exists and container_exists:
+                in_sync = host_path.read_text() == container_path.read_text()
+        except Exception:
+            in_sync = False
         
         return {
             "variables": variables,
             "file_exists": env_path.exists(),
-            "file_path": str(env_path)
+            "file_path": str(env_path),
+            "host_exists": host_exists,
+            "container_exists": container_exists,
+            "in_sync": in_sync
         }
         
     except Exception as error:
@@ -457,21 +479,39 @@ async def update_environment_variables(
         # Get the .env file path
         env_path = get_env_file_path()
         
-        # Create backup if file exists
+        # Normalize booleans passed from UI (especially USE_TRAINING_DB)
+        variables = dict(update_request.variables)
+        if 'USE_TRAINING_DB' in variables:
+            val = variables['USE_TRAINING_DB']
+            if isinstance(val, bool):
+                variables['USE_TRAINING_DB'] = 'true' if val else 'false'
+            else:
+                variables['USE_TRAINING_DB'] = str(val).strip().lower()
+        
+        # Create backup if file exists (best-effort; do not fail save on backup error)
         if env_path.exists():
-            backup_path = env_path.with_suffix('.env.backup')
-            backup_path.write_text(env_path.read_text())
-            logger.info(f"Created backup of .env file at {backup_path}")
+            try:
+                backup_path = env_path.parent / f"{env_path.name}.backup"
+                backup_path.write_text(env_path.read_text())
+                logger.info(f"Created backup of .env file at {backup_path}")
+            except Exception as be:
+                logger.warning(f"Could not create .env backup at {env_path}: {be}")
         
         # Write the new .env file
-        write_env_file(env_path, update_request.variables)
+        write_env_file(env_path, variables)
         
         # Return the updated configuration
         variables = parse_env_file(env_path)
         
         # Trigger application restart to apply changes
         await restart_application_containers()
+        # Attempt a hot-reload immediately so response reflects new values
+        try:
+            app_config.reload_settings()
+        except Exception:
+            pass
         
+        # Return a minimal response; frontend is resilient to partial responses during restart
         return {
             "message": "Environment variables updated successfully. Application is restarting to apply changes.",
             "variables": variables,
@@ -496,6 +536,16 @@ async def update_environment_variables(
                 status_code=500,
             detail=f"Failed to update environment variables: {str(error)}"
         )
+
+@router.post("/restart")
+async def restart_application(current_user: User = Depends(get_current_user)):
+    """Explicitly restart the application containers from the Setup UI"""
+    try:
+        await restart_application_containers()
+        return {"success": True, "message": "Restart initiated"}
+    except Exception as error:
+        logger.error(f"Failed to initiate restart: {error}")
+        raise HTTPException(status_code=500, detail="Failed to initiate restart")
 
 @router.get("/test-db")
 async def test_database_connection(

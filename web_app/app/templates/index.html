@@ -11,6 +11,7 @@
     <!-- Cache buster: v1.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/styles/theme.css" rel="stylesheet">
     <style>
         .move-card {
             transition: transform 0.2s;
@@ -160,51 +161,13 @@
             margin-bottom: 16px;
         }
     </style>
+    <meta name="use-training-db" content="{{ 'true' if use_training_db else 'false' }}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-dhp">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="/static/images/dhp_logo_white.svg" alt="Discovery Holiday Parks" class="dhp-logo">
-                RMS Defragmenter
-            </a>
-            <div class="navbar-nav me-auto">
-                <!-- Move History button moved to left sidebar -->
-            </div>
-                               <div class="navbar-nav ms-auto">
-                       <span class="navbar-text me-3" id="user-info">
-                           <i class="fas fa-user me-1"></i>
-                           <span id="username">Guest</span>
-                       </span>
-                       <div class="dropdown d-none" id="user-dropdown">
-                           <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                               <i class="fas fa-user-cog me-1"></i>Profile
-                           </button>
-                           <ul class="dropdown-menu">
-                               <li><a class="dropdown-item" href="#" onclick="showProfileEdit()">
-                                   <i class="fas fa-edit me-2"></i>Edit Profile
-                               </a></li>
-                               <li><a class="dropdown-item" href="#" onclick="showPasswordChange()">
-                                   <i class="fas fa-key me-2"></i>Change Password
-                               </a></li>
-                               <li><hr class="dropdown-divider"></li>
-                               <li><a class="dropdown-item" href="#" onclick="showUserManagement()" id="user-management-link" style="display: none;">
-                                   <i class="fas fa-users me-2"></i>User Management
-                               </a></li>
-                               <li><hr class="dropdown-divider"></li>
-                               <li><a class="dropdown-item" href="#" onclick="logout()">
-                                   <i class="fas fa-sign-out-alt me-2"></i>Logout
-                               </a></li>
-                           </ul>
-                       </div>
-                       <button class="btn btn-outline-light btn-sm" id="login-btn" onclick="showLogin()">
-                           <i class="fas fa-sign-in-alt me-1"></i>Login
-                       </button>
-                   </div>
-        </div>
-    </nav>
+    {% set active_page = 'dashboard' %}
+    {% include 'components/header.html' %}
 
-    <div class="container mt-4">
+    <div class="container-fluid container-fluid-edge mt-4">
         <!-- Login Form -->
         <div class="row justify-content-center" id="login-section">
             <div class="col-md-6">
@@ -264,16 +227,7 @@
                                     <!-- Properties will be populated dynamically -->
                                 </select>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" id="status-filter">
-                                    <option value="">All</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="approved">Approved</option>
-                                    <option value="rejected">Rejected</option>
-                                    <option value="applied">Applied</option>
-                                </select>
-                            </div>
+                            <!-- Status filter removed as it is not used for defragmentation analysis -->
                             <div class="mb-3">
                                 <label class="form-label">Move Suggestions</label>
                                 <div class="d-grid gap-2">
@@ -289,11 +243,7 @@
                                     Generate fresh move suggestions from live RMS data.
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="refreshMoves()">
-                                    <i class="fas fa-sync-alt me-1"></i>Refresh Display
-                                </button>
-                            </div>
+                            <!-- Removed Refresh Display button (redundant) -->
                         </div>
                     </div>
                     
@@ -339,11 +289,7 @@
                                 Defragmentation Moves
                                 <span id="cache-status" class="badge bg-secondary ms-2">No data loaded</span>
                             </h6>
-                            <div>
-                                <button id="refresh-display-btn" class="btn btn-outline-secondary btn-sm" onclick="refreshMoves()" style="display: none;">
-                                    <i class="fas fa-sync-alt me-1"></i>Refresh Display
-                                </button>
-                            </div>
+                            
                         </div>
                         <div class="card-body">
                             <!-- Move Actions Bar -->
@@ -429,6 +375,7 @@
             </div>
         </div>
     </div>
+    {% include 'components/footer.html' %}
 
                <!-- Move Details Modal -->
            <div class="modal fade" id="moveModal" tabindex="-1">
@@ -889,6 +836,7 @@
                     localStorage.setItem('authToken', data.access_token);
                     currentUser = { username };
                     showMainApp();
+                    if (window.refreshHeaderUser) { window.refreshHeaderUser(); }
                     loadUserInfo();
                     refreshMoves();
                 } else {
@@ -965,10 +913,16 @@
                            currentUser = user;
                            document.getElementById('username').textContent = user.username;
                            
-                           // Show/hide user management link for admins
+                           // Show/hide user management link for admins (guard if element not present)
                            if (user.is_admin) {
-                               document.getElementById('user-management-link').style.display = 'block';
-                               document.getElementById('admin-setup-card').classList.remove('d-none');
+                               const userMgmtLink = document.getElementById('user-management-link');
+                               if (userMgmtLink) {
+                                   userMgmtLink.style.display = 'block';
+                               }
+                               const adminSetupCard = document.getElementById('admin-setup-card');
+                               if (adminSetupCard) {
+                                   adminSetupCard.classList.remove('d-none');
+                               }
                            }
                            
                            // Show Move History nav link for all authenticated users
@@ -1106,9 +1060,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             
-            // Insert at the top of the container
-            const container = document.querySelector('.container');
-            container.insertBefore(alertDiv, container.firstChild);
+            // Insert at the top of the main container (supports container and container-fluid)
+            const container = document.querySelector('.container') || document.querySelector('.container-fluid');
+            if (container) {
+                container.insertBefore(alertDiv, container.firstChild);
+            } else {
+                document.body.prepend(alertDiv);
+            }
             
             // Auto-remove after 5 seconds
             setTimeout(() => {
@@ -1123,7 +1081,6 @@
             if (!authToken) return;
             
             try {
-                const statusFilter = document.getElementById('status-filter').value;
                 const propertyFilter = document.getElementById('property-filter').value;
                 
                 // Only try to load moves if we have both auth token and property filter
@@ -2201,7 +2158,7 @@
                    login(username, password);
                });
 
-               document.getElementById('status-filter').addEventListener('change', refreshMoves);
+               // Status filter removed; refresh bound to property changes and explicit actions only
                // Note: property-filter change should NOT auto-refresh moves - user must click "Load Move Suggestions"
 
         // RMS API WebSocket Management

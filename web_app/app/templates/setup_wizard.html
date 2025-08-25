@@ -14,6 +14,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="/static/styles/theme.css" rel="stylesheet">
     
     <style>
         :root {
@@ -23,7 +24,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--dhp-gray-100);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -47,7 +48,7 @@
         }
         
         .setup-header {
-            background: linear-gradient(135deg, var(--dhp-primary) 0%, var(--dhp-secondary) 100%);
+            background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%);
             color: white;
             padding: 2rem;
             text-align: center;
@@ -134,8 +135,8 @@
         }
         
         .form-control:focus, .form-select:focus {
-            border-color: var(--dhp-primary);
-            box-shadow: 0 0 0 0.2rem rgba(46, 139, 87, 0.25);
+            border-color: var(--dhp-brand-green);
+            box-shadow: 0 0 0 0.2rem rgba(0, 166, 80, 0.25);
         }
         
         .mode-selector {
@@ -156,14 +157,14 @@
         }
         
         .mode-option:hover {
-            border-color: var(--dhp-primary);
+            border-color: var(--dhp-brand-green);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
         
         .mode-option.selected {
-            border-color: var(--dhp-primary);
-            background: rgba(46, 139, 87, 0.05);
+            border-color: var(--dhp-brand-green);
+            background: rgba(0, 166, 80, 0.05);
         }
         
         .mode-option .mode-icon {
@@ -222,7 +223,7 @@
         }
         
         .btn-setup {
-            background: linear-gradient(135deg, var(--dhp-primary), var(--dhp-secondary));
+            background: linear-gradient(135deg, var(--dhp-brand-green), var(--dhp-brand-teal));
             border: none;
             border-radius: 12px;
             padding: 1rem 2rem;
@@ -246,8 +247,8 @@
         }
         
         .alert-info {
-            background: rgba(46, 139, 87, 0.1);
-            border: 1px solid rgba(46, 139, 87, 0.2);
+            background: rgba(0, 166, 80, 0.08);
+            border: 1px solid rgba(0, 166, 80, 0.18);
             border-radius: 10px;
             color: #2c3e50;
         }
@@ -281,6 +282,7 @@
             border-top: 1px solid #dee2e6;
         }
     </style>
+    <meta name="use-training-db" content="{{ 'true' if use_training_db else 'false' }}">
 </head>
 <body>
     <div class="setup-container">
@@ -876,5 +878,6 @@
             }
         }
     </script>
+    {% include 'components/footer.html' %}
 </body>
 </html>

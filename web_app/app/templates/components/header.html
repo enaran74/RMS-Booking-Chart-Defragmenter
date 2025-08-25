@@ -1,0 +1,203 @@
+{% set page = active_page or '' %}
+<nav class="navbar navbar-expand-lg navbar-dark navbar-dhp">
+    <div class="container-fluid container-fluid-edge">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <img src="/static/images/dhp_logo_white.svg" alt="Discovery Holiday Parks" class="dhp-logo me-2">
+            RMS Defragmenter
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMain">
+            <div class="navbar-nav ms-auto align-items-center">
+                <span class="navbar-text me-2" id="user-info">
+                    <img id="user-avatar" class="avatar-circle d-none me-2" alt="avatar" />
+                    <i class="fas fa-user me-1" id="user-icon"></i>
+                    <span id="username">Guest</span>
+                </span>
+                <div class="dropdown d-none" id="user-dropdown">
+                    <button class="btn btn-link text-white dropdown-toggle profile-toggle p-0" type="button" data-bs-toggle="dropdown">
+                        Profile
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/">
+                            <i class="fas fa-home me-2"></i>Main Dashboard
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="hdrOpenEditProfileModal()">
+                            <i class="fas fa-user-edit me-2"></i>Edit Profile
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout && logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-link text-white btn-sm p-0 ms-2 profile-toggle" id="login-btn" onclick="(window.showLogin||function(){ window.location.href='/' })()">
+                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                </button>
+            </div>
+        </div>
+    </div>
+    
+</nav>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="hdr-editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="hdr-profile-form">
+          <div class="mb-3 text-center">
+            <img id="hdr-profile-avatar-preview" class="avatar-circle mb-2" style="width:64px;height:64px;" alt="avatar">
+            <div>
+              <label class="btn btn-sm btn-outline-primary mb-0">
+                <i class="fas fa-image me-1"></i> Change Avatar
+                <input type="file" id="hdr-profile-avatar-file" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="hdr-profile-email">
+          </div>
+          <div class="row g-2">
+            <div class="col">
+              <label class="form-label">First name</label>
+              <input class="form-control" id="hdr-profile-first-name">
+            </div>
+            <div class="col">
+              <label class="form-label">Last name</label>
+              <input class="form-control" id="hdr-profile-last-name">
+            </div>
+          </div>
+          <hr>
+          <div class="row g-2">
+            <div class="col">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-control" id="hdr-profile-new-password" placeholder="Optional">
+            </div>
+            <div class="col">
+              <label class="form-label">Current Password</label>
+              <input type="password" class="form-control" id="hdr-profile-current-password" placeholder="Required to change">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-dhp-primary" onclick="hdrSaveProfile()"><i class="fas fa-save me-1"></i>Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Header-wide auth UI manager (runs on every page including setup)
+(function(){
+  function updateHeader(user){
+    var loginBtn = document.getElementById('login-btn');
+    var dropdown = document.getElementById('user-dropdown');
+    var nameEl = document.getElementById('username');
+    var iconEl = document.getElementById('user-icon');
+    var avatarEl = document.getElementById('user-avatar');
+    if(user){
+      if(nameEl) nameEl.textContent = user.username || 'User';
+      if(loginBtn) loginBtn.classList.add('d-none');
+      if(dropdown) dropdown.classList.remove('d-none');
+      if(avatarEl && user.avatar_url){
+        // add cache-busting to ensure fresh load on first login
+        var url = user.avatar_url.split('?')[0] + '?ts=' + Date.now();
+        avatarEl.onerror = function(){ avatarEl.classList.add('d-none'); if(iconEl) iconEl.classList.remove('d-none'); };
+        avatarEl.src = url;
+        avatarEl.classList.remove('d-none');
+        if(iconEl) iconEl.classList.add('d-none');
+      } else {
+        if(avatarEl) avatarEl.classList.add('d-none');
+        if(iconEl) iconEl.classList.remove('d-none');
+      }
+    }else{
+      if(nameEl) nameEl.textContent = 'Guest';
+      if(dropdown) dropdown.classList.add('d-none');
+      if(loginBtn) loginBtn.classList.remove('d-none');
+      if(avatarEl) avatarEl.classList.add('d-none');
+      if(iconEl) iconEl.classList.remove('d-none');
+    }
+  }
+  function refresh(){
+    try{
+      var token = localStorage.getItem('authToken');
+      if(!token){ updateHeader(null); return; }
+      fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token }})
+        .then(function(res){ return res.ok ? res.json() : null; })
+        .then(function(user){ updateHeader(user); })
+        .catch(function(){ updateHeader(null); });
+    }catch(e){ updateHeader(null); }
+  }
+  // expose for pages to call after login
+  window.refreshHeaderUser = refresh;
+  // run on load
+  refresh();
+})();
+
+function hdrOpenEditProfileModal(){
+  var modalEl = document.getElementById('hdr-editProfileModal');
+  var m = new bootstrap.Modal(modalEl);
+  var token = localStorage.getItem('authToken');
+  fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token }})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(me){
+      if(!me) return;
+      document.getElementById('hdr-profile-email').value = me.email || '';
+      document.getElementById('hdr-profile-first-name').value = me.first_name || '';
+      document.getElementById('hdr-profile-last-name').value = me.last_name || '';
+      var prev = document.getElementById('hdr-profile-avatar-preview');
+      if(me.avatar_url){ prev.src = me.avatar_url; prev.classList.remove('d-none'); }
+    });
+  m.show();
+}
+
+async function hdrSaveProfile(){
+  try{
+    var token = localStorage.getItem('authToken');
+    var payload = {
+      email: document.getElementById('hdr-profile-email').value.trim(),
+      first_name: document.getElementById('hdr-profile-first-name').value.trim(),
+      last_name: document.getElementById('hdr-profile-last-name').value.trim()
+    };
+    await fetch('/api/v1/auth/me', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+    var newPwd = document.getElementById('hdr-profile-new-password').value;
+    var curPwd = document.getElementById('hdr-profile-current-password').value;
+    if(newPwd && curPwd){
+      await fetch('/api/v1/auth/me/change-password', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ current_password: curPwd, new_password: newPwd }) });
+    }
+
+    var fileEl = document.getElementById('hdr-profile-avatar-file');
+    if(fileEl && fileEl.files && fileEl.files[0]){
+      const meResp = await fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token }});
+      if(meResp.ok){
+        const me = await meResp.json();
+        const fd = new FormData();
+        fd.append('file', fileEl.files[0]);
+        await fetch(`/api/v1/auth/users/${me.id}/avatar`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
+      }
+    }
+
+    fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token }})
+      .then(r => r.json()).then(function(me){
+        if(me && me.avatar_url){
+          var avatarEl = document.getElementById('user-avatar');
+          var iconEl = document.getElementById('user-icon');
+          if(avatarEl){ avatarEl.src = me.avatar_url; avatarEl.classList.remove('d-none'); }
+          if(iconEl){ iconEl.classList.add('d-none'); }
+        }
+      });
+
+    bootstrap.Modal.getInstance(document.getElementById('hdr-editProfileModal')).hide();
+  }catch(e){ console.error('Save profile failed', e); }
+}
+</script>

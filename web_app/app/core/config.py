@@ -93,3 +93,11 @@ settings = Settings()
 
 # Database URL
 DATABASE_URL = f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+
+# Add a helper to hot-reload settings from the mounted .env file
+# This is useful after updating the .env via the Setup screen
+
+def reload_settings() -> Settings:
+    global settings
+    settings = Settings()  # pydantic-settings will re-read env_file
+    return settings

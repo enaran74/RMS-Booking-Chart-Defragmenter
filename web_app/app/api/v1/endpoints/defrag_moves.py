@@ -424,7 +424,7 @@ async def get_move_suggestions(
         "moves": individual_moves
     }
 
-@router.get("/{move_id}", response_model=DefragMoveResponse)
+@router.get("/id/{move_id}", response_model=DefragMoveResponse)
 async def get_defrag_move(
     move_id: int,
     db: Session = Depends(get_db),
@@ -492,7 +492,7 @@ async def create_defrag_move(
     logger.info(f"Created defrag move for property {move_data.property_code}: {move_data.move_count} moves")
     return DefragMoveResponse.model_validate(db_move)
 
-@router.put("/{move_id}/approve")
+@router.put("/id/{move_id}/approve")
 async def approve_defrag_move(
     move_id: int,
     approval_data: DefragMoveApproval,
@@ -533,7 +533,7 @@ async def approve_defrag_move(
     logger.info(f"Move {move_id} {approval_data.action}d by {current_user.username}")
     return {"message": f"Move {approval_data.action}d successfully", "move_id": move_id}
 
-@router.delete("/{move_id}")
+@router.delete("/id/{move_id}")
 async def delete_defrag_move(
     move_id: int,
     db: Session = Depends(get_db),
@@ -640,6 +640,11 @@ async def process_selected_moves(
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
+@router.get("/test-endpoint")
+async def test_endpoint():
+    """BRAND NEW TEST - completely different route"""
+    return {"test": "success", "message": "New test endpoint works"}
+
 @router.get("/history")
 async def get_move_history(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
@@ -652,16 +657,20 @@ async def get_move_history(
     current_user: User = Depends(get_current_user)
 ):
     """Get move history with date range filtering and pagination"""
-    logger.info(f"Getting move history for user {current_user.username} with params: start_date={start_date}, end_date={end_date}, property_code={property_code}, status={status}, limit={limit}, offset={offset}")
-    
+    logger.info(
+        f"Getting move history for user {current_user.username} with params: "
+        f"start_date={start_date}, end_date={end_date}, property_code={property_code}, "
+        f"status={status}, limit={limit}, offset={offset}"
+    )
+
     try:
-        # Build query
+        # Build base query
         query = db.query(DefragMove)
-        
-        # Apply filters
+
+        # Filters
         if property_code:
             query = query.filter(DefragMove.property_code == property_code.upper())
-        
+
         if status:
             if status == "processed":
                 query = query.filter(DefragMove.is_processed == True)
@@ -669,28 +678,28 @@ async def get_move_history(
                 query = query.filter(DefragMove.is_rejected == True)
             elif status == "pending":
                 query = query.filter(DefragMove.is_processed == False, DefragMove.is_rejected == False)
-        
-        # Apply date filters
+
+        # Date filters
         if start_date:
             try:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d")
                 query = query.filter(DefragMove.analysis_date >= start_dt)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
-        
+
         if end_date:
             try:
                 end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
                 query = query.filter(DefragMove.analysis_date < end_dt)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
-        
-        # If no date range specified, default to last 7 days
+
+        # Default date range: last 7 days
         if not start_date and not end_date:
             default_start = datetime.now() - timedelta(days=7)
             query = query.filter(DefragMove.analysis_date >= default_start)
-        
-        # If user is not admin, only show moves for their assigned properties
+
+        # Restrict to user's properties if not admin
         if not current_user.is_admin:
             from app.models.user_property import UserProperty
             user_properties = db.query(UserProperty).filter(UserProperty.user_id == current_user.id).all()
@@ -698,7 +707,6 @@ async def get_move_history(
                 property_ids = [up.property_id for up in user_properties]
                 query = query.filter(DefragMove.property_id.in_(property_ids))
             else:
-                # User has no properties assigned, return empty list
                 return {
                     "success": True,
                     "total_count": 0,
@@ -709,19 +717,19 @@ async def get_move_history(
                         "has_more": False
                     }
                 }
-        
-        # Get total count for pagination
+
         total_count = query.count()
-        
-        # Apply pagination and ordering
-        moves = query.order_by(DefragMove.analysis_date.desc(), DefragMove.created_at.desc()).offset(offset).limit(limit).all()
-        
-        # Prepare response
+
+        moves = (
+            query.order_by(DefragMove.analysis_date.desc(), DefragMove.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
         move_responses = []
         for move in moves:
             move_data = DefragMoveResponse.model_validate(move)
-            
-            # Add additional history information
             history_info = {
                 "move_id": move.id,
                 "property_code": move.property_code,
@@ -735,12 +743,12 @@ async def get_move_history(
                 "processed_at": move.processed_at,
                 "rejected_at": move.rejected_at,
                 "batch_id": move.batch_id,
-                "created_at": move.created_at
+                "created_at": move.created_at,
             }
             move_responses.append(history_info)
-        
+
         logger.info(f"Retrieved {len(moves)} moves from history for user {current_user.username}")
-    
+
         return {
             "success": True,
             "total_count": total_count,
@@ -748,8 +756,8 @@ async def get_move_history(
             "pagination": {
                 "limit": limit,
                 "offset": offset,
-                "has_more": offset + limit < total_count
-            }
+                "has_more": offset + limit < total_count,
+            },
         }
     except Exception as e:
         logger.error(f"Error in get_move_history: {str(e)}", exc_info=True)

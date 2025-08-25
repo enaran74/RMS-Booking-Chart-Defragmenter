@@ -1,0 +1,206 @@
+/* Discovery Holiday Parks Theme - Global Styles */
+
+:root {
+  --dhp-brand-blue: #1e6091;   /* Deep ocean blue */
+  --dhp-brand-teal: #2e8b9b;   /* Teal accent */
+  --dhp-brand-green: #00a650;  /* Discovery green */
+  --dhp-brand-yellow: #ffd166; /* Soft accent */
+  --dhp-gray-100: #f8f9fa;
+  --dhp-gray-200: #e9ecef;
+  --dhp-gray-300: #dee2e6;
+  --dhp-gray-600: #6c757d;
+  --dhp-text: #243746;
+}
+
+/* Base */
+html, body {
+  height: 100%;
+}
+
+body {
+  color: var(--dhp-text);
+  background-color: var(--dhp-gray-100);
+}
+
+/* Layout helpers */
+.container-max {
+  max-width: 1400px;
+}
+
+.container-fluid-edge {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+/* Navbar */
+.navbar-dhp {
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  border-bottom: 3px solid var(--dhp-brand-green);
+}
+
+.navbar-dhp .navbar-brand,
+.navbar-dhp .nav-link,
+.navbar-dhp .navbar-text {
+  color: #fff !important;
+}
+
+.navbar-dhp .nav-link.active,
+.navbar-dhp .nav-link:focus,
+.navbar-dhp .nav-link:hover {
+  color: #fff;
+  opacity: 0.9;
+}
+
+.dhp-logo {
+  height: 32px;
+  width: auto;
+}
+
+/* Align profile controls vertically with navbar text */
+.navbar-dhp .navbar-nav .navbar-text {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-dhp .profile-toggle {
+  position: relative;
+  top: 2px; /* nudge down slightly for visual alignment */
+}
+
+/* Header profile aesthetic: link-style, no border box */
+.navbar-dhp .btn-link.profile-toggle {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  position: relative;
+  top: 0; /* unified baseline across pages */
+}
+.navbar-dhp .btn-link.profile-toggle:hover,
+.navbar-dhp .btn-link.profile-toggle:focus {
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+/* Circular avatar image */
+.avatar-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  background: rgba(255,255,255,0.2);
+  vertical-align: middle;
+}
+
+/* Ensure username text aligns nicely with avatar and button */
+.navbar-dhp #user-info { display:inline-flex; align-items:center; line-height:1; }
+.navbar-dhp #user-info #username { line-height: 1; position: relative; top: 0; }
+
+/* Buttons */
+.btn-dhp-primary {
+  background: linear-gradient(135deg, var(--dhp-brand-green) 0%, var(--dhp-brand-teal) 100%);
+  border: none;
+  color: #fff;
+}
+
+.btn-dhp-primary:hover {
+  background: linear-gradient(135deg, #008a43 0%, #266f7a 100%);
+  color: #fff;
+}
+
+.btn-dhp-outline {
+  border-color: var(--dhp-brand-blue);
+  color: var(--dhp-brand-blue);
+}
+
+.btn-dhp-outline:hover {
+  background-color: var(--dhp-brand-blue);
+  color: #fff;
+}
+
+/* Brand Bootstrap overrides */
+.btn-primary {
+  background: linear-gradient(135deg, var(--dhp-brand-green) 0%, var(--dhp-brand-teal) 100%);
+  border: none;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background: linear-gradient(135deg, #008a43 0%, #266f7a 100%);
+  border: none;
+}
+
+.btn-outline-primary {
+  color: var(--dhp-brand-blue);
+  border-color: var(--dhp-brand-blue);
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+  background-color: var(--dhp-brand-blue);
+  border-color: var(--dhp-brand-blue);
+  color: #fff;
+}
+
+/* Cards */
+.card-dhp {
+  border: 1px solid var(--dhp-gray-300);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.card-dhp .card-header {
+  background: linear-gradient(135deg, var(--dhp-gray-100) 0%, var(--dhp-gray-200) 100%);
+  border-bottom: 2px solid var(--dhp-brand-green);
+}
+
+/* Tables */
+.table-dhp thead {
+  background: linear-gradient(135deg, var(--dhp-gray-100) 0%, var(--dhp-gray-200) 100%);
+}
+
+/* Pills/Tabs */
+.nav-tabs-dhp {
+  border-bottom: 2px solid var(--dhp-brand-green);
+}
+
+.nav-link-dhp {
+  color: var(--dhp-brand-blue);
+  border: 1px solid transparent;
+  border-bottom: none;
+}
+
+.nav-link-dhp:hover {
+  color: var(--dhp-brand-green);
+  border-color: var(--dhp-brand-green) var(--dhp-brand-green) transparent;
+}
+
+.nav-link-dhp.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%);
+  border-color: var(--dhp-brand-green) var(--dhp-brand-green) transparent;
+}
+
+/* Badges */
+.badge-dhp-high { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+.badge-dhp-medium { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); }
+.badge-dhp-low { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+
+/* Utilities */
+.section-title-dhp {
+  color: var(--dhp-brand-blue);
+  border-bottom: 2px solid var(--dhp-brand-green);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+/* Responsive helpers */
+@media (min-width: 992px) {
+  /* Large screens utilize full height where desired */
+  .vh-lg-100 { min-height: 100vh; }
+}
+
+@media (max-width: 992px) {
+  .container-fluid-edge { padding-left: 1rem; padding-right: 1rem; }
+  .dhp-logo { height: 28px; }
+}
+
+

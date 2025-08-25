@@ -1,0 +1,51 @@
+<div class="version-stamp" id="versionStamp">RMS Defragmenter v1.0.0 • loading...</div>
+<style>
+  .version-stamp{
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    font-size: 11px;
+    color: #6c757d;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 6px;
+    padding: 4px 8px;
+    z-index: 1040;
+    pointer-events: none;
+  }
+  .version-stamp .badge{ margin-left:6px; }
+</style>
+<script>
+  (function(){
+    try{
+      var el = document.getElementById('versionStamp');
+      if(!el) return;
+      var ts = new Date(document.lastModified || Date.now());
+      // Render base text
+      el.textContent = 'RMS Defragmenter v1.0.0 • loaded ' + ts.toLocaleString();
+      // Append TRAINING indicator if present on window or meta
+      var training = (window.APP_USE_TRAINING_DB === true);
+      try{
+        var meta = document.querySelector('meta[name="use-training-db"]');
+        if(meta){
+          var c = (meta.content || '').toString().trim().toLowerCase();
+          training = (c === 'true' || c === '1' || c === 'yes');
+          // expose for any other scripts
+          window.APP_USE_TRAINING_DB = training;
+        }
+      }catch(e){}
+      if(training){
+        var b = document.createElement('span');
+        b.className = 'badge bg-warning text-dark';
+        b.textContent = 'TRAINING';
+        el.appendChild(b);
+      } else {
+        var b = document.createElement('span');
+        b.className = 'badge bg-success';
+        b.textContent = 'LIVE';
+        el.appendChild(b);
+      }
+    }catch(e){/* noop */}
+  })();
+</script>
+

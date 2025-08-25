@@ -20,15 +20,15 @@ class UserCreate(BaseModel):
     password: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    property_id: Optional[int] = None
     is_admin: bool = False
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    property_id: Optional[int] = None
     is_active: Optional[bool] = None
+    is_admin: Optional[bool] = None
+    avatar_url: Optional[str] = None
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -43,9 +43,9 @@ class UserResponse(BaseModel):
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    property_id: Optional[int] = None
     is_admin: bool
     is_active: bool
+    avatar_url: Optional[str] = None
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -59,11 +59,11 @@ class UserListResponse(BaseModel):
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    property_id: Optional[int] = None
     is_admin: bool
     is_active: bool
     last_login: Optional[datetime] = None
     created_at: datetime
+    avatar_url: Optional[str] = None
     
     class Config:
         from_attributes = True

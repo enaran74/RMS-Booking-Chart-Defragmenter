@@ -7,6 +7,7 @@ This guide covers the production deployment pipeline using pre-built Docker imag
 ## 🏗️ Build Pipeline (Developer)
 
 ### Prerequisites
+
 - Docker Desktop with BuildKit enabled
 - Docker Hub account (dhpsystems)
 - Multi-architecture build support
@@ -19,6 +20,7 @@ This guide covers the production deployment pipeline using pre-built Docker imag
 ```
 
 This will:
+
 - Build for `linux/amd64` and `linux/arm64`
 - Push to Docker Hub as `dhpsystems/rms-defragmenter:latest`
 - Create versioned tags
@@ -65,21 +67,22 @@ curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragme
 
 ## 📁 Deployment Configurations
 
-### Standard Deployment
-- **File**: `docker-compose.customer.yml`
-- **Network**: Bridge networking
-- **Use Case**: Most customer environments
+### VPS Deployment (Host Networking + Bind Mounts)
 
-### Deployment Configuration
-- **File**: `docker-compose.yml` (uses host networking by default)
-- **Network**: Host networking (prevents Tailscale, VPN, or networking conflicts)
-- **Use Case**: All deployments (recommended for VPS environments)
+- **File**: `docker-compose.yml` (host networking)
+- **Bind Mounts** (included):
+  - `./app` → `/app/app` (web app)
+  - `./main.py` → `/app/main.py` (FastAPI entrypoint)
+  - `./app/static/uploads` → `/app/app/static/uploads` (avatars)
+  - Analyzer helpers mounted into `/app/` for CLI/web shared use:
+    `defrag_analyzer.py`, `utils.py`, `holiday_client.py`, `school_holiday_client.py`, `school_holidays.json`, `rms_client.py`, `excel_generator.py`, `email_sender.py`
+- **Why**: Eliminates stale templates and avoids long Docker builds over Tailscale/VPN. Updates are applied by syncing files and restarting only the app container.
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-All configuration is done via `.env` file:
+All configuration is done via a single unified `.env` file (shared by both the web app and the original CLI):
 
 ```bash
 # RMS API Credentials (Required)
@@ -88,7 +91,9 @@ AGENT_PASSWORD=your_agent_password
 CLIENT_ID=your_client_id
 CLIENT_PASSWORD=your_client_password
 
-# Database Configuration
+# Database Configuration (hostnet stack)
+DB_HOST=localhost
+DB_PORT=5433
 DB_NAME=defrag_db
 DB_USER=defrag_user
 DB_PASSWORD=DefragDB2024!
@@ -127,33 +132,38 @@ If installation fails with networking errors:
 
 1. **Automatic Detection**: The installer detects most issues automatically
 2. **Standard Deployment**: Use the single deployment script:
-   ```bash
-   ./deploy_app.sh
-   ```
+
+```bash
+./deploy_app.sh
+```
 
 ### Common Issues
 
 #### Tailscale Conflicts
+
 ```bash
 # Symptoms: Docker build hangs, apt-get timeouts
-# Solution: Automatically uses host networking
+# Solution: Host networking is used automatically by the VPS compose
 ```
 
 #### VPN Conflicts
+
 ```bash
 # Symptoms: Cannot reach external services
 # Solution: Disable VPN during installation or use host networking
 ```
 
 #### Resource Constraints
+
 ```bash
 # Symptoms: Out of memory errors
 # Solution: Pre-built images eliminate this issue
 ```
 
-## 📊 Benefits of This Approach
+## 📈 Benefits of This Approach
 
 ### For Customers
+
 - ✅ **Fast deployment**: 5-10 minutes vs 30-60 minutes
 - ✅ **Reliable**: No build-time failures
 - ✅ **Works everywhere**: Automatic environment detection
@@ -161,25 +171,61 @@ If installation fails with networking errors:
 - ✅ **No technical expertise**: One command installation
 
 ### For Support
+
 - ✅ **Consistent environment**: Same image everywhere
 - ✅ **Predictable issues**: Known, tested configurations
 - ✅ **Easy debugging**: Standard image, standard logs
 - ✅ **Version control**: Tagged releases, rollback capability
 
 ### For Development
+
 - ✅ **Build once, deploy everywhere**: No customer-specific builds
 - ✅ **Test what customers get**: Exact same images
-- ✅ **Faster iterations**: Push image, customers update
+- ✅ **Faster iterations**: Fast-deploy via bind mounts and restarts
 - ✅ **Multi-architecture**: ARM64 support for modern hardware
+
+## ⚡ Fast Update Process (Recommended for iteration)
+
+### From developer workstation
+
+```bash
+./manage.sh fast-deploy
+```
+
+This command:
+
+- Syncs `web_app/app/templates`, `web_app/app/static`, and `web_app/main.py` to `/opt/defrag-app`
+- Restarts only the `defrag-app` container
+
+Expected duration: seconds (no image rebuild).
+
+### On VPS
+
+```bash
+cd /opt/defrag-app
+docker-compose down || true
+docker-compose up -d
+docker-compose ps
+```
+
+### Local dev utility
+
+```bash
+./manage.sh dev-restart
+```
+
+Restarts the docker-compose stack locally/wherever the script runs.
 
 ## 🔄 Update Process
 
 ### Developer Updates
+
 1. Update code
 2. Run `./build-pipeline.sh`
 3. New images automatically available
 
 ### Customer Updates
+
 ```bash
 cd ~/rms-defragmenter
 ./update.sh
@@ -188,11 +234,13 @@ cd ~/rms-defragmenter
 ## 🏷️ Version Management
 
 ### Tagging Strategy
+
 - `latest`: Current stable release
 - `2.0.0`: Specific version tags
 - `dev`: Development builds (if needed)
 
 ### Rolling Updates
+
 - Zero-downtime updates via Docker Compose
 - Automatic health checks
 - Rollback capability if needed
@@ -247,11 +295,13 @@ docker-compose restart defrag-app
 ## 📈 Monitoring
 
 ### Health Checks
+
 - Application: `http://localhost:8000/health`
 - Database: Automatic PostgreSQL health checks
 - Container: Docker health check integration
 
 ### Logs
+
 - Application logs: `docker compose logs defrag-app`
 - Database logs: `docker compose logs postgres`
 - System logs: `./logs.sh`

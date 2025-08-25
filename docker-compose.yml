@@ -4,6 +4,7 @@ version: "3.8"
 services:
   # RMS Defragmenter Web Application
   defrag-app:
+    # Use prebuilt image but bind-mount code to avoid rebuilds over Tailscale
     image: dhpsystems/rms-defragmenter:latest
     container_name: defrag-app
     restart: unless-stopped
@@ -20,11 +21,25 @@ services:
       - AGENT_PASSWORD=${AGENT_PASSWORD}
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_PASSWORD=${CLIENT_PASSWORD}
-      - USE_TRAINING_DB=${USE_TRAINING_DB:-false}
       - PROPERTY_REFRESH_INTERVAL_HOURS=${PROPERTY_REFRESH_INTERVAL_HOURS:-1}
     volumes:
       - defrag_logs:/app/logs
       - defrag_output:/app/output
+      - ./app/static/uploads:/app/app/static/uploads
+      # Bind-mount application code to avoid stale templates without rebuilding
+      - ./app:/app/app
+      - ./main.py:/app/main.py
+      - ./defrag_analyzer.py:/app/defrag_analyzer.py
+      - ./utils.py:/app/utils.py
+      - ./holiday_client.py:/app/holiday_client.py
+      - ./school_holiday_client.py:/app/school_holiday_client.py
+      - ./school_holidays.json:/app/school_holidays.json
+      - ./rms_client.py:/app/rms_client.py
+      - ./excel_generator.py:/app/excel_generator.py
+      - ./email_sender.py:/app/email_sender.py
+      # Expose host .env into container so Setup can read it
+      - /opt/defrag-app/.env:/app/.env
+      - /opt/defrag-app/.env:/opt/defrag-app/.env
     depends_on:
       postgres:
         condition: service_healthy

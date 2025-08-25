@@ -2,7 +2,7 @@
 Authentication endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -13,8 +13,12 @@ from app.schemas.auth import (
     PasswordChange, PasswordReset, UserListResponse
 )
 from datetime import timedelta, datetime
+import logging
+import os
+import time
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/login", response_model=TokenResponse)
@@ -59,6 +63,7 @@ async def register(
     db: Session = Depends(get_db)
 ):
     """User registration endpoint"""
+    logger.info(f"ADMIN CREATE USER: username={user_data.username}, email={user_data.email}, is_admin={user_data.is_admin}")
     # Check if username already exists
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
@@ -78,6 +83,7 @@ async def register(
     # Validate password strength
     is_valid, errors = validate_password_strength(user_data.password)
     if not is_valid:
+        logger.warning(f"CREATE USER password validation failed: {errors}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password does not meet strength requirements",
@@ -92,13 +98,13 @@ async def register(
         password_hash=hashed_password,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        property_id=user_data.property_id,
         is_admin=user_data.is_admin
     )
     
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    logger.info(f"ADMIN CREATE USER: success id={db_user.id}")
     
     return UserResponse.model_validate(db_user)
 
@@ -117,8 +123,11 @@ async def update_current_user_profile(
 ):
     """Update current user profile"""
     # Update user fields
+    # Only update allowed fields (exclude legacy property_id)
+    allowed = {"email", "first_name", "last_name", "is_active", "is_admin", "avatar_url"}
     for field, value in user_update.dict(exclude_unset=True).items():
-        setattr(current_user, field, value)
+        if field in allowed:
+            setattr(current_user, field, value)
     
     current_user.updated_at = datetime.utcnow()
     db.commit()
@@ -239,7 +248,6 @@ async def create_user(
         password_hash=hashed_password,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        property_id=user_data.property_id,
         is_admin=user_data.is_admin
     )
     
@@ -279,8 +287,11 @@ async def update_user(
         )
     
     # Update user fields
+    # Only update allowed fields (exclude legacy property_id)
+    allowed = {"email", "first_name", "last_name", "is_active", "is_admin", "avatar_url"}
     for field, value in user_update.dict(exclude_unset=True).items():
-        setattr(user, field, value)
+        if field in allowed:
+            setattr(user, field, value)
     
     user.updated_at = datetime.utcnow()
     db.commit()
@@ -365,3 +376,90 @@ async def reset_user_password(
     db.commit()
     
     return {"message": "Password reset successfully"}
+
+@router.post("/users/{user_id}/avatar")
+async def upload_user_avatar(
+    user_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload or replace a user's avatar (admin or self). Expects a square PNG/JPEG <= 1.5MB.
+    The client should pre-crop to 256x256. Server saves to static/uploads/avatars.
+    """
+    # Permissions: admin or self
+    if not current_user.is_admin and current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    # Validate user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Validate content type
+    content_type = (file.content_type or '').lower()
+    if content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    # Enforce max size ~1.5MB by reading into memory cautiously
+    data = await file.read()
+    if len(data) > 1_572_864:
+        raise HTTPException(status_code=400, detail="Image too large (max 1.5MB)")
+
+    # Prepare path
+    base_dir = os.path.join("app", "static", "uploads", "avatars")
+    os.makedirs(base_dir, exist_ok=True)
+    # Normalize extension
+    ext = ".png" if content_type == "image/png" else ".jpg"
+    filename = f"user_{user_id}{ext}"
+    file_path = os.path.join(base_dir, filename)
+
+    # Write file atomically
+    tmp_path = file_path + ".tmp"
+    with open(tmp_path, "wb") as f:
+        f.write(data)
+    os.replace(tmp_path, file_path)
+
+    # Public URL (cache-bust with timestamp)
+    ts = int(time.time())
+    public_url = f"/static/uploads/avatars/{filename}?ts={ts}"
+
+    # Update user
+    user.avatar_url = public_url
+    user.updated_at = datetime.utcnow()
+    db.commit()
+
+    return {"avatar_url": public_url}
+
+@router.delete("/users/{user_id}/avatar")
+async def delete_user_avatar(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a user's avatar (admin or self)."""
+    if not current_user.is_admin and current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Attempt to remove file on disk if path looks local
+    if user.avatar_url:
+        try:
+            # Strip query param
+            path_only = user.avatar_url.split('?')[0]
+            # Expecting /static/uploads/avatars/filename
+            parts = path_only.strip('/').split('/')
+            if len(parts) >= 4 and parts[0] == 'static' and parts[1] == 'uploads' and parts[2] == 'avatars':
+                abs_path = os.path.join('app', *parts)
+                if os.path.exists(abs_path):
+                    os.remove(abs_path)
+        except Exception:
+            pass
+
+    user.avatar_url = None
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    return {"success": True}

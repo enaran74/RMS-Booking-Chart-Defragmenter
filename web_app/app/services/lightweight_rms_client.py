@@ -7,7 +7,7 @@ import requests
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from app.core.config import settings
+from app.core import config as app_config
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +82,11 @@ class LightweightRMSClient:
         
         try:
             auth_payload = {
-                "AgentId": settings.AGENT_ID,
-                "AgentPassword": settings.AGENT_PASSWORD,
-                "ClientId": settings.CLIENT_ID,
-                "ClientPassword": settings.CLIENT_PASSWORD,
-                "UseTrainingDatabase": settings.USE_TRAINING_DB,
+                "AgentId": app_config.settings.AGENT_ID,
+                "AgentPassword": app_config.settings.AGENT_PASSWORD,
+                "ClientId": app_config.settings.CLIENT_ID,
+                "ClientPassword": app_config.settings.CLIENT_PASSWORD,
+                "UseTrainingDatabase": app_config.settings.USE_TRAINING_DB,
                 "ModuleType": ["distribution"]
             }
             

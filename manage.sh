@@ -36,7 +36,7 @@ print_info() {
         echo -e "${BLUE}🔧 BookingChartDefragmenter Service Manager${NC}"
         echo "=================================================="
         echo ""
-        echo "Usage: $0 {start|stop|restart|status|logs|health|update|run}"
+        echo "Usage: $0 {start|stop|restart|status|logs|health|update|run|dev-restart|fast-deploy}"
         echo ""
         echo "Commands:"
         echo "  start    - Start the service (environment setup)"
@@ -47,6 +47,8 @@ print_info() {
         echo "  health   - Run health check"
         echo "  update   - Update from GitHub (requires internet)"
         echo "  run      - Run analysis manually (runs once and exits)"
+        echo "  dev-restart - Restart docker-compose stack (fast reload of templates/code)"
+        echo "  fast-deploy - Sync templates/code to VPS and restart app container"
         echo ""
         echo "Examples:"
         echo "  sudo $0 restart"
@@ -163,6 +165,38 @@ case "$1" in
         fi
         ;;
         
+    dev-restart)
+        print_info "Restarting docker-compose stack..."
+        if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose -f docker-compose.yml down || true
+            docker-compose -f docker-compose.yml up -d
+            print_status "Stack restarted"
+            docker-compose -f docker-compose.yml ps
+        else
+            print_error "docker-compose not found"
+            exit 1
+        fi
+        ;;
+
+    fast-deploy)
+        # Fast deploy from local machine to VPS with bind mounts; requires sshpass
+        VPS_IP=${VPS_IP:-100.78.0.44}
+        VPS_USER=${VPS_USER:-enaran}
+        VPS_PASSWORD=${VPS_PASSWORD:-Configur8&1}
+        REMOTE_DIR=/opt/defrag-app
+        print_info "Syncing templates and app code to ${VPS_USER}@${VPS_IP}..."
+        if ! command -v sshpass >/dev/null 2>&1; then
+            print_error "sshpass is required for fast-deploy"
+            exit 1
+        fi
+        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/templates "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
+        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/static "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
+        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no web_app/main.py "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/main.py" || true
+        print_info "Restarting app container on VPS..."
+        sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} 'docker-compose -f /opt/defrag-app/docker-compose.yml restart defrag-app'
+        print_status "Fast deploy complete"
+        ;;
+
     *)
         show_usage
         exit 1

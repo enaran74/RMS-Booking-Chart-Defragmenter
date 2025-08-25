@@ -93,11 +93,15 @@ class PasswordValidator:
         
         return min(score, 100)
 
-# Default password validator instance
+# Default password validator instance (relaxed rules)
+# - At least 8 characters
+# - At least one uppercase letter
+# - At least one special character
+# - Digits/lowercase not strictly required
 default_validator = PasswordValidator(
-    min_length=12,
+    min_length=8,
     require_uppercase=True,
-    require_lowercase=True,
-    require_digits=True,
+    require_lowercase=False,
+    require_digits=False,
     require_special=True
 )

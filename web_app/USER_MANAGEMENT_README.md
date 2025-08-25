@@ -5,12 +5,14 @@ This document describes the enhanced user management functionality added to the 
 ## New Features
 
 ### 1. User Profile Management
+
 - **Email Address**: All users now require an email address for future 2FA implementation
 - **Profile Editing**: Users can edit their first name, last name, and email address
 - **Profile Updates**: Changes are tracked with timestamps
 
 ### 2. Password Management
-- **Strong Password Requirements**: 
+
+- **Strong Password Requirements**:
   - Minimum 12 characters
   - Must contain uppercase and lowercase letters
   - Must contain at least one digit
@@ -22,6 +24,7 @@ This document describes the enhanced user management functionality added to the 
 - **Admin Password Reset**: Admins can reset passwords for other users
 
 ### 3. Admin User Management
+
 - **User Creation**: Admins can create new users with full profile information
 - **User Listing**: Admins can view all users in the system
 - **User Updates**: Admins can modify user profiles and status
@@ -29,6 +32,7 @@ This document describes the enhanced user management functionality added to the 
 - **Admin Protection**: Admin users cannot be deleted or have admin privileges removed
 
 ### 4. Enhanced Security
+
 - **Account Status**: Users can be marked as active/inactive
 - **Login Tracking**: Last login time is recorded
 - **JWT Authentication**: Secure token-based authentication
@@ -37,6 +41,7 @@ This document describes the enhanced user management functionality added to the 
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - User login
 - `POST /api/v1/auth/register` - User registration
 - `GET /api/v1/auth/me` - Get current user info
@@ -44,6 +49,7 @@ This document describes the enhanced user management functionality added to the 
 - `PUT /api/v1/auth/me/change-password` - Change current user password
 
 ### Admin Only
+
 - `GET /api/v1/auth/users` - List all users
 - `POST /api/v1/auth/users` - Create new user
 - `PUT /api/v1/auth/users/{user_id}` - Update user
@@ -53,6 +59,7 @@ This document describes the enhanced user management functionality added to the 
 ## Database Schema Changes
 
 ### Users Table
+
 - Added `email` field (required, unique)
 - Added `first_name` and `last_name` fields
 - Added `is_active` field for account status
@@ -60,6 +67,7 @@ This document describes the enhanced user management functionality added to the 
 - Added `updated_at` field for change tracking
 
 ### Indexes
+
 - Email index for fast lookups
 - Active status index for filtering
 
@@ -82,12 +90,14 @@ The system enforces strong passwords using the following criteria:
 ## Frontend Features
 
 ### User Interface
+
 - **Profile Dropdown**: Access to profile editing, password changes, and user management
 - **Modal Forms**: Clean, user-friendly forms for all operations
 - **Real-time Validation**: Immediate feedback on password strength
 - **Admin Controls**: Special interface elements for admin users
 
 ### User Management Dashboard
+
 - **User List**: View all users with key information
 - **User Actions**: Edit, delete, and manage user accounts
 - **Status Indicators**: Visual indicators for user status and admin privileges
@@ -131,6 +141,7 @@ A comprehensive test script (`test_user_management.py`) is provided to verify:
 ## Usage Examples
 
 ### Creating a New User (Admin)
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/users" \
   -H "Authorization: Bearer <admin_token>" \
@@ -146,6 +157,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/users" \
 ```
 
 ### Changing Password
+
 ```bash
 curl -X PUT "http://localhost:8000/api/v1/auth/me/change-password" \
   -H "Authorization: Bearer <user_token>" \
@@ -157,6 +169,7 @@ curl -X PUT "http://localhost:8000/api/v1/auth/me/change-password" \
 ```
 
 ### Updating Profile
+
 ```bash
 curl -X PUT "http://localhost:8000/api/v1/auth/me" \
   -H "Authorization: Bearer <user_token>" \
@@ -177,6 +190,7 @@ The enhanced system can be deployed using the updated deployment script:
 ```
 
 This will automatically:
+
 1. Deploy the updated application
 2. Run database migrations
 3. Update the admin user with new fields

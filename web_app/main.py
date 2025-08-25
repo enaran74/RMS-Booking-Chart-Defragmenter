@@ -22,7 +22,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-from app.core.config import settings
+from app.core import config as app_config
 from app.core.websocket_manager import websocket_manager
 
 # Import all models to ensure they are registered with SQLAlchemy BEFORE creating the engine
@@ -53,10 +53,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    allow_origins=app_config.settings.CORS_ORIGINS,
+    allow_credentials=app_config.settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=app_config.settings.CORS_ALLOW_METHODS,
+    allow_headers=app_config.settings.CORS_ALLOW_HEADERS,
 )
 
 # Security
@@ -111,24 +111,29 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
-async def read_root():
+async def read_root(request: Request):
     """Serve the main application page"""
-    return FileResponse("app/templates/index.html")
+    # Expose training flag to templates for footer badge
+    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    return templates.TemplateResponse("index.html", {"request": request, "active_page": "dashboard", "use_training_db": use_training})
 
 @app.get("/setup")
-async def read_setup():
+async def read_setup(request: Request):
     """Serve the admin setup page"""
-    return FileResponse("app/templates/setup.html")
+    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    return templates.TemplateResponse("setup.html", {"request": request, "active_page": "setup", "use_training_db": use_training})
 
 @app.get("/setup-wizard")
-async def read_setup_wizard():
+async def read_setup_wizard(request: Request):
     """Serve the first-time setup wizard page"""
-    return FileResponse("app/templates/setup_wizard.html")
+    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    return templates.TemplateResponse("setup_wizard.html", {"request": request, "use_training_db": use_training})
 
 @app.get("/move-history")
-async def read_move_history():
+async def read_move_history(request: Request):
     """Serve the move history page"""
-    return FileResponse("app/templates/move_history.html")
+    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    return templates.TemplateResponse("move_history.html", {"request": request, "active_page": "move_history", "use_training_db": use_training})
 
 @app.get("/health")
 async def health_check():
@@ -192,7 +197,7 @@ async def websocket_rms_progress(websocket: WebSocket, property_code: str):
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host=settings.WEB_APP_HOST,
-        port=settings.WEB_APP_PORT,
+        host=app_config.settings.WEB_APP_HOST,
+        port=app_config.settings.WEB_APP_PORT,
         reload=True
     )

@@ -17,22 +17,28 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 
 ## 🚀 Quick Start (One-Command Installation)
 
-### Prerequisites
-- **Docker** and **Docker Compose** installed
-- **Internet connection** for downloading components
+### Prerequisites (Host VPS)
+
+- Ubuntu 22.04/24.04 or Debian 12
+- curl, git
+- Docker Engine 24+ and Docker Compose V2
+- Open port: 8000 (web UI)
+- Tailscale/VPN environments supported (host networking is used)
 
 ### Installation
+
 ```bash
 # Download and run the automated installer
 curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
-### Configuration & Launch
+### Configuration & Launch (VPS)
+
 ```bash
 # Navigate to installation directory
 cd ~/rms-defragmenter
 
-# Configure your RMS credentials
+# Configure your RMS credentials and options (single unified .env)
 nano .env
 
 # Start the system
@@ -40,25 +46,26 @@ nano .env
 ```
 
 ### Access the System
-- **🌐 Web Interface**: http://localhost:8000
-- **📊 Health Check**: http://localhost:8000/health  
-- **📖 API Documentation**: http://localhost:8000/docs
-- **👤 Default Login**: username=`admin`, password=`admin123`
+
+- **🌐 Web Interface**: [http://localhost:8000](http://localhost:8000)
+- **📊 Health Check**: [http://localhost:8000/health](http://localhost:8000/health)  
+- **📖 API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **👤 Default Login**: username=`admin`, password=`Configur8&1`
 
 ---
 
 ## 📋 Table of Contents
 
-1. [System Overview](#system-overview)
-2. [Architecture](#architecture)
-3. [Installation Options](#installation-options)
-4. [Configuration](#configuration)
-5. [Usage](#usage)
-6. [Features](#features)
-7. [Management](#management)
-8. [API Reference](#api-reference)
-9. [Troubleshooting](#troubleshooting)
-10. [Development](#development)
+1. System Overview
+2. Architecture
+3. Installation
+4. Configuration
+5. Usage
+6. Features
+7. Management
+8. API Reference
+9. Troubleshooting
+10. Development
 
 ---
 
@@ -67,6 +74,7 @@ nano .env
 The RMS Booking Chart Defragmenter provides a complete solution combining:
 
 ### 🤖 **Automated CLI Analyzer**
+
 - **Scheduled Analysis**: Runs automatically via cron (default: daily 2:00 AM)
 - **Multi-Property Support**: Analyze specific properties or entire portfolios
 - **Holiday-Aware Optimization**: 2-month forward holiday analysis for peak periods
@@ -74,6 +82,7 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 - **Email Notifications**: Automated stakeholder notifications
 
 ### 🖥️ **Modern Web Interface**
+
 - **Real-Time Management**: Interactive move suggestion management
 - **User Authentication**: Role-based access control
 - **Database Persistence**: PostgreSQL for data integrity
@@ -81,6 +90,7 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 - **RESTful API**: Full programmatic access
 
 ### 🔄 **Production Benefits**
+
 - **Pre-Built Images**: Fast 5-10 minute deployments
 - **Smart Environment Detection**: Automatically handles networking conflicts
 - **Multi-Architecture Support**: Works on AMD64, ARM64, and ARM platforms
@@ -91,14 +101,14 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 
 ## 🏗️ Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Docker Container                             │
 │                                                                 │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐ │
 │  │   Web App       │    │   CLI Analyzer  │    │ PostgreSQL  │ │
 │  │   (FastAPI)     │◄──►│   (Cron Job)    │◄──►│ Database    │ │
-│  │   Port: 8000    │    │   Schedule: 2AM │    │ Port: 5432  │ │
+│  │   Port: 8000    │    │   Schedule: 2AM │    │ Port: 5433  │ │
 │  └─────────────────┘    └─────────────────┘    └─────────────┘ │
 │           │                       │                      │     │
 │           ▼                       ▼                      ▼     │
@@ -111,6 +121,7 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 ```
 
 ### **Component Integration**
+
 - **Pre-Built Images**: Production-ready Docker images from Docker Hub
 - **Smart Installation**: Automatic environment detection and deployment
 - **Unified Configuration**: Single `.env` file for all settings
@@ -122,51 +133,34 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 ## 🚀 **Installation**
 
 ### Automated Installation (Recommended)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
-**Features:**
-- **Environment Detection**: Automatically detects networking requirements
-- **Docker Installation**: Installs Docker if not present
-- **Smart Configuration**: Downloads appropriate deployment configuration
-- **Pre-built Images**: Uses optimized container images (fast deployment)
-- **Management Scripts**: Creates convenient operation scripts
-- **Production Ready**: Complete system deployment in 5-10 minutes
-
 ### Manual Installation
 
 #### Standard Deployment
+
 ```bash
 # Clone repository
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
 cd RMS-Booking-Chart-Defragmenter
 
-# Configure credentials
+# Configure credentials (single .env used by web + CLI)
 cp env.example .env
 nano .env
 
-# Start system
+# Start system (host networking + bind mounts for live templates)
 docker compose up -d
 ```
 
 #### Host Network Deployment
-For environments with Tailscale, VPN, or networking conflicts:
 
-```bash
-# Clone repository
-git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
-cd RMS-Booking-Chart-Defragmenter
-
-# Configure credentials
-cp env.example .env
-nano .env
-
-# Start with host networking
-docker compose -f docker-compose.hostnet.yml up -d
-```
+For environments with Tailscale, VPN, or networking conflicts, `docker-compose.yml` already uses host networking and bind mounts that allow fast updates without image rebuilds.
 
 ### Development Setup
+
 See [DEPLOYMENT.md](DEPLOYMENT.md) for developer build pipeline instructions.
 
 ---
@@ -174,7 +168,8 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for developer build pipeline instructions.
 ## ⚙️ Configuration
 
 ### **Required Configuration**
-Edit `.env` file with your RMS credentials:
+
+Edit `.env` file with your RMS credentials (shared by web and CLI):
 
 ```bash
 # RMS API Credentials (REQUIRED)
@@ -187,6 +182,7 @@ CLIENT_PASSWORD=your_client_password_here
 ### **Optional Configuration**
 
 #### **Analysis Settings**
+
 ```bash
 # Property Selection
 TARGET_PROPERTIES=ALL                    # or SADE,QROC,TCRA
@@ -196,17 +192,19 @@ USE_TRAINING_DB=false                    # Use training database
 WEB_APP_PORT=8000
 ```
 
-#### **Database**
+### **Database**
+
 ```bash
-# PostgreSQL Configuration (Auto-configured)
-DB_HOST=postgres
-DB_PORT=5432
+# PostgreSQL Configuration (hostnet mode)
+DB_HOST=localhost
+DB_PORT=5433
 DB_NAME=defrag_db
 DB_USER=defrag_user
 DB_PASSWORD=DefragDB2024!
 ```
 
-#### **Email Notifications**
+### **Email Notifications**
+
 ```bash
 # Email Settings
 ENABLE_EMAILS=false                      # Enable email notifications
@@ -227,22 +225,26 @@ APP_PASSWORD=your_app_password_here
 ### **Web Interface Usage**
 
 #### **1. Access the System**
-- Navigate to http://localhost:8000
+
+- Navigate to [http://localhost:8000](http://localhost:8000)
 - Login with: `admin` / `admin123`
 - **⚠️ Change default passwords in production!**
 
 #### **2. Manage Properties**
+
 - View property list and access controls
 - Configure user permissions per property
 - Monitor property-specific analysis status
 
 #### **3. Review Move Suggestions**
+
 - View automated move suggestions by property
 - Filter by category, importance, and date range
 - Accept/reject individual moves with 3-way toggle
 - Track implementation status
 
 #### **4. Monitor System Health**
+
 - Check system status and performance
 - View analysis logs and cron job history
 - Monitor database connectivity and health
@@ -252,6 +254,7 @@ APP_PASSWORD=your_app_password_here
 The CLI analyzer runs automatically based on your schedule, but you can also trigger manual runs:
 
 #### **Manual Analysis**
+
 ```bash
 # Run analysis for all properties
 docker exec defrag-app python3 /app/app/original/start.py \
@@ -271,6 +274,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 ## ✨ Features
 
 ### **Intelligent Defragmentation**
+
 - **🧠 Smart Algorithm**: Identifies optimal reservation moves to reduce fragmentation
 - **🎯 Category-Based Optimization**: Respects accommodation type preferences
 - **🎄 Holiday-Aware Analysis**: 2-month forward holiday optimization
@@ -278,6 +282,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 - **🔄 Sequential Move Ordering**: Optimizes implementation sequence
 
 ### **Comprehensive Reporting**
+
 - **📈 Visual Excel Reports**: Color-coded booking charts with move suggestions
 - **📅 Daily Heatmaps**: Overview of opportunities across all properties
 - **📋 Detailed Move Tables**: Complete implementation guidance
@@ -285,6 +290,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 - **📊 Consolidated Summaries**: Cross-property opportunity analysis
 
 ### **Modern Web Interface**
+
 - **🔐 Secure Authentication**: Role-based access control
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile
 - **⚡ Real-Time Updates**: WebSocket-powered live progress tracking
@@ -292,6 +298,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 - **📊 Interactive Charts**: Visual move suggestion management
 
 ### **Production Deployment**
+
 - **🚀 Fast Installation**: 5-10 minute deployment with pre-built images
 - **🔍 Smart Detection**: Automatic environment and networking detection
 - **🌐 Multi-Platform**: AMD64, ARM64, and ARM architecture support
@@ -303,6 +310,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 ## 🎛️ Management
 
 ### **System Management Commands**
+
 ```bash
 # In your installation directory (~/rms-defragmenter)
 
@@ -314,6 +322,7 @@ docker exec defrag-app python3 /app/app/original/start.py \
 ```
 
 ### **Docker Commands**
+
 ```bash
 # Direct Docker Compose management
 docker compose up -d                                # Start (standard)
@@ -330,6 +339,7 @@ docker exec defrag-app ./health_check.sh # Health check
 ### **Monitoring & Maintenance**
 
 #### **Health Checks**
+
 ```bash
 # Automated health check
 curl http://localhost:8000/health
@@ -339,11 +349,13 @@ curl http://localhost:8000/health
 ```
 
 #### **Log Files**
+
 - **Web App**: Docker logs via `./logs.sh`
 - **Analysis**: `/app/logs/defrag_analyzer.log`
 - **System**: `docker compose logs`
 
 #### **Data Management**
+
 ```bash
 # View output files
 docker exec defrag-app ls -la /app/output/
@@ -357,6 +369,7 @@ docker exec -it defrag-postgres psql -U defrag_user -d defrag_db
 ## 🔗 API Reference
 
 ### **Authentication**
+
 ```bash
 # Login to get access token
 curl -X POST "http://localhost:8000/auth/login" \
@@ -364,6 +377,7 @@ curl -X POST "http://localhost:8000/auth/login" \
 ```
 
 ### **Properties**
+
 ```bash
 # Get all properties
 curl -H "Authorization: Bearer YOUR_TOKEN" \
@@ -375,6 +389,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ```
 
 ### **Move Suggestions**
+
 ```bash
 # Get move suggestions for a property
 curl -H "Authorization: Bearer YOUR_TOKEN" \
@@ -388,6 +403,7 @@ curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
 ```
 
 ### **System Status**
+
 ```bash
 # Health check
 curl "http://localhost:8000/health"
@@ -397,7 +413,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   "http://localhost:8000/api/v1/setup/database/tables"
 ```
 
-**Complete API Documentation**: http://localhost:8000/docs
+**Complete API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
@@ -406,6 +422,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ### **Common Issues**
 
 #### **1. Container Won't Start**
+
 ```bash
 # Check Docker daemon
 docker info
@@ -418,7 +435,9 @@ docker compose logs defrag-app
 ```
 
 #### **2. Network Issues (Tailscale/VPN)**
+
 The smart installer automatically detects and handles this, but if you installed manually:
+
 ```bash
 # Use host networking
 cp docker-compose.hostnet.yml docker-compose.yml
@@ -426,6 +445,7 @@ docker compose up -d
 ```
 
 #### **3. Database Connection Failed**
+
 ```bash
 # Check PostgreSQL container
 docker compose ps postgres
@@ -438,6 +458,7 @@ docker compose logs postgres
 ```
 
 #### **4. RMS API Authentication Failed**
+
 ```bash
 # Verify credentials in .env file
 cat .env | grep -E "(AGENT_|CLIENT_)"
@@ -448,6 +469,7 @@ cat .env | grep -E "(AGENT_|CLIENT_)"
 ### **System Recovery**
 
 #### **Reset to Default State**
+
 ```bash
 # Stop system
 ./stop.sh
@@ -462,6 +484,7 @@ docker volume rm rms-defragmenter_defrag_logs
 ```
 
 #### **Update to Latest Version**
+
 ```bash
 # Automated update
 ./update.sh
@@ -478,6 +501,7 @@ For developers who want to build and customize the system, see:
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guidelines
 
 ### **Local Development**
+
 ```bash
 # Clone repository
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
@@ -510,18 +534,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🤝 Support
 
 ### **Documentation**
+
 - **Installation Guide**: This README
 - **Production Deployment**: [DEPLOYMENT.md](DEPLOYMENT.md)
-- **API Documentation**: http://localhost:8000/docs
+- **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Developer Guide**: [DEVELOPER_README.md](DEVELOPER_README.md)
 
 ### **Getting Help**
+
 1. **Check Logs**: Use `./logs.sh` or `docker compose logs`
 2. **Health Check**: Run `curl http://localhost:8000/health`
 3. **GitHub Issues**: Report bugs and request features
 4. **System Status**: Use `./status.sh` for overview
 
 ### **Contributing**
+
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
