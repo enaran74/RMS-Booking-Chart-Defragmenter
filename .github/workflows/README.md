@@ -42,9 +42,11 @@ This directory contains GitHub Actions workflows for automated testing, security
 - Build artifact validation
 
 ### 3. **Security Scanning** (`security.yml`)
+
 **Triggers:** Daily schedule (2 AM UTC), Security-related file changes, Manual dispatch
 
 **Jobs:**
+
 - **Dependency Scan**: Vulnerability scanning of Python dependencies
 - **Code Security**: Static code analysis with Bandit
 - **Secrets Detection**: TruffleHog and pattern-based secret detection
@@ -52,6 +54,7 @@ This directory contains GitHub Actions workflows for automated testing, security
 - **Security Summary**: Consolidated security reporting
 
 **Features:**
+
 - Daily automated security scans
 - Multiple security tools integration
 - Comprehensive reporting with GitHub Security tab integration
@@ -71,6 +74,7 @@ To use these workflows, configure the following secrets in your GitHub repositor
 ### Setting Up Docker Hub Secrets
 
 1. **Create Docker Hub Access Token:**
+
    ```bash
    # Login to Docker Hub
    # Go to Account Settings → Security → New Access Token
@@ -79,6 +83,7 @@ To use these workflows, configure the following secrets in your GitHub repositor
    ```
 
 2. **Add to GitHub Secrets:**
+
    ```bash
    # Repository Settings → Secrets and variables → Actions → New repository secret
    DOCKER_USERNAME: your-dockerhub-username
@@ -140,6 +145,7 @@ on:
     branches: [ main, develop, feature/* ]  # Add more branches
   schedule:
     - cron: '0 6 * * *'  # Change schedule time
+
 ```
 
 ### Adding New Security Tools
@@ -150,6 +156,7 @@ Extend the security workflow with additional scanners:
   run: |
     # Install and run your security tool
     custom-scanner --output results.json
+
 ```
 
 ### Environment-Specific Builds
@@ -161,6 +168,7 @@ Add environment-specific Docker builds:
   uses: docker/build-push-action@v5
   with:
     tags: ${{ env.IMAGE_NAME }}:staging
+
 ```
 
 ## 🔧 Troubleshooting
@@ -168,20 +176,26 @@ Add environment-specific Docker builds:
 ### Common Issues
 
 **1. Docker Hub Authentication Fails**
+
 ```bash
 Error: buildx failed with: ERROR: failed to solve: failed to authorize
+
 ```
 **Solution:** Verify `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets are correct
 
 **2. Security Scans Fail**
+
 ```bash
 Error: Bandit security scan failed
+
 ```
 **Solution:** Review Bandit configuration in `.bandit` file, exclude false positives
 
 **3. Build Timeouts**
+
 ```bash
 Error: The job running on runner GitHub Actions X has exceeded the maximum execution time
+
 ```
 **Solution:** Optimize Dockerfile, use multi-stage builds, leverage build cache
 
@@ -200,10 +214,14 @@ Error: The job running on runner GitHub Actions X has exceeded the maximum execu
 - **As needed**: Adjust triggers and notification settings
 
 ### Updating Actions
+
 ```bash
+
 # Check for newer action versions
 grep -r "uses:.*@v" .github/workflows/
+
 # Update version numbers in workflow files
+
 ```
 
 This CI/CD pipeline provides comprehensive automation while maintaining security best practices. All sensitive data is properly managed through GitHub Secrets, and the workflows are designed to fail safely without exposing credentials.

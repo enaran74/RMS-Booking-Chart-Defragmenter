@@ -16,6 +16,7 @@ You **MUST** configure these secrets for the CI/CD pipeline to work:
 ### 2. Setting Up Docker Hub Access
 
 #### Step 1: Create Docker Hub Access Token
+
 1. Login to [Docker Hub](https://hub.docker.com)
 2. Go to **Account Settings** → **Security**
 3. Click **New Access Token**
@@ -24,10 +25,12 @@ You **MUST** configure these secrets for the CI/CD pipeline to work:
 6. **Copy the token** (you won't see it again!)
 
 #### Step 2: Add Secrets to GitHub
+
 1. Go to your GitHub repository
 2. **Settings** → **Secrets and variables** → **Actions**
 3. Click **New repository secret**
 4. Add both secrets:
+
    ```
    Name: DOCKER_USERNAME
    Value: your-dockerhub-username
