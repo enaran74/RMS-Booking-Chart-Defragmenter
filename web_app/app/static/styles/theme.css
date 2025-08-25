@@ -62,23 +62,25 @@ body {
   align-items: center;
 }
 
-/* Header profile aesthetic: link-style, no border box with consistent baseline */
+/* Header profile aesthetic: center aligned with avatar */
 .navbar-dhp .profile-toggle {
   text-decoration: none;
-  display: inline;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 24px; /* Match avatar height */
+  line-height: 24px;
   position: relative;
   top: 0;
-  vertical-align: baseline; /* Force baseline alignment for text */
 }
 
 .navbar-dhp .btn-link.profile-toggle {
   text-decoration: none;
-  display: inline;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 24px; /* Match avatar height */
+  line-height: 24px;
   position: relative;
   top: 0;
-  vertical-align: baseline; /* Force baseline alignment for text */
   border: none;
   box-shadow: none;
 }
@@ -100,27 +102,28 @@ body {
   vertical-align: middle;
 }
 
-/* Ensure username text aligns nicely with avatar and button using baseline alignment */
+/* Ensure username text aligns nicely with avatar and button using center alignment */
 .navbar-dhp #user-info { 
   display: inline-flex; 
-  align-items: baseline; /* Use baseline for text alignment consistency */
-  line-height: 1; 
+  align-items: center; /* Center align with avatar and profile button */
+  height: 24px; /* Match avatar height */
+  line-height: 24px; 
 }
 .navbar-dhp #user-info #username { 
-  line-height: 1; 
+  line-height: 24px; /* Match container height */
   position: relative; 
   top: 0; 
 }
 
-/* Ensure the dropdown container aligns with username baseline */
+/* Center align with avatar */
 .navbar-dhp .navbar-nav {
   display: flex !important;
-  align-items: baseline !important; /* Override Bootstrap's center alignment for text baseline consistency */
+  align-items: center !important; /* Center align with avatar */
 }
 
-/* Ensure both navbar-text and dropdown are on same baseline */
+/* Center align navbar elements */
 .navbar-dhp .navbar-nav > * {
-  align-self: baseline;
+  align-self: center;
 }
 
 /* Buttons */

@@ -1,4 +1,4 @@
-<div class="version-stamp" id="versionStamp">RMS Defragmenter v1.0.0 • loading...</div>
+<div class="version-stamp" id="versionStamp">RMS Defragmenter • loading...</div>
 <style>
   .version-stamp{
     position: fixed;
@@ -20,32 +20,48 @@
     try{
       var el = document.getElementById('versionStamp');
       if(!el) return;
-      var ts = new Date(document.lastModified || Date.now());
-      // Render base text
-      el.textContent = 'RMS Defragmenter v1.0.0 • loaded ' + ts.toLocaleString();
-      // Append TRAINING indicator if present on window or meta
-      var training = (window.APP_USE_TRAINING_DB === true);
-      try{
-        var meta = document.querySelector('meta[name="use-training-db"]');
-        if(meta){
-          var c = (meta.content || '').toString().trim().toLowerCase();
-          training = (c === 'true' || c === '1' || c === 'yes');
-          // expose for any other scripts
-          window.APP_USE_TRAINING_DB = training;
-        }
-      }catch(e){}
-      if(training){
-        var b = document.createElement('span');
-        b.className = 'badge bg-warning text-dark';
-        b.textContent = 'TRAINING';
-        el.appendChild(b);
-      } else {
-        var b = document.createElement('span');
-        b.className = 'badge bg-success';
-        b.textContent = 'LIVE';
-        el.appendChild(b);
-      }
-    }catch(e){/* noop */}
+      
+      // Fetch dynamic version from API
+      fetch('/api/v1/version')
+        .then(response => response.json())
+        .then(data => {
+          var ts = new Date(data.timestamp || Date.now());
+          el.textContent = 'RMS Defragmenter ' + data.version + ' • loaded ' + ts.toLocaleString();
+          
+          // Append TRAINING indicator if present on window or meta
+          var training = (window.APP_USE_TRAINING_DB === true);
+          try{
+            var meta = document.querySelector('meta[name="use-training-db"]');
+            if(meta){
+              var c = (meta.content || '').toString().trim().toLowerCase();
+              training = (c === 'true' || c === '1' || c === 'yes');
+              // expose for any other scripts
+              window.APP_USE_TRAINING_DB = training;
+            }
+          }catch(e){}
+          
+          if(training){
+            var b = document.createElement('span');
+            b.className = 'badge bg-warning text-dark';
+            b.textContent = 'TRAINING';
+            el.appendChild(b);
+          } else {
+            var b = document.createElement('span');
+            b.className = 'badge bg-success';
+            b.textContent = 'LIVE';
+            el.appendChild(b);
+          }
+        })
+        .catch(err => {
+          // Fallback to static version with timestamp
+          var ts = new Date(document.lastModified || Date.now());
+          el.textContent = 'RMS Defragmenter v1.0.0 • loaded ' + ts.toLocaleString();
+          console.warn('Failed to fetch version:', err);
+        });
+        
+    }catch(e){
+      console.warn('Version stamp initialization failed:', e);
+    }
   })();
 </script>
 

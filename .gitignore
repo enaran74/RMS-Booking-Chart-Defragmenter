@@ -5,6 +5,9 @@
 *.env
 !env.example
 
+# Generated version file (created during deployment)
+web_app/VERSION_INFO
+
 # Python cache and compiled files
 __pycache__/
 *.py[cod]

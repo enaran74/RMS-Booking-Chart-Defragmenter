@@ -3,7 +3,7 @@ Main API router that includes all endpoint routers
 """
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, defrag_moves, properties, setup, setup_wizard, user_properties
+from app.api.v1.endpoints import auth, defrag_moves, properties, setup, setup_wizard, user_properties, version
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(properties.router, prefix="/properties", tags=["proper
 api_router.include_router(setup.router, prefix="/setup", tags=["setup"])
 api_router.include_router(setup_wizard.router, prefix="/setup-wizard", tags=["setup wizard"])
 api_router.include_router(user_properties.router, prefix="/user-properties", tags=["user-property associations"])
+api_router.include_router(version.router, prefix="", tags=["version"])
