@@ -232,4 +232,288 @@ body {
   .dhp-logo { height: 28px; }
 }
 
+/* ========================================
+   BOOKING CHART COMPONENT STYLES
+   ======================================== */
+
+.booking-chart-container {
+  margin: 15px 0;
+  border: 1px solid var(--dhp-gray-300);
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+}
+
+.chart-category {
+  border-bottom: 1px solid var(--dhp-gray-200);
+}
+
+.chart-category:last-child {
+  border-bottom: none;
+}
+
+.category-header {
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%);
+  color: white;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.category-header:hover {
+  background: linear-gradient(135deg, #1a5580 0%, #297a88 100%);
+}
+
+.category-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.category-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.chart-grid {
+  display: none; /* Hidden by default - shown when expanded */
+  overflow-x: auto;
+  background: white;
+}
+
+.chart-grid.show {
+  display: block;
+}
+
+.booking-chart-table {
+  width: 100%;
+  min-width: 800px; /* Ensure horizontal scroll on small screens */
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.chart-header-row {
+  background-color: var(--dhp-gray-100);
+  border-bottom: 2px solid var(--dhp-gray-300);
+}
+
+.chart-header-cell {
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  border-right: 1px solid var(--dhp-gray-300);
+  white-space: nowrap;
+  min-width: 35px;
+}
+
+.chart-unit-cell {
+  padding: 8px 8px;
+  font-weight: 500;
+  background-color: var(--dhp-gray-50);
+  border-right: 2px solid var(--dhp-gray-300);
+  border-bottom: 1px solid var(--dhp-gray-200);
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-booking-cell {
+  padding: 2px 4px;
+  text-align: center;
+  border-right: 1px solid var(--dhp-gray-300);
+  border-bottom: 1px solid var(--dhp-gray-200);
+  min-height: 24px;
+  vertical-align: middle;
+  position: relative;
+  min-width: 35px;
+}
+
+.chart-booking-cell.empty {
+  background-color: #fafafa;
+}
+
+/* Booking Status Colors (matching Excel chart) */
+.status-arrived {
+  background-color: #5B9BD5 !important;
+  color: white;
+}
+
+.status-confirmed {
+  background-color: #70AD47 !important;
+  color: white;
+}
+
+.status-unconfirmed {
+  background-color: #FFC000 !important;
+  color: black;
+}
+
+.status-maintenance {
+  background-color: #800080 !important;
+  color: white;
+}
+
+.status-pencil {
+  background-color: #FF69B4 !important;
+  color: white;
+}
+
+.move-suggestion {
+  background-color: #FF6B6B !important;
+  color: white;
+  font-weight: bold;
+}
+
+.move-suggestion::after {
+  content: "🔄";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+}
+
+.fixed-booking::before {
+  content: "🎯";
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  font-size: 9px;
+}
+
+/* Booking span cells */
+.booking-span {
+  font-weight: 500;
+  border-left: 2px solid rgba(0, 0, 0, 0.2);
+  border-right: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.booking-span-start {
+  border-left: 3px solid rgba(0, 0, 0, 0.4);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.booking-span-end {
+  border-right: 3px solid rgba(0, 0, 0, 0.4);
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.booking-span-single {
+  border: 3px solid rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+}
+
+/* Chart loading and error states */
+.chart-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--dhp-gray-600);
+}
+
+.chart-loading .spinner-border {
+  color: var(--dhp-brand-blue);
+}
+
+.chart-error {
+  padding: 20px;
+  text-align: center;
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c2c7;
+  border-radius: 4px;
+  margin: 10px;
+}
+
+.chart-no-data {
+  padding: 40px;
+  text-align: center;
+  color: var(--dhp-gray-600);
+  font-style: italic;
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 1200px) {
+  .booking-chart-table {
+    min-width: 600px;
+  }
+  
+  .chart-unit-cell {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+  }
+  
+  .chart-header-cell,
+  .chart-booking-cell {
+    min-width: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .booking-chart-container {
+    margin: 10px 0;
+  }
+  
+  .category-header {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .booking-chart-table {
+    font-size: 10px;
+    min-width: 500px;
+  }
+  
+  .chart-unit-cell {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    padding: 6px 4px;
+  }
+  
+  .chart-header-cell,
+  .chart-booking-cell {
+    min-width: 25px;
+    padding: 4px 2px;
+  }
+}
+
+/* Tooltip styles for booking details */
+.booking-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 250px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.booking-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+}
+
 

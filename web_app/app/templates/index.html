@@ -1149,6 +1149,10 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    
+                    // Set current property code for chart functionality
+                    setCurrentPropertyCode(propertyFilter);
+                    
                     displayMoveSuggestions(data);
                 } else {
                     console.log('No existing move suggestions found, use Load Move Suggestions to generate new ones');
@@ -2590,6 +2594,10 @@
                     console.log('✅ moveCount > 0, using FRESH suggestions directly from generate response');
                     console.log('✅ Fresh suggestions from RMS API:', generateData.moves);
                     console.log('✅ Calling displayMoveSuggestions with FRESH data...');
+                    
+                    // Set current property code for chart functionality
+                    setCurrentPropertyCode(propertyCode);
+                    
                     displayMoveSuggestions(generateData);
                 } else {
                     // No suggestions generated - show "No Move Suggestions Found"
@@ -3018,12 +3026,33 @@
                                     
                                     // Generate HTML for each category
                                     let html = '';
-                                    Object.keys(groupedMoves).sort().forEach(category => {
-                                        // Add category header row with appropriate icon and left alignment
+                                    Object.keys(groupedMoves).sort().forEach((category, categoryIndex) => {
+                                        // Add category header row with chart toggle button
                                         html += `
                                             <tr class="table-secondary">
                                                 <td colspan="10" class="fw-bold text-start ps-3">
-                                                    <i class="${getCategoryIcon(category)} me-2 text-primary"></i>${category}
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <i class="${getCategoryIcon(category)} me-2 text-primary"></i>${category}
+                                                        </div>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                                onclick="toggleCategoryChart('${category}', ${categoryIndex})"
+                                                                id="chart-toggle-${categoryIndex}">
+                                                            <i class="fas fa-chart-gantt me-1"></i>
+                                                            Show Chart
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                        
+                                        // Add chart container row (hidden by default)
+                                        html += `
+                                            <tr id="chart-row-${categoryIndex}" style="display: none;">
+                                                <td colspan="10" class="p-0">
+                                                    <div id="category-chart-${categoryIndex}" class="category-chart-container">
+                                                        <!-- Chart will be dynamically loaded here -->
+                                                    </div>
                                                 </td>
                                             </tr>
                                         `;
@@ -3096,6 +3125,115 @@
             }
         }
         
+        // Global chart management
+        let categoryCharts = {};
+
+        // Toggle category chart display
+        async function toggleCategoryChart(category, categoryIndex) {
+            const chartRow = document.getElementById(`chart-row-${categoryIndex}`);
+            const chartContainer = document.getElementById(`category-chart-${categoryIndex}`);
+            const toggleButton = document.getElementById(`chart-toggle-${categoryIndex}`);
+            
+            if (!chartRow || !chartContainer || !toggleButton) {
+                console.error('Chart elements not found');
+                return;
+            }
+            
+            if (chartRow.style.display === 'none') {
+                // Show chart
+                chartRow.style.display = '';
+                toggleButton.innerHTML = '<i class="fas fa-chart-gantt me-1"></i>Hide Chart';
+                toggleButton.classList.remove('btn-outline-primary');
+                toggleButton.classList.add('btn-primary');
+                
+                // Load chart if not already loaded
+                if (!categoryCharts[categoryIndex]) {
+                    await loadCategoryChart(category, categoryIndex);
+                }
+            } else {
+                // Hide chart
+                chartRow.style.display = 'none';
+                toggleButton.innerHTML = '<i class="fas fa-chart-gantt me-1"></i>Show Chart';
+                toggleButton.classList.remove('btn-primary');
+                toggleButton.classList.add('btn-outline-primary');
+            }
+        }
+
+        // Load chart data for specific category
+        async function loadCategoryChart(category, categoryIndex) {
+            const chartContainer = document.getElementById(`category-chart-${categoryIndex}`);
+            
+            if (!chartContainer || !currentPropertyCode) {
+                console.error('Chart container or property code not available');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                chartContainer.innerHTML = `
+                    <div class="chart-loading">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        Loading booking chart for ${category}...
+                    </div>
+                `;
+                
+                // Create unique container ID for this category
+                const uniqueContainerId = `chart-content-${categoryIndex}`;
+                chartContainer.innerHTML = `<div id="${uniqueContainerId}"></div>`;
+                
+                // Create and load chart
+                const chart = new BookingChart(uniqueContainerId, {
+                    showTooltips: true,
+                    allowToggle: false  // We handle toggling at category level
+                });
+                
+                await chart.loadChart(currentPropertyCode);
+                
+                // Filter chart data to show only this category
+                if (chart.chartData) {
+                    chart.chartData.categories = chart.chartData.categories.filter(
+                        cat => cat.name === category
+                    );
+                    chart.renderChart();
+                    
+                    // Expand the category by default
+                    setTimeout(() => {
+                        const categoryGrid = chart.container.querySelector('.chart-grid');
+                        if (categoryGrid) {
+                            categoryGrid.classList.add('show');
+                        }
+                    }, 100);
+                }
+                
+                // Store chart instance
+                categoryCharts[categoryIndex] = chart;
+                
+            } catch (error) {
+                console.error('Error loading category chart:', error);
+                chartContainer.innerHTML = `
+                    <div class="chart-error">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load booking chart. Please try again.
+                    </div>
+                `;
+            }
+        }
+
+        // Update current property code when move suggestions are loaded
+        function setCurrentPropertyCode(propertyCode) {
+            currentPropertyCode = propertyCode;
+            
+            // Clear existing charts when property changes
+            Object.values(categoryCharts).forEach(chart => {
+                if (chart && chart.destroy) {
+                    chart.destroy();
+                }
+            });
+            categoryCharts = {};
+        }
+
         // Handle debug panel toggle icon rotation
         document.addEventListener('DOMContentLoaded', function() {
             const debugCollapse = document.getElementById('debug-collapse');
@@ -3112,5 +3250,8 @@
             }
         });
     </script>
+    
+    <!-- Booking Chart Component -->
+    <script src="/static/js/booking-chart.js"></script>
 </body>
 </html>
