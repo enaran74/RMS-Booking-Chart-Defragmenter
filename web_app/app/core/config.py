@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # =============================================================================
     # CLI APPLICATION CONFIGURATION (Additional variables for unified config)
     # =============================================================================
-    # Analysis settings for the original CLI application
+    # Analysis settings for the CLI application
     TARGET_PROPERTIES: str = "ALL"
     
     # Email Configuration
