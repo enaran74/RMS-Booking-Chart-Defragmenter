@@ -225,21 +225,6 @@ OUTPUT_DIR=/app/output
 # CONTAINER CONFIGURATION
 # ==============================================================================
 TZ={setup_data.timezone}
-CONTAINER_USER=appuser
-CONTAINER_GROUP=appuser
-
-# ==============================================================================
-# HEALTH CHECK CONFIGURATION
-# ==============================================================================
-HEALTH_CHECK_INTERVAL=30s
-HEALTH_CHECK_TIMEOUT=10s
-HEALTH_CHECK_RETRIES=3
-
-# ==============================================================================
-# BACKUP CONFIGURATION
-# ==============================================================================
-BACKUP_RETENTION_DAYS=30
-BACKUP_ENABLED=true
 
 # ==============================================================================
 # CORS CONFIGURATION (Web App)

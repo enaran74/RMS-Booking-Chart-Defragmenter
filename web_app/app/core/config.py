@@ -72,17 +72,6 @@ class Settings(BaseSettings):
     
     # Container Configuration
     TZ: str = "Australia/Sydney"
-    CONTAINER_USER: str = "appuser"
-    CONTAINER_GROUP: str = "appuser"
-    
-    # Health Check Configuration
-    HEALTH_CHECK_INTERVAL: str = "30s"
-    HEALTH_CHECK_TIMEOUT: str = "10s"
-    HEALTH_CHECK_RETRIES: str = "3"
-    
-    # Backup Configuration
-    BACKUP_RETENTION_DAYS: str = "30"
-    BACKUP_ENABLED: bool = True
     
     class Config:
         env_file = ".env"

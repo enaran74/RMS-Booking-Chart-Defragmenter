@@ -254,18 +254,7 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         'OUTPUT_DIR': '/app/output',
         
         # Container settings - use production defaults
-        'TZ': 'Australia/Sydney',
-        'CONTAINER_USER': 'appuser',
-        'CONTAINER_GROUP': 'appuser',
-        
-        # Health check - use production defaults
-        'HEALTH_CHECK_INTERVAL': '30s',
-        'HEALTH_CHECK_TIMEOUT': '10s',
-        'HEALTH_CHECK_RETRIES': '3',
-        
-        # Backup - use production defaults
-        'BACKUP_RETENTION_DAYS': '30',
-        'BACKUP_ENABLED': 'true'
+        'TZ': 'Australia/Sydney'
     }
     
     # Override defaults with user-provided values (only for non-empty values)
@@ -395,25 +384,7 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
             "# ==============================================================================",
             "# Container timezone",
             f"TZ={final_variables['TZ']}",
-            "",
-            "# Container user configuration",
-            f"CONTAINER_USER={final_variables['CONTAINER_USER']}",
-            f"CONTAINER_GROUP={final_variables['CONTAINER_GROUP']}",
-            "",
-            "# ==============================================================================",
-            "# HEALTH CHECK CONFIGURATION",
-            "# ==============================================================================",
-            "# Health check endpoints and intervals",
-            f"HEALTH_CHECK_INTERVAL={final_variables['HEALTH_CHECK_INTERVAL']}",
-            f"HEALTH_CHECK_TIMEOUT={final_variables['HEALTH_CHECK_TIMEOUT']}",
-            f"HEALTH_CHECK_RETRIES={final_variables['HEALTH_CHECK_RETRIES']}",
-            "",
-            "# ==============================================================================",
-            "# BACKUP CONFIGURATION",
-            "# ==============================================================================",
-            "# Backup settings for data persistence",
-            f"BACKUP_RETENTION_DAYS={final_variables['BACKUP_RETENTION_DAYS']}",
-            f"BACKUP_ENABLED={final_variables['BACKUP_ENABLED']}",
+
             ""
         ]
         

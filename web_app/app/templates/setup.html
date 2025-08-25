@@ -1393,8 +1393,7 @@
                 'TEST_RECIPIENT': { type: 'email' },
                 'CONSOLIDATED_EMAIL_RECIPIENT': { type: 'email' },
                 'PROPERTY_REFRESH_INTERVAL_HOURS': { type: 'positiveInteger' },
-                'HEALTH_CHECK_RETRIES': { type: 'positiveInteger' },
-                'BACKUP_RETENTION_DAYS': { type: 'positiveInteger' },
+
                 'LOG_LEVEL': { type: 'choice', choices: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] }
             };
             
@@ -1578,8 +1577,7 @@
                         { key: 'TZ', label: 'Timezone', type: 'text', value: 'Australia/Sydney', readonly: true },
                         { key: 'LOG_LEVEL', label: 'Log Level', type: 'text', value: 'INFO', readonly: true },
                         { key: 'OUTPUT_DIR', label: 'Output Directory', type: 'text', value: '/app/output', readonly: true },
-                        { key: 'BACKUP_ENABLED', label: 'Backup Enabled', type: 'text', value: 'true', readonly: true },
-                        { key: 'BACKUP_RETENTION_DAYS', label: 'Backup Retention (Days)', type: 'text', value: '30', readonly: true }
+
                     ]
                 }
             ];
