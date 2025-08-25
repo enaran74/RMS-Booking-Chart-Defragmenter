@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.1.0%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.1.0%201%20ga7575ee%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -12,7 +12,8 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 
 **Developed by:** Mr Tim Curtis, Operations Systems Manager  
 **Organization:** Discovery Holiday Parks  
-**Version:** Git-based automatic versioning
+**Version:** Git-based automatic versioning  
+**CI/CD:** ✅ Automated testing, security scanning, and Docker builds
 
 ---
 
