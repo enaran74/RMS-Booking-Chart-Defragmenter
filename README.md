@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.2.0%201%20ge3f6f96%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.2.0%202%20gc4f240b%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -10,9 +10,9 @@
 
 A comprehensive system for optimizing accommodation bookings across multiple properties through automated defragmentation analysis and an intuitive web interface for move management.
 
-**Developed by:** Mr Tim Curtis, Operations Systems Manager  
-**Organization:** Discovery Holiday Parks  
-**Version:** Git-based automatic versioning  
+**Developed by:** Mr Tim Curtis, Operations Systems Manager
+**Organization:** Discovery Holiday Parks
+**Version:** Git-based automatic versioning
 **CI/CD:** ✅ Automated testing, security scanning, and Docker builds
 
 ---
@@ -50,7 +50,7 @@ nano .env
 ### Access the System
 
 - **🌐 Web Interface**: [http://localhost:8000](http://localhost:8000)
-- **📊 Health Check**: [http://localhost:8000/health](http://localhost:8000/health)  
+- **📊 Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 - **📖 API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **👤 Default Login**: username=`admin`, password=`Configur8&1`
 
