@@ -65,20 +65,22 @@ body {
 /* Header profile aesthetic: link-style, no border box with consistent baseline */
 .navbar-dhp .profile-toggle {
   text-decoration: none;
-  display: inline-flex;
-  align-items: baseline; /* Use baseline alignment for text consistency */
+  display: inline;
   line-height: 1;
   position: relative;
-  top: 0; /* Remove any top offset for consistent baseline */
+  top: 0;
+  vertical-align: baseline; /* Force baseline alignment for text */
 }
 
 .navbar-dhp .btn-link.profile-toggle {
   text-decoration: none;
-  display: inline-flex;
-  align-items: baseline; /* Use baseline alignment for text consistency */
+  display: inline;
   line-height: 1;
   position: relative;
-  top: 0; /* Remove any top offset for consistent baseline */
+  top: 0;
+  vertical-align: baseline; /* Force baseline alignment for text */
+  border: none;
+  box-shadow: none;
 }
 
 .navbar-dhp .btn-link.profile-toggle:hover,
@@ -112,7 +114,13 @@ body {
 
 /* Ensure the dropdown container aligns with username baseline */
 .navbar-dhp .navbar-nav {
+  display: flex !important;
   align-items: baseline !important; /* Override Bootstrap's center alignment for text baseline consistency */
+}
+
+/* Ensure both navbar-text and dropdown are on same baseline */
+.navbar-dhp .navbar-nav > * {
+  align-self: baseline;
 }
 
 /* Buttons */
