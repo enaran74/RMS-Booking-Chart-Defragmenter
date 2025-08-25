@@ -173,11 +173,11 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
     
     # Define the comprehensive defaults for all environment variables
     defaults = {
-        # Critical RMS API credentials - these should be provided by user
-        'AGENT_ID': '***REMOVED***',  # Use the actual values from variables if provided
-        'AGENT_PASSWORD': '***REMOVED***',
-        'CLIENT_ID': '***REMOVED***', 
-        'CLIENT_PASSWORD': '***REMOVED***',
+        # Critical RMS API credentials - MUST be provided by user via Setup wizard
+        'AGENT_ID': 'YOUR_AGENT_ID_HERE',
+        'AGENT_PASSWORD': 'YOUR_AGENT_PASSWORD_HERE',
+        'CLIENT_ID': 'YOUR_CLIENT_ID_HERE',
+        'CLIENT_PASSWORD': 'YOUR_CLIENT_PASSWORD_HERE',
         
         # Database settings - use current working defaults
         'DB_HOST': 'localhost',

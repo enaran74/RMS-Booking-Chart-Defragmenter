@@ -23,11 +23,11 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "your-jwt-secret-key-here"  # nosec B105 - Will be overridden by environment variable
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # RMS API Configuration
-    AGENT_ID: str = "***REMOVED***"
-    AGENT_PASSWORD: str = "***REMOVED***"
-    CLIENT_ID: str = "***REMOVED***"
-    CLIENT_PASSWORD: str = "***REMOVED***"
+    # RMS API Configuration - MUST be set via environment variables
+    AGENT_ID: str = "YOUR_AGENT_ID_HERE"
+    AGENT_PASSWORD: str = "YOUR_AGENT_PASSWORD_HERE"
+    CLIENT_ID: str = "YOUR_CLIENT_ID_HERE"
+    CLIENT_PASSWORD: str = "YOUR_CLIENT_PASSWORD_HERE"
     USE_TRAINING_DB: bool = True
     
     # Application Settings
