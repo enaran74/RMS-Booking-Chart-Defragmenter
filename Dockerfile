@@ -53,16 +53,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nano \
     # Timezone data
     tzdata \
+    # User switching utility for CLI mode
+    gosu \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
 # Create application user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Create application directories
+# Create application directories with proper permissions
 RUN mkdir -p /app/logs /app/output /app/backups /app/config \
     && mkdir -p /app/app/original /app/app/web /app/app/shared \
     && mkdir -p /app/scripts \
+    && chmod 755 /app/output /app/logs /app/backups \
     && chown -R appuser:appuser /app
 
 # Copy wheels from builder stage and install Python dependencies

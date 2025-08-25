@@ -307,3 +307,93 @@ docker-compose restart defrag-app
 - System logs: `./logs.sh`
 
 This deployment pipeline solves the networking issues we encountered and provides a robust, customer-friendly deployment experience.
+
+## 🧪 CLI Testing & Validation
+
+### Testing CLI Execution
+
+After deployment, validate the CLI analyzer functionality:
+
+```bash
+# Check CLI help
+docker exec defrag-app python start.py --help
+
+# Test CLI with specific property (uses .env credentials)
+docker exec defrag-app python start.py -p CALI
+
+# Test with training database
+docker exec defrag-app python start.py -p CALI -t
+
+# Verify output directory permissions
+docker exec defrag-app ls -la /app/output/
+
+# Check logs
+docker exec defrag-app tail -f /app/logs/defrag_cron.log
+```
+
+### Common Issues & Solutions
+
+#### Permission Errors
+```bash
+# Fix output directory permissions
+docker exec defrag-app chown -R appuser:appuser /app/output
+docker exec defrag-app chmod 755 /app/output
+```
+
+#### Missing Environment Variables
+```bash
+# Verify .env file is mounted
+docker exec defrag-app cat /app/.env | head -10
+
+# Check environment loading
+docker exec defrag-app env | grep -E "(TARGET_|AGENT_|CLIENT_)"
+```
+
+#### Cron Job Verification
+```bash
+# Check cron schedule
+docker exec defrag-app crontab -l
+
+# View cron logs
+docker exec defrag-app tail -f /app/logs/defrag_cron.log
+
+# Manual cron test
+docker exec defrag-app python start.py
+```
+
+### Fresh Deployment Checklist
+
+For new machine deployments, ensure:
+
+1. ✅ `.env` file configured with valid RMS credentials
+2. ✅ `TARGET_PROPERTIES` set correctly (e.g., CALI, ALL)
+3. ✅ Docker containers running and healthy
+4. ✅ CLI execution successful: `docker exec defrag-app python start.py --help`
+5. ✅ Output directory writable: `/app/output/` permissions correct
+6. ✅ Cron job scheduled and logging properly
+7. ✅ Web interface accessible on port 8000
+8. ✅ Database connectivity confirmed
+
+### Deployment Validation Script
+
+```bash
+#!/bin/bash
+# Quick deployment validation
+echo "🔍 Validating RMS Defragmenter deployment..."
+
+# Check containers
+docker ps | grep -E "(defrag-app|postgres)" && echo "✅ Containers running" || echo "❌ Containers not running"
+
+# Check CLI help
+docker exec defrag-app python start.py --help &>/dev/null && echo "✅ CLI accessible" || echo "❌ CLI not accessible"
+
+# Check permissions
+docker exec defrag-app test -w /app/output && echo "✅ Output directory writable" || echo "❌ Output directory not writable"
+
+# Check web interface
+curl -s http://localhost:8000/health &>/dev/null && echo "✅ Web interface responding" || echo "❌ Web interface not responding"
+
+echo "🎉 Validation complete!"
+```
+
+This comprehensive approach ensures reliable CLI execution across all deployment scenarios.

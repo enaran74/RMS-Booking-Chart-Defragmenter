@@ -1121,10 +1121,10 @@ class MultiPropertyAnalyzer:
             
             for suggestion in suggestions[:3]:
                 move_type = "🎄" if suggestion.get('is_holiday_move', False) else "📋"
-                order = suggestion.get('move_id', suggestion.get('Sequential_Order', ''))
-                guest = suggestion.get('guest_name', suggestion.get('Surname', ''))[:11]
-                from_unit = suggestion.get('from_unit', suggestion.get('Current_Unit', ''))[:14]
-                to_unit = suggestion.get('to_unit', suggestion.get('Suggested_Unit', ''))[:14]
+                order = str(suggestion.get('move_id', suggestion.get('Sequential_Order', '')))
+                guest = str(suggestion.get('guest_name', suggestion.get('Surname', '')))[:11]
+                from_unit = str(suggestion.get('from_unit', suggestion.get('Current_Unit', '')))[:14]
+                to_unit = str(suggestion.get('to_unit', suggestion.get('Suggested_Unit', '')))[:14]
                 
                 print(f"{order:<8} {move_type:<6} {guest:<12} {from_unit:<15} {to_unit:<15}")
         else:

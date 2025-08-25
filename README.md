@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.2.0%206%20g9030257%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.2.0%207%20gce314e3%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -257,19 +257,49 @@ The CLI analyzer runs automatically based on your schedule, but you can also tri
 
 #### **Manual Analysis**
 
-```bash
-# Run analysis for all properties
-docker exec defrag-app python3 /app/app/original/start.py \
-  --agent-id $AGENT_ID --agent-password "$AGENT_PASSWORD" \
-  --client-id $CLIENT_ID --client-password "$CLIENT_PASSWORD" \
-  -p ALL
+The CLI analyzer automatically reads configuration from your `.env` file:
 
-# Run analysis for specific properties
-docker exec defrag-app python3 /app/app/original/start.py \
-  --agent-id $AGENT_ID --agent-password "$AGENT_PASSWORD" \
-  --client-id $CLIENT_ID --client-password "$CLIENT_PASSWORD" \
-  -p SADE,QROC,TCRA
+```bash
+# Run analysis for all properties (uses TARGET_PROPERTIES from .env)
+docker exec defrag-app python start.py
+
+# Run analysis for specific properties (override .env setting)
+docker exec defrag-app python start.py -p CALI,SADE
+
+# Run analysis with training database (override .env setting)
+docker exec defrag-app python start.py -p ALL -t
+
+# Run analysis with email notifications (override .env setting)  
+docker exec defrag-app python start.py -p CALI -e
+
+# View available CLI options
+docker exec defrag-app python start.py --help
 ```
+
+**Note**: CLI mode automatically uses credentials and settings from your `.env` file. You can override specific settings using command-line arguments.
+
+#### **Cron Schedule Configuration**
+
+The automated analysis runs via cron schedule (default: daily at 2:00 AM). To customize:
+
+```bash
+# Check current cron schedule
+docker exec defrag-app crontab -l
+
+# Edit cron schedule (as root)
+docker exec defrag-app crontab -e
+
+# Example schedules:
+# Daily at 3:00 AM:    0 3 * * *
+# Every 6 hours:       0 */6 * * *  
+# Twice daily:         0 6,18 * * *
+# Weekly (Sundays):    0 2 * * 0
+```
+
+The CLI uses environment variables from your `.env` file:
+- `TARGET_PROPERTIES`: Which properties to analyze (default: ALL)
+- `ENABLE_EMAILS`: Send email notifications (default: false)
+- `USE_TRAINING_DB`: Use training database (default: false)
 
 ---
 
@@ -520,9 +550,8 @@ export $(cat .env.dev | xargs)
 cd web_app
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Run CLI analyzer
-python start.py --agent-id $AGENT_ID --agent-password "$AGENT_PASSWORD" \
-  --client-id $CLIENT_ID --client-password "$CLIENT_PASSWORD" -p ALL
+# Run CLI analyzer (uses .env for credentials)
+docker exec defrag-app python start.py -p ALL
 ```
 
 ---

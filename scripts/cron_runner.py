@@ -41,14 +41,10 @@ def validate_environment():
 
 def build_command():
     """Build the command to execute the defragmentation analysis"""
-    # Base command
+    # Base command - use the main CLI interface
     cmd = [
         sys.executable,
-        "/app/app/original/start.py",
-        "--agent-id", os.getenv('AGENT_ID'),
-        "--agent-password", os.getenv('AGENT_PASSWORD'),
-        "--client-id", os.getenv('CLIENT_ID'),
-        "--client-password", os.getenv('CLIENT_PASSWORD')
+        "/app/start.py"
     ]
     
     # Add target properties
@@ -85,12 +81,12 @@ def run_analysis():
     env = os.environ.copy()
     
     # Additional environment setup
-    env['PYTHONPATH'] = '/app/app/original:/app/app/shared'
+    env['PYTHONPATH'] = '/app'
     env['LOG_LEVEL'] = os.getenv('LOG_LEVEL', 'INFO')
     
     try:
-        # Change to the original app directory
-        os.chdir('/app/app/original')
+        # Change to the app directory
+        os.chdir('/app')
         
         # Execute the analysis
         start_time = datetime.now()

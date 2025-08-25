@@ -233,6 +233,21 @@ log_info "Log files: /app/logs/"
 log_info "Output files: /app/output/"
 log_info "Configuration: /app/config/"
 
-# Start services
-log_info "Starting application services..."
-exec /tmp/start_services.sh
+# Determine execution mode
+if [ "$#" -gt 0 ] && [ "$1" != "web" ]; then
+    # CLI mode - run defragmentation analysis
+    log_info "🚀 Starting CLI defragmentation analysis..."
+    
+    # Ensure output directory permissions
+    mkdir -p /app/output
+    chown appuser:appuser /app/output
+    chmod 755 /app/output
+    
+    # Switch to app user and run CLI analysis
+    log_info "Executing: python start.py $*"
+    exec gosu appuser python start.py "$@"
+else
+    # Web mode - start services
+    log_info "🌐 Starting web application services..."
+    exec /tmp/start_services.sh
+fi
