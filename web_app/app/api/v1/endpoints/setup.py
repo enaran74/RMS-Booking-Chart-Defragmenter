@@ -220,7 +220,7 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         
         # Web application settings - use production-ready defaults
         'WEB_APP_PORT': '8000',
-        'WEB_APP_HOST': '0.0.0.0',
+        'WEB_APP_HOST': '0.0.0.0',  # nosec B104: Docker container binding
         'SECRET_KEY': 'your-secret-key-here-change-this-in-production',
         'JWT_SECRET_KEY': 'your-jwt-secret-key-here-change-this-in-production',
         'PROPERTY_REFRESH_INTERVAL_HOURS': '1',
@@ -589,14 +589,14 @@ async def get_database_tables(
         for table_name in known_tables:
             try:
                 # Get record count for each table
-                count_query = text(f"SELECT COUNT(*) FROM {table_name}")
+                count_query = text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608: table_name is whitelisted above
                 count_result = db.execute(count_query)
                 record_count = count_result.scalar()
                 
                 # Get column information using a simpler approach
                 try:
                     # Use a simple query to get column names
-                    inspect_query = text(f"SELECT * FROM {table_name} LIMIT 0")
+                    inspect_query = text(f"SELECT * FROM {table_name} LIMIT 0")  # nosec B608: table_name is whitelisted above
                     inspect_result = db.execute(inspect_query)
                     columns = list(inspect_result.keys())
                     logger.info(f"Retrieved {len(columns)} columns for table {table_name}")
@@ -658,13 +658,14 @@ async def get_table_records(
             raise HTTPException(status_code=400, detail=f"Table {table_name} not allowed")
         
         # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")
+        count_query = text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
         total_result = db.execute(count_query)
         total_count = total_result.scalar()
         
         # Get records with pagination
-        records_query = text(f"SELECT * FROM {table_name} ORDER BY id LIMIT {limit} OFFSET {offset}")
-        records_result = db.execute(records_query)
+        # Use parameters for limit/offset values
+        records_query = text(f"SELECT * FROM {table_name} ORDER BY id LIMIT :limit OFFSET :offset")  # nosec B608: table_name validated
+        records_result = db.execute(records_query, {"limit": limit, "offset": offset})
         
         # Convert to list of dictionaries
         columns = list(records_result.keys())  # Convert RMKeyView to list
@@ -734,12 +735,12 @@ async def delete_all_records_from_table(
         logger.info(f"Admin user {current_user.username} is deleting all records from table {table_name}")
         
         # Get count before deletion
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")
+        count_query = text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
         count_result = db.execute(count_query)
         record_count = count_result.scalar()
         
         # Delete all records
-        delete_query = text(f"DELETE FROM {table_name}")
+        delete_query = text(f"DELETE FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
         db.execute(delete_query)
         db.commit()
         

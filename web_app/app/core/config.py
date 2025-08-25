@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Web Application Configuration
     WEB_APP_PORT: int = 8000
-    WEB_APP_HOST: str = "0.0.0.0"  # nosec B104 - Required for Docker containerization
+    WEB_APP_HOST: str = "0.0.0.0"  # nosec B104: Required in Docker to bind inside container
     
     # Security
     SECRET_KEY: str = "your-secret-key-here"  # nosec B105 - Will be overridden by environment variable

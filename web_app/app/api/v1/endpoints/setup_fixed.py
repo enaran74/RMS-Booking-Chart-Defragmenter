@@ -188,7 +188,7 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         
         # Web application settings - use production-ready defaults
         'WEB_APP_PORT': '8000',
-        'WEB_APP_HOST': '0.0.0.0',
+        'WEB_APP_HOST': '0.0.0.0',  # nosec B104: Docker container binding
         'SECRET_KEY': 'your-secret-key-here-change-this-in-production',
         'JWT_SECRET_KEY': 'your-jwt-secret-key-here-change-this-in-production',
         'PROPERTY_REFRESH_INTERVAL_HOURS': '1',

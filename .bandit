@@ -1,15 +1,11 @@
 [bandit]
-# Configuration for Bandit security linter
-# Suppress false positives for Docker containerized application
+# Bandit configuration (INI format)
+# Notes:
+# - B104 (hardcoded_bind_all_interfaces): We bind to 0.0.0.0 inside Docker intentionally.
+# - B608 (hardcoded_sql_expressions): We only interpolate whitelisted table names; parameters are used for values.
 
-# Skip files that are auto-generated or test files
-exclude_dirs = ["*/migrations", "*/tests", "*/venv", "*/node_modules"]
+# Comma-separated directory globs to exclude
+exclude_dirs = tests,migrations,venv,node_modules,backup,output,web_app/app/static
 
-# Skip specific tests that are false positives in our containerized environment
-skips = [
-    "B104",  # hardcoded_bind_all_interfaces - Expected for Docker containers (0.0.0.0)
-    "B608"   # hardcoded_sql_expressions - False positive: using safe table names from whitelist
-]
-
-# Test IDs to skip
-tests = []
+# Comma-separated list of test IDs to skip globally
+skips = B104,B608
