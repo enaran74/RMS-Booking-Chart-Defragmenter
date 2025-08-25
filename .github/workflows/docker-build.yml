@@ -1,0 +1,203 @@
+name: Docker Build & Push
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags (v1.0.0, v2.1.0, etc.)
+    branches:
+      - main  # Also build on main branch pushes
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and push'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: dhpsystems/rms-defragmenter
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for proper versioning
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          # Version tags (v1.0.0 -> 1.0.0)
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          # Branch-based tags
+          type=ref,event=branch
+          # PR tags
+          type=ref,event=pr
+          # Latest tag for main branch
+          type=raw,value=latest,enable={{is_default_branch}}
+          # Manual workflow dispatch
+          type=raw,value={{inputs.tag}},enable=${{ github.event_name == 'workflow_dispatch' }}
+        labels: |
+          org.opencontainers.image.title=RMS Booking Chart Defragmenter
+          org.opencontainers.image.description=Automated booking chart optimization system for Discovery Holiday Parks
+          org.opencontainers.image.vendor=DHP Systems
+          org.opencontainers.image.url=https://github.com/enaran74/RMS-Booking-Chart-Defragmenter
+          org.opencontainers.image.source=https://github.com/enaran74/RMS-Booking-Chart-Defragmenter
+          org.opencontainers.image.documentation=https://github.com/enaran74/RMS-Booking-Chart-Defragmenter/blob/main/README.md
+          
+    - name: Generate version info
+      id: version
+      run: |
+        # Generate Git-based version for container
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          # Clean tag version (remove 'refs/tags/')
+          VERSION="${{ github.ref_name }}"
+        else
+          # Development version with commit hash
+          VERSION=$(git describe --tags --dirty --always 2>/dev/null || echo "v1.0.0-$(git rev-parse --short HEAD)")
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v1.0.0-$VERSION"
+          fi
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+        
+        # Create VERSION_INFO file for the container
+        echo "$VERSION" > VERSION_INFO
+        
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          
+    - name: Generate build summary
+      if: always()
+      run: |
+        echo "## Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| **Version** | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Registry** | ${{ env.REGISTRY }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Image** | ${{ env.IMAGE_NAME }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Platforms** | linux/amd64, linux/arm64 |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Event** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Ref** | ${{ github.ref }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Tags Generated:" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        
+    - name: Test deployed image
+      if: github.event_name != 'pull_request'
+      run: |
+        # Pull and test the newly pushed image
+        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+        echo "Testing image: $IMAGE_TAG"
+        
+        # Basic smoke test
+        docker run --rm "$IMAGE_TAG" python --version
+        docker run --rm "$IMAGE_TAG" ls -la /app/
+        
+        echo "✅ Image smoke test passed"
+
+  security-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Run container structure test
+      run: |
+        # Install container-structure-test
+        curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+        chmod +x container-structure-test-linux-amd64
+        sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+        
+        # Create basic structure test config
+        cat > container-test.yaml << EOF
+        schemaVersion: 2.0.0
+        commandTests:
+          - name: "Python version"
+            command: "python"
+            args: ["--version"]
+            expectedOutput: ["Python 3.11.*"]
+          - name: "App directory exists"
+            command: "ls"
+            args: ["/app"]
+            expectedOutput: [".*main.py.*", ".*defrag_analyzer.py.*"]
+        fileExistenceTests:
+          - name: "Application files"
+            path: "/app"
+            shouldExist: true
+          - name: "Python executable"
+            path: "/usr/local/bin/python"
+            shouldExist: true
+        EOF
+        
+        # Run structure tests
+        container-structure-test test --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest --config container-test.yaml
+        
+  notify-success:
+    name: Notify Build Success
+    runs-on: ubuntu-latest
+    needs: [build-and-push, security-scan]
+    if: success() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Create release summary
+      run: |
+        echo "## 🚀 Successful Build & Deploy" >> $GITHUB_STEP_SUMMARY
+        echo "Docker image successfully built and pushed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Ready for deployment:**" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo "# Or update your VPS with:" >> $GITHUB_STEP_SUMMARY
+        echo "./manage.sh update" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

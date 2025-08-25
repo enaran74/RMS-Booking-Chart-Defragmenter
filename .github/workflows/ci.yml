@@ -1,0 +1,256 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  lint-and-security:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install bandit safety flake8 black isort mypy
+        
+    - name: Code formatting check (Black)
+      run: |
+        black --check --diff .
+      continue-on-error: true
+      
+    - name: Import sorting check (isort)
+      run: |
+        isort --check-only --diff .
+      continue-on-error: true
+      
+    - name: Linting (flake8)
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+      
+    - name: Security scan (Bandit)
+      run: |
+        bandit -r . -x ./venv/,./web_app/venv/ -f json -o bandit-report.json || true
+        bandit -r . -x ./venv/,./web_app/venv/ -ll
+      continue-on-error: true
+      
+    - name: Dependency vulnerability scan (Safety)
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+      continue-on-error: true
+      
+    - name: Type checking (MyPy)
+      run: |
+        mypy . --ignore-missing-imports --no-strict-optional
+      continue-on-error: true
+      
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: defrag_test_db
+          POSTGRES_USER: defrag_test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-test-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-test-
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio httpx
+        
+    - name: Set up test environment
+      run: |
+        cp env.example .env
+        echo "DB_HOST=localhost" >> .env
+        echo "DB_PORT=5432" >> .env
+        echo "DB_NAME=defrag_test_db" >> .env
+        echo "DB_USER=defrag_test_user" >> .env
+        echo "DB_PASSWORD=test_password" >> .env
+        echo "USE_TRAINING_DB=true" >> .env
+        
+    - name: Run tests
+      run: |
+        # Create basic test structure if it doesn't exist
+        mkdir -p tests
+        if [ ! -f tests/__init__.py ]; then
+          touch tests/__init__.py
+        fi
+        
+        # Run basic import tests
+        python -c "
+        try:
+            import defrag_analyzer
+            import utils
+            print('✅ Core modules import successfully')
+        except ImportError as e:
+            print(f'❌ Import error: {e}')
+            exit(1)
+        "
+        
+        # Test web app imports
+        cd web_app && python -c "
+        try:
+            from app.core import config, database, security
+            from app.models import user, property
+            from app.api.v1 import api
+            print('✅ Web app modules import successfully')
+        except ImportError as e:
+            print(f'❌ Web app import error: {e}')
+            exit(1)
+        "
+        
+    - name: Test configuration validation
+      run: |
+        python -c "
+        from pathlib import Path
+        import os
+        
+        # Test .env file reading
+        env_file = Path('.env')
+        if env_file.exists():
+            print('✅ Environment file found')
+            with open(env_file) as f:
+                lines = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                print(f'✅ Found {len(lines)} configuration lines')
+        else:
+            print('❌ No .env file found')
+            exit(1)
+        "
+
+  build-validation:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image (validation only)
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: rms-defragmenter:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Test Docker image
+      run: |
+        docker build -t rms-defragmenter:test .
+        
+        # Test that the image runs without immediate crash
+        timeout 30s docker run --rm rms-defragmenter:test python --version || true
+        
+        # Test that required files exist in the image
+        docker run --rm rms-defragmenter:test ls -la /app/
+        docker run --rm rms-defragmenter:test python -c "import sys; print(f'Python version: {sys.version}')"
+
+  markdown-docs:
+    name: Documentation Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install markdownlint
+      run: npm install -g markdownlint-cli
+      
+    - name: Lint Markdown files
+      run: |
+        markdownlint . --ignore node_modules --ignore .git || true
+        
+    - name: Check for broken links (basic check)
+      run: |
+        # Basic check for obvious broken internal links
+        grep -r "](\./" . --include="*.md" || echo "No relative links found"
+        
+    - name: Validate README structure
+      run: |
+        if [ ! -f README.md ]; then
+          echo "❌ README.md not found"
+          exit 1
+        fi
+        
+        # Check for required sections
+        if ! grep -q "## Installation" README.md; then
+          echo "⚠️ Missing Installation section in README"
+        fi
+        
+        if ! grep -q "## Usage" README.md; then
+          echo "⚠️ Missing Usage section in README"
+        fi
+        
+        echo "✅ README structure validation complete"

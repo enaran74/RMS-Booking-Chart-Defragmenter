@@ -1,0 +1,252 @@
+name: Security Scanning
+
+on:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
+    paths:
+      - '**.py'
+      - '**/requirements.txt'
+      - '**/Dockerfile'
+      - '.github/workflows/security.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.py'
+      - '**/requirements.txt'
+      - '**/Dockerfile'
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install Safety
+      run: pip install safety
+      
+    - name: Scan main requirements
+      run: |
+        echo "## Main Dependencies Scan" >> $GITHUB_STEP_SUMMARY
+        safety check -r requirements.txt --json --output main-safety.json || true
+        if [ -f main-safety.json ]; then
+          VULNS=$(jq length main-safety.json)
+          if [ "$VULNS" -gt 0 ]; then
+            echo "❌ Found $VULNS vulnerabilities in main dependencies" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat main-safety.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No vulnerabilities found in main dependencies" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+        
+    - name: Scan web app requirements
+      run: |
+        echo "## Web App Dependencies Scan" >> $GITHUB_STEP_SUMMARY
+        if [ -f web_app/requirements.txt ]; then
+          safety check -r web_app/requirements.txt --json --output web-safety.json || true
+          if [ -f web-safety.json ]; then
+            VULNS=$(jq length web-safety.json)
+            if [ "$VULNS" -gt 0 ]; then
+              echo "❌ Found $VULNS vulnerabilities in web app dependencies" >> $GITHUB_STEP_SUMMARY
+              echo '```json' >> $GITHUB_STEP_SUMMARY
+              cat web-safety.json >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ No vulnerabilities found in web app dependencies" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+        else
+          echo "ℹ️ No web_app/requirements.txt found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: Upload vulnerability reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: dependency-vulnerability-reports
+        path: |
+          main-safety.json
+          web-safety.json
+        retention-days: 30
+
+  code-security-scan:
+    name: Static Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install Bandit
+      run: pip install bandit[toml]
+      
+    - name: Create Bandit config
+      run: |
+        cat > .bandit << EOF
+        [bandit]
+        exclude_dirs = ["*/venv/*", "*/node_modules/*", "*/.git/*", "*/backup/*"]
+        skips = ["B101"]  # Skip assert_used test (common in development)
+        
+        [bandit.assert_used]
+        # Allow assert statements in test files
+        skip_files = ["*/tests/*", "*test_*.py", "*_test.py"]
+        EOF
+        
+    - name: Run Bandit security scan
+      run: |
+        echo "## Static Code Security Analysis" >> $GITHUB_STEP_SUMMARY
+        
+        # Run Bandit with JSON output
+        bandit -r . -f json -o bandit-results.json || true
+        
+        # Run Bandit with human-readable output for summary
+        bandit -r . -ll > bandit-summary.txt 2>&1 || true
+        
+        # Parse results for summary
+        if [ -f bandit-results.json ]; then
+          HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-results.json 2>/dev/null || echo "0")
+          MED_ISSUES=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' bandit-results.json 2>/dev/null || echo "0")
+          LOW_ISSUES=$(jq '[.results[] | select(.issue_severity == "LOW")] | length' bandit-results.json 2>/dev/null || echo "0")
+          
+          echo "### Security Issues Found:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔴 High: $HIGH_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟡 Medium: $MED_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟢 Low: $LOW_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HIGH_ISSUES" -gt 0 ] || [ "$MED_ISSUES" -gt 3 ]; then
+            echo "⚠️ **Action Required**: High priority security issues found!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### High Priority Issues:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            jq -r '.results[] | select(.issue_severity == "HIGH") | "File: \(.filename)\nLine: \(.line_number)\nIssue: \(.issue_text)\nAdvice: \(.issue_cwe.link // "N/A")\n---"' bandit-results.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "Error parsing high priority issues" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No critical security issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+        
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bandit-security-scan
+        path: |
+          bandit-results.json
+          bandit-summary.txt
+        retention-days: 30
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run TruffleHog secrets scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+        
+    - name: Manual secrets pattern check
+      run: |
+        echo "## Manual Secrets Pattern Check" >> $GITHUB_STEP_SUMMARY
+        
+        # Check for common secret patterns
+        FINDINGS=0
+        
+        # Check for hardcoded passwords
+        if grep -r -i "password.*=" . --include="*.py" --include="*.js" --include="*.yml" --exclude-dir=.git --exclude-dir=venv | grep -v "DB_PASSWORD" | grep -v "example" | grep -v "your_password" | grep -v "test_password"; then
+          echo "⚠️ Potential hardcoded passwords found" >> $GITHUB_STEP_SUMMARY
+          FINDINGS=$((FINDINGS + 1))
+        fi
+        
+        # Check for API keys
+        if grep -r -E "(api_key|apikey|api-key)" . --include="*.py" --include="*.js" --include="*.yml" --exclude-dir=.git --exclude-dir=venv | grep -v "your_api_key" | grep -v "example" | grep -v "test_"; then
+          echo "⚠️ Potential API keys found" >> $GITHUB_STEP_SUMMARY
+          FINDINGS=$((FINDINGS + 1))
+        fi
+        
+        # Check for tokens
+        if grep -r -E "(token|secret)" . --include="*.py" --include="*.js" --include="*.yml" --exclude-dir=.git --exclude-dir=venv | grep -v "SECRET_KEY" | grep -v "JWT_SECRET" | grep -v "your_secret" | grep -v "example" | grep -v "test_"; then
+          echo "⚠️ Potential tokens/secrets found" >> $GITHUB_STEP_SUMMARY
+          FINDINGS=$((FINDINGS + 1))
+        fi
+        
+        if [ $FINDINGS -eq 0 ]; then
+          echo "✅ No obvious hardcoded secrets detected" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ $FINDINGS potential secret patterns found - manual review recommended" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  container-security:
+    name: Container Image Security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Run Trivy vulnerability scanner on latest image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'dhpsystems/rms-defragmenter:latest'
+        format: 'table'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, code-security-scan, secrets-scan]
+    if: always()
+    
+    steps:
+    - name: Generate security report
+      run: |
+        echo "# 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Scan Results:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Dependency Scan**: ${{ needs.dependency-scan.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Code Security**: ${{ needs.code-security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Secrets Detection**: ${{ needs.secrets-scan.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Next Steps:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Review uploaded security artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "2. Address any HIGH severity findings" >> $GITHUB_STEP_SUMMARY
+        echo "3. Update dependencies if vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+        echo "4. Check Security tab for detailed vulnerability reports" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "*This scan runs automatically daily and on security-related changes.*" >> $GITHUB_STEP_SUMMARY
