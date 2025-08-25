@@ -289,7 +289,7 @@ class MultiPropertyAnalyzer:
                     
             except Exception as e:
                 failed_analyses += 1
-                print(f"💥 Property analysis error: {e}")
+                print(f"💥 Property analysis error: {str(e)}")
             
             # Update and show overall progress
             self._print_overall_parks_progress(property_index, total_properties)
@@ -331,7 +331,8 @@ class MultiPropertyAnalyzer:
         print(f"📊 Total Properties: {total_properties}")
         print(f"✅ Successful: {successful_analyses}")
         print(f"❌ Failed: {failed_analyses}")
-        print(f"📈 Success Rate: {(successful_analyses/total_properties)*100:.1f}%")
+        success_rate = (successful_analyses/total_properties)*100 if total_properties > 0 else 0.0
+        print(f"📈 Success Rate: {success_rate:.1f}%")
         
         return successful_analyses > 0
     
@@ -562,7 +563,7 @@ class MultiPropertyAnalyzer:
             
         except Exception as e:
             self.logger.log_error_with_context(e, f"Property analysis for {property_name}")
-            print(f"💥 Error analyzing property {property_name}: {e}")
+            print(f"💥 Error analyzing property {property_name}: {str(e)}")
             return False
     
     def _print_overall_parks_progress(self, completed: int, total: int):
