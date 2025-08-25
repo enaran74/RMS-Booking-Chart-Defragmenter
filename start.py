@@ -1137,13 +1137,13 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE,QROC,TCRA    # Analyze specific properties
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p ALL               # Analyze all properties
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE              # Analyze single property
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p ALL            # Analyze all properties with email notifications
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE,QROC      # Analyze specific properties with email notifications
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p ALL            # Analyze all properties using training database
-  python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -e -p SADE,QROC   # Analyze specific properties with emails using training database (emails sent to operations@discoveryparks.com.au)
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p SADE,QROC,TCRA    # Analyze specific properties
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p ALL               # Analyze all properties
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p SADE              # Analyze single property
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -e -p ALL            # Analyze all properties with email notifications
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -e -p SADE,QROC      # Analyze specific properties with email notifications
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -p ALL            # Analyze all properties using training database
+  python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -e -p SADE,QROC   # Analyze specific properties with emails using training database (emails sent to operations@discoveryparks.com.au)
 
 Environment Variables (for Linux server deployment):
   AGENT_ID, AGENT_PASSWORD, CLIENT_ID, CLIENT_PASSWORD - RMS API credentials
@@ -1222,17 +1222,17 @@ Note: All RMS credentials are MANDATORY. Replace the example credentials with yo
         print("❌ ERROR: Missing required arguments")
         print()
         print("📋 USAGE EXAMPLES:")
-        print("  python3 start.py --agent-id ***REMOVED*** --agent-password \"********\" --client-id ***REMOVED*** --client-password \"********\" -p SADE,QROC,TCRA    # Analyze specific properties")
-        print("  python3 start.py --agent-id ***REMOVED*** --agent-password \"********\" --client-id ***REMOVED*** --client-password \"********\" -p ALL               # Analyze all properties")
-        print("  python3 start.py --agent-id ***REMOVED*** --agent-password \"********\" --client-id ***REMOVED*** --client-password \"********\" -p SADE              # Analyze single property")
-        print("  python3 start.py --agent-id ***REMOVED*** --agent-password \"********\" --client-id ***REMOVED*** --client-password \"********\" -e -p ALL            # Analyze all properties with email notifications")
-        print("  python3 start.py --agent-id ***REMOVED*** --agent-password \"********\" --client-id ***REMOVED*** --client-password \"********\" -t -p ALL            # Analyze all properties using training database")
+        print("  python3 start.py --agent-id YOUR_AGENT_ID --agent-password \"YOUR_PASSWORD\" --client-id YOUR_CLIENT_ID --client-password \"YOUR_CLIENT_PASSWORD\" -p SADE,QROC,TCRA    # Analyze specific properties")
+        print("  python3 start.py --agent-id YOUR_AGENT_ID --agent-password \"YOUR_PASSWORD\" --client-id YOUR_CLIENT_ID --client-password \"YOUR_CLIENT_PASSWORD\" -p ALL               # Analyze all properties")
+        print("  python3 start.py --agent-id YOUR_AGENT_ID --agent-password \"YOUR_PASSWORD\" --client-id YOUR_CLIENT_ID --client-password \"YOUR_CLIENT_PASSWORD\" -p SADE              # Analyze single property")
+        print("  python3 start.py --agent-id YOUR_AGENT_ID --agent-password \"YOUR_PASSWORD\" --client-id YOUR_CLIENT_ID --client-password \"YOUR_CLIENT_PASSWORD\" -e -p ALL            # Analyze all properties with email notifications")
+        print("  python3 start.py --agent-id YOUR_AGENT_ID --agent-password \"YOUR_PASSWORD\" --client-id YOUR_CLIENT_ID --client-password \"YOUR_CLIENT_PASSWORD\" -t -p ALL            # Analyze all properties using training database")
         print()
         print("🌐 LINUX SERVER DEPLOYMENT (using environment variables):")
-        print("  export AGENT_ID=***REMOVED***")
-        print("  export AGENT_PASSWORD=\"********\"")
-        print("  export CLIENT_ID=***REMOVED***")
-        print("  export CLIENT_PASSWORD=\"********\"")
+        print("  export AGENT_ID=YOUR_AGENT_ID")
+        print("  export AGENT_PASSWORD=\"YOUR_PASSWORD\"")
+        print("  export CLIENT_ID=YOUR_CLIENT_ID")
+        print("  export CLIENT_PASSWORD=\"YOUR_CLIENT_PASSWORD\"")
         print("  export TARGET_PROPERTIES=ALL")
         print("  export ENABLE_EMAILS=true")
         print("  export USE_TRAINING_DB=false")

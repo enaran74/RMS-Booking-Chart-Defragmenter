@@ -16,10 +16,10 @@ services:
       - WEB_APP_HOST=0.0.0.0
       - SECRET_KEY=your-secret-key-here
       - JWT_SECRET_KEY=your-jwt-secret-key-here
-      - AGENT_ID=***REMOVED***
-      - AGENT_PASSWORD=***REMOVED***
-      - CLIENT_ID=***REMOVED***
-      - CLIENT_PASSWORD=***REMOVED***
+      - AGENT_ID=YOUR_AGENT_ID_HERE
+      - AGENT_PASSWORD=YOUR_AGENT_PASSWORD_HERE
+      - CLIENT_ID=YOUR_CLIENT_ID_HERE
+      - CLIENT_PASSWORD=YOUR_CLIENT_PASSWORD_HERE
       - USE_TRAINING_DB=true
       - PROPERTY_REFRESH_INTERVAL_HOURS=1
     volumes:

@@ -505,19 +505,19 @@ The system requires RMS credentials to be provided as command-line arguments:
 #### Basic Analysis (No Emails)
 ```bash
 # Analyze specific properties
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE,QROC,TCRA
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p SADE,QROC,TCRA
 
 # Analyze single property
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p SADE
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p SADE
 
 # Analyze all properties
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -p ALL
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -p ALL
 ```
 
 #### Analysis with Email Notifications
 ```bash
 # Analyze all properties with email notifications
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p ALL
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -e -p ALL
 
 # Analyze specific properties with email notifications
 python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -e -p SADE,QROC,TCRA
@@ -529,13 +529,13 @@ python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-i
 #### Training Database Analysis
 ```bash
 # Analyze all properties using training database
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p ALL
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -p ALL
 
 # Analyze specific properties using training database
 python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -p SADE,QROC,TCRA
 
 # Analyze with training database and email notifications
-python3 start.py --agent-id ***REMOVED*** --agent-password "********" --client-id ***REMOVED*** --client-password "********" -t -e -p ALL
+python3 start.py --agent-id YOUR_AGENT_ID --agent-password "YOUR_PASSWORD" --client-id YOUR_CLIENT_ID --client-password "YOUR_CLIENT_PASSWORD" -t -e -p ALL
 # Note: Training mode emails are sent to operations@discoveryparks.com.au
 ```
 
