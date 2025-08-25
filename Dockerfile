@@ -5,7 +5,7 @@
 # Supports multiple architectures: linux/amd64, linux/arm64
 
 # Stage 1: Build environment
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
