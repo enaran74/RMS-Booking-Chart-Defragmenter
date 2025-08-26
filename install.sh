@@ -17,7 +17,7 @@ NC='\033[0m'
 
 # Configuration
 INSTALL_DIR="$HOME/rms-defragmenter"
-DOCKER_REPO="enaran/rms-defragmenter:latest"
+DOCKER_REPO="enaran/rms-defragmenter:2.3.0"
 
 # Helper functions
 print_header() { echo -e "${BLUE}$1${NC}"; }
@@ -118,8 +118,8 @@ main() {
     curl -fsSL "https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/${COMPOSE_FILE}" \
         -o docker-compose.yml
     
-    # Update to use latest stable image with database fixes
-    sed -i 's/dhpsystems\/rms-defragmenter:latest/dhpsystems\/rms-defragmenter:2.1.0/g' docker-compose.yml
+    # Update to use latest stable image
+    sed -i 's/enaran\/rms-defragmenter:latest/enaran\/rms-defragmenter:2.3.0/g' docker-compose.yml
     
     # Download environment template
     curl -fsSL "https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/env.example" \
@@ -140,7 +140,7 @@ main() {
     
     print_header "🎉 Installation Complete!"
     echo ""
-    print_status "✅ Installed with v2.1.0 (includes database stability fixes)"
+    print_status "✅ Installed with v2.3.0 (latest stable release)"
     echo ""
     print_info "Next steps:"
     echo "1. Configure your RMS credentials:"
@@ -152,13 +152,15 @@ main() {
     echo "3. Access the web interface:"
     echo "   ${CYAN}http://localhost:8000${NC}"
     echo ""
-    print_warning "Default login: username=admin, password=admin123"
+    print_warning "Default login: username=admin, password=Configur8&1"
     print_warning "Change these credentials in production!"
     echo ""
-    print_info "🔧 This version includes important database stability fixes:"
-    echo "   • Resolved authentication issues"
-    echo "   • Fixed move history functionality"
-    echo "   • Improved session management"
+    print_info "🔧 New features in v2.3.0:"
+    echo "   • 🔐 Automatic session management (30-min timeout with countdown)"
+    echo "   • 📊 Interactive booking charts with move visualizations"
+    echo "   • 🎯 Enhanced move suggestions with directional arrows"
+    echo "   • 🧹 Production-ready code with cleaned debug output"
+    echo "   • 🖥️ Improved UX and interface consistency"
 }
 
 create_management_scripts() {

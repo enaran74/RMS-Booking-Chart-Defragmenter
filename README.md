@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.2.0%2024%20g1c5f51f%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.3.0%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -8,12 +8,29 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production-success.svg)
 
-A comprehensive system for optimizing accommodation bookings across multiple properties through automated defragmentation analysis and an intuitive web interface for move management.
+A comprehensive system for optimizing accommodation bookings across multiple properties through automated defragmentation analysis, interactive booking charts, and an intuitive web interface with secure session management.
 
 **Developed by:** Mr Tim Curtis, Operations Systems Manager
 **Organization:** Discovery Holiday Parks
 **Version:** Git-based automatic versioning
 **CI/CD:** ✅ Automated testing, security scanning, and Docker builds
+
+---
+
+## 🆕 What's New in v2.3.0
+
+### ✨ **Latest Features**
+- **🔐 Automatic Session Management**: 30-minute session timeout with visual countdown
+- **📊 Interactive Booking Charts**: Visual booking chart display with move suggestions
+- **🎯 Enhanced Move Visualization**: Directional arrows showing move suggestions
+- **🧹 Production-Ready Code**: Cleaned debug output for optimal performance
+- **🖥️ Improved UX**: Better state management and interface consistency
+
+### 🔧 **Enhanced Deployment Options**
+- **🐳 Docker-First Approach**: Streamlined containerized deployment
+- **⚡ Fast Development**: Bind-mounted templates for rapid iteration
+- **🌐 Host Network Support**: Automatic detection for VPN/Tailscale environments
+- **🔄 CI/CD Pipeline**: Automated testing, security scanning, and Docker builds
 
 ---
 
@@ -53,6 +70,7 @@ nano .env
 - **📊 Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 - **📖 API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **👤 Default Login**: username=`admin`, password=`Configur8&1`
+- **🔐 Session Security**: 30-minute automatic logout with countdown timer
 
 ---
 
@@ -132,17 +150,20 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 
 ---
 
-## 🚀 **Installation**
+## 🚀 **Installation Methods**
 
-### Automated Installation (Recommended)
+Choose your preferred deployment method based on your environment and needs:
+
+### 🐳 **Option 1: Docker Deployment (Recommended)**
+
+#### **Quick Docker Installation**
 
 ```bash
+# One-command installation with environment detection
 curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
-### Manual Installation
-
-#### Standard Deployment
+#### **Manual Docker Setup**
 
 ```bash
 # Clone repository
@@ -153,17 +174,83 @@ cd RMS-Booking-Chart-Defragmenter
 cp env.example .env
 nano .env
 
-# Start system (host networking + bind mounts for live templates)
+# Start system (auto-detects host networking needs)
 docker compose up -d
 ```
 
-#### Host Network Deployment
+#### **Docker Benefits**
+- ✅ **Fast deployment**: 5-10 minutes with pre-built images
+- ✅ **No build failures**: Production-ready containers
+- ✅ **Automatic networking**: Detects VPN/Tailscale conflicts
+- ✅ **Easy updates**: Simple `docker compose pull`
 
-For environments with Tailscale, VPN, or networking conflicts, `docker-compose.yml` already uses host networking and bind mounts that allow fast updates without image rebuilds.
+### 🖥️ **Option 2: Native Installation**
 
-### Development Setup
+For environments where Docker isn't preferred or available:
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for developer build pipeline instructions.
+```bash
+# Coming soon - native installer is being developed
+# For now, use manual native setup below
+```
+
+#### **Manual Native Setup**
+
+```bash
+# Prerequisites: Python 3.11+, PostgreSQL 15+, Git
+sudo apt update && sudo apt install -y python3.11 python3-pip postgresql git
+
+# Clone and setup
+git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
+cd RMS-Booking-Chart-Defragmenter
+
+# Install Python dependencies
+pip3 install -r requirements.txt
+
+# Setup database
+sudo -u postgres createuser defrag_user
+sudo -u postgres createdb defrag_db -O defrag_user
+sudo -u postgres psql -c "ALTER USER defrag_user PASSWORD 'DefragDB2024!';"
+
+# Configure environment
+cp env.example .env
+nano .env  # Edit RMS credentials and database settings
+
+# Start web application
+cd web_app
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### **Native Installation Benefits**
+- ✅ **Direct system integration**: No container overhead
+- ✅ **Full system access**: Direct file system and process control
+- ✅ **Custom configurations**: Fine-grained system tuning
+- ✅ **Development friendly**: Easy debugging and modification
+
+### 🔧 **Option 3: Development Setup**
+
+For developers and contributors:
+
+```bash
+# Clone repository
+git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
+cd RMS-Booking-Chart-Defragmenter
+
+# Install development dependencies
+pip install -r requirements.txt
+pip install -r web_app/requirements-dev.txt
+
+# Setup pre-commit hooks
+pre-commit install
+
+# Run tests
+pytest
+
+# Start development server
+cd web_app
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+See [DEVELOPER_README.md](DEVELOPER_README.md) for complete development guide.
 
 ---
 
@@ -229,7 +316,8 @@ APP_PASSWORD=your_app_password_here
 #### **1. Access the System**
 
 - Navigate to [http://localhost:8000](http://localhost:8000)
-- Login with: `admin` / `admin123`
+- Login with: `admin` / `Configur8&1`
+- **🔐 Session expires after 30 minutes with visual countdown**
 - **⚠️ Change default passwords in production!**
 
 #### **2. Manage Properties**
@@ -245,7 +333,16 @@ APP_PASSWORD=your_app_password_here
 - Accept/reject individual moves with 3-way toggle
 - Track implementation status
 
-#### **4. Monitor System Health**
+#### **4. Interactive Booking Charts**
+
+- Click "Show Chart" to display visual booking layout
+- View all reservations with color-coded status (Confirmed, Arrived, Departed, etc.)
+- See move suggestions highlighted with directional arrows (⬆️⬇️)
+- Horizontal scroll to view full accommodation layout
+- Fixed bookings marked with 🎯 icon
+- Out of Order/Maintenance periods clearly labeled
+
+#### **5. Monitor System Health**
 
 - Check system status and performance
 - View analysis logs and cron job history
@@ -323,11 +420,14 @@ The CLI uses environment variables from your `.env` file:
 
 ### **Modern Web Interface**
 
-- **🔐 Secure Authentication**: Role-based access control
-- **📱 Responsive Design**: Works on desktop, tablet, and mobile
+- **🔐 Secure Authentication**: Role-based access control with automatic session management
+- **⏰ Session Security**: 30-minute timeout with visual countdown timer (warning at 5min, danger at 1min)
+- **📊 Interactive Booking Charts**: Visual booking chart display with horizontal scrolling
+- **🎯 Move Visualization**: Directional arrows showing move suggestions (⬆️⬇️)
+- **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
 - **⚡ Real-Time Updates**: WebSocket-powered live progress tracking
 - **🎨 Professional UI**: Discovery Holiday Parks branded interface
-- **📊 Interactive Charts**: Visual move suggestion management
+- **🖥️ Enhanced UX**: Improved state management and interface consistency
 
 ### **Production Deployment**
 
