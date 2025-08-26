@@ -90,18 +90,27 @@ mkdir -p /app/logs /app/output /app/backups /app/config
 # Environment validation
 log_info "Validating environment configuration..."
 
+# Check if this is CLI mode (has arguments and is not web mode)
+CLI_MODE=false
+if [ "$#" -gt 0 ] && [ "$1" != "web" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ]; then
+    CLI_MODE=true
+fi
+
 # Check required RMS credentials (only for CLI mode, web app gets them from user setup)
-if [ "$#" -gt 0 ] && [ "$1" != "web" ]; then
+if [ "$CLI_MODE" = "true" ]; then
     # CLI mode requires credentials
     if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
         log_error "Missing required RMS API credentials for CLI mode"
         log_error "Required: AGENT_ID, AGENT_PASSWORD, CLIENT_ID, CLIENT_PASSWORD"
         exit 1
     fi
+    log_info "CLI mode: RMS API credentials validated"
 else
     # Web mode - credentials are optional (provided through setup wizard)
     if [ -z "${AGENT_ID}" ] || [ -z "${AGENT_PASSWORD}" ] || [ -z "${CLIENT_ID}" ] || [ -z "${CLIENT_PASSWORD}" ]; then
-        log_warning "RMS API credentials not set - will need to be configured through web interface"
+        log_warning "RMS API credentials not set - will be configured through web interface"
+    else
+        log_info "Web mode: RMS API credentials available"
     fi
 fi
 
@@ -234,7 +243,7 @@ log_info "Output files: /app/output/"
 log_info "Configuration: /app/config/"
 
 # Determine execution mode
-if [ "$#" -gt 0 ] && [ "$1" != "web" ]; then
+if [ "$CLI_MODE" = "true" ]; then
     # CLI mode - run defragmentation analysis
     log_info "🚀 Starting CLI defragmentation analysis..."
     
