@@ -812,10 +812,101 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // VERSION CHECK - Cache buster v1.2
-        console.log('Loading RMS Defragmenter v1.2 - Fixed suggestions fetching after generation');
         
         let currentUser = null;
         let authToken = null;
+        
+        // Session management
+        let logoutTimer = null;
+        let countdownTimer = null;
+        const SESSION_TIMEOUT_MINUTES = 30; // Back to 30 minutes for production
+        const SESSION_TIMEOUT_MS = SESSION_TIMEOUT_MINUTES * 60 * 1000;
+        
+        // Start automatic logout timer
+        function startSessionTimer() {
+            
+            // Clear any existing timers
+            if (logoutTimer) clearTimeout(logoutTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
+            
+            // Set the logout timer
+            const loginTime = Date.now();
+            const expiryTime = loginTime + SESSION_TIMEOUT_MS;
+            
+            logoutTimer = setTimeout(() => {
+                sessionExpiredLogout();
+            }, SESSION_TIMEOUT_MS);
+            
+            // Show and start countdown timer
+            showSessionTimer();
+            updateCountdown(expiryTime);
+            
+            countdownTimer = setInterval(() => {
+                updateCountdown(expiryTime);
+            }, 1000);
+        }
+        
+        // Stop session timer
+        function stopSessionTimer() {
+            if (logoutTimer) clearTimeout(logoutTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
+            hideSessionTimer();
+        }
+        
+        // Show session timer in footer
+        function showSessionTimer() {
+            const timer = document.getElementById('sessionTimer');
+            if (timer) {
+                timer.style.display = 'block';
+            }
+        }
+        
+        // Hide session timer
+        function hideSessionTimer() {
+            const timer = document.getElementById('sessionTimer');
+            if (timer) {
+                timer.style.display = 'none';
+                timer.className = 'session-timer'; // Reset classes
+            }
+        }
+        
+        // Update countdown display
+        function updateCountdown(expiryTime) {
+            const now = Date.now();
+            const timeLeft = expiryTime - now;
+            
+            if (timeLeft <= 0) {
+                // Time's up
+                const countdown = document.getElementById('sessionCountdown');
+                if (countdown) countdown.textContent = '0:00';
+                return;
+            }
+            
+            const minutes = Math.floor(timeLeft / 60000);
+            const seconds = Math.floor((timeLeft % 60000) / 1000);
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            const countdown = document.getElementById('sessionCountdown');
+            const timer = document.getElementById('sessionTimer');
+            
+            if (countdown) countdown.textContent = timeString;
+            
+            // Change styling based on time remaining
+            if (timer) {
+                timer.className = 'session-timer'; // Reset
+                if (timeLeft < 60000) { // Less than 1 minute
+                    timer.classList.add('danger');
+                } else if (timeLeft < 300000) { // Less than 5 minutes
+                    timer.classList.add('warning');
+                }
+            }
+        }
+        
+        // Handle session expiration
+        function sessionExpiredLogout() {
+            alert('Your session has expired for security reasons. Please log in again.');
+            logout();
+        }
 
 
         // Login functionality
@@ -839,6 +930,8 @@
                     if (window.refreshHeaderUser) { window.refreshHeaderUser(); }
                     loadUserInfo();
                     refreshMoves();
+                    // Start session timer
+                    startSessionTimer();
                 } else {
                     alert('Login failed. Please check your credentials.');
                 }
@@ -867,6 +960,9 @@
             currentUser = null;
             localStorage.removeItem('authToken');
             
+            // Reset move suggestions buttons back to initial state
+            showLoadButton();
+            
             // Show login, hide main app
             document.getElementById('login-section').classList.remove('d-none');
             document.getElementById('main-app').classList.add('d-none');
@@ -877,6 +973,9 @@
 
         // Logout
         function logout() {
+            // Stop session timer
+            stopSessionTimer();
+            
             authToken = null;
             currentUser = null;
             
@@ -908,6 +1007,9 @@
                 cacheStatus.textContent = 'No data loaded';
                 cacheStatus.className = 'badge bg-secondary ms-2';
             }
+            
+            // Reset move suggestions buttons back to initial state
+            showLoadButton();
             
             // Hide admin elements immediately
             const userMgmtLink = document.getElementById('user-management-link');
@@ -988,9 +1090,7 @@
 
                // Load user properties for property filter
                async function loadUserProperties() {
-                   console.log('loadUserProperties called');
                    if (!authToken) {
-                       console.log('No auth token available');
                        return;
                    }
                    
@@ -1001,23 +1101,17 @@
                            url = '/api/v1/properties/';
                        }
                        
-                       console.log(`Loading properties from: ${url}`);
-                       console.log('Current user:', currentUser);
-                       
                        const response = await fetch(url, {
                            headers: {
                                'Authorization': `Bearer ${authToken}`
                            }
                        });
                        
-                       console.log('Properties API response status:', response.status);
-                       
                        if (response.ok) {
                            let data;
                            if (currentUser && currentUser.is_admin) {
                                // For admin users, convert properties to user-property format
                                const properties = await response.json();
-                               console.log('Admin properties response:', properties);
                                data = properties.map(prop => ({
                                    property_id: prop.id,
                                    property: prop,
@@ -1026,10 +1120,7 @@
                            } else {
                                // For regular users, use the user-properties response
                                data = await response.json();
-                               console.log('User properties response:', data);
                            }
-                           
-                           console.log('Processed data for property filter:', data);
                            populatePropertyFilter(data);
                        } else {
                            const errorText = await response.text();
@@ -1042,8 +1133,6 @@
 
                // Populate property filter dropdown
                function populatePropertyFilter(userProperties) {
-                   console.log('populatePropertyFilter called with:', userProperties);
-                   
                    const propertyFilter = document.getElementById('property-filter');
                    if (!propertyFilter) {
                        console.error('Property filter element not found');
@@ -1054,10 +1143,7 @@
                    propertyFilter.innerHTML = '<option value="">Select Property</option>';
                    
                    if (userProperties && userProperties.length > 0) {
-                       console.log(`Adding ${userProperties.length} properties to filter`);
-                       
                        userProperties.forEach((up, index) => {
-                           console.log(`Processing property ${index}:`, up);
                            
                            const option = document.createElement('option');
                            
@@ -1088,13 +1174,8 @@
                            option.textContent = displayText;
                            propertyFilter.appendChild(option);
                            
-                           console.log(`Added option: ${option.value} = ${option.textContent}`);
                        });
-                   } else {
-                       console.log('No properties to add to filter');
                    }
-                   
-                   console.log('Final property filter options:', propertyFilter.innerHTML);
                }
 
 
@@ -2788,6 +2869,11 @@
             document.getElementById('load-moves-btn').style.display = 'none';
             document.getElementById('refresh-moves-btn').style.display = 'block';
         }
+        
+        function showLoadButton() {
+            document.getElementById('load-moves-btn').style.display = 'block';
+            document.getElementById('refresh-moves-btn').style.display = 'none';
+        }
 
         function getStrategicImportanceColor(importance) {
             if (!importance || importance === 'unknown') return 'secondary';
@@ -2839,6 +2925,8 @@
                     showMainApp();
                     loadUserInfo();
                     refreshMoves();
+                    // Start session timer for auto-login
+                    startSessionTimer();
                 } else {
                     // Token is invalid, remove it and show login
                     localStorage.removeItem('authToken');

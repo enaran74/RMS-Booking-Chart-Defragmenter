@@ -1,3 +1,10 @@
+<!-- Session Timer (left side) -->
+<div class="session-timer" id="sessionTimer" style="display: none;">
+  <i class="fas fa-clock me-1"></i>
+  <span id="sessionCountdown">29:59</span>
+</div>
+
+<!-- Version Stamp (right side) -->
 <div class="version-stamp" id="versionStamp">RMS Defragmenter • loading...</div>
 <style>
   .version-stamp{
@@ -12,6 +19,36 @@
     padding: 4px 8px;
     z-index: 1040;
     pointer-events: none;
+  }
+  .session-timer{
+    position: fixed;
+    left: 12px;
+    bottom: 10px;
+    font-size: 11px;
+    color: #6c757d;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    padding: 4px 8px;
+    z-index: 1040;
+    pointer-events: none;
+    transition: color 0.3s ease;
+  }
+  .session-timer.warning{
+    color: #fd7e14;
+    border-color: rgba(253, 126, 20, 0.2);
+    background: rgba(255, 243, 205, 0.9);
+  }
+  .session-timer.danger{
+    color: #dc3545;
+    border-color: rgba(220, 53, 69, 0.2);
+    background: rgba(248, 215, 218, 0.9);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
   }
   .version-stamp .badge{ margin-left:6px; }
 </style>

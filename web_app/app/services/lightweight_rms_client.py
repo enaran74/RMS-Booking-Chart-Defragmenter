@@ -53,7 +53,7 @@ class LightweightRMSClient:
                     debug_message
                 ))
         except Exception as e:
-            logger.debug(f"WebSocket debug message failed: {e}")
+            pass  # WebSocket debug message failed
             pass
     
     async def _send_websocket_progress(self, message: str, progress: float, step_name: str = "rms_analysis"):
@@ -542,7 +542,7 @@ class LightweightRMSClient:
             converted_suggestions = []
             for idx, suggestion in enumerate(suggestions):
                 # DEBUG: Log the actual suggestion structure
-                logger.info(f"DEBUG - Raw suggestion {idx}: {suggestion}")
+
                 if idx < 3:  # Only show first 3 in debug output to avoid spam
                     self._send_websocket_debug(f"🔍 Processing suggestion {idx+1}: {suggestion.get('Surname', 'Unknown')} from {suggestion.get('Current_Unit', 'Unknown')} to {suggestion.get('Suggested_Unit', 'Unknown')}")
                 
@@ -562,7 +562,7 @@ class LightweightRMSClient:
                 }
                 
                 # DEBUG: Log the converted suggestion
-                logger.info(f"DEBUG - Converted suggestion {idx}: {converted_suggestion}")
+
                 self._send_websocket_debug(f"🔄 Converted suggestion {idx}: guest={converted_suggestion['guest_name']}, from={converted_suggestion['current_unit']}, to={converted_suggestion['target_unit']}")
                 
                 converted_suggestions.append(converted_suggestion)

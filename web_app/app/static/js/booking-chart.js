@@ -156,7 +156,6 @@ class BookingChart {
         // Debug: print units rendered for this category
         try {
             const unitCodes = (category.units || []).map(u => u.unit_code);
-            console.log('Chart category units:', category.name, unitCodes);
         } catch (e) {}
 
         category.units.forEach(unit => {
@@ -348,9 +347,7 @@ class BookingChart {
         
                         // Add move suggestion arrow if applicable (only on first cell of span)
                 if (booking.is_move_suggestion && spanInfo && spanInfo.isStart) {
-                    console.log('🔍 DEBUG Move Suggestion JSON:', JSON.stringify(booking, null, 2));
                     const arrow = this.getMoveDirectionArrow(booking);
-                    console.log('🔍 DEBUG Arrow result:', arrow);
                     if (arrow) {
                         cellContent = `${arrow} ${cellContent}`; // Arrow prefix for move suggestions (like CLI Excel)
                         // Ensure left alignment for arrow
@@ -544,7 +541,6 @@ class BookingChart {
     getMoveDirectionArrow(booking) {
         // Get directional arrow icon based on move direction (matching CLI logic)
         if (!booking.target_unit || !this.chartData) {
-            console.log('🔍 DEBUG Arrow - Missing target or chart data:', { target: booking.target_unit, hasChart: !!this.chartData });
             return ""; // No arrow if missing data
         }
 
@@ -576,47 +572,25 @@ class BookingChart {
             } else if (unit && unit.name) {
                 unitName = unit.name;
             } else {
-                console.log(`🔍 Unknown unit structure at ${unitIndex}:`, unit);
                 unitName = String(unit);
             }
                 
                 const normalizedChartUnit = normalizeUnit(unitName);
                 
-                // Debug the first few units and any matches
-                if (unitIndex < 5 || normalizedChartUnit === normalizedCurrent || normalizedChartUnit === normalizedTarget) {
-                    console.log(`🔍 Unit ${unitIndex}: "${unitName}" -> "${normalizedChartUnit}" (type: ${typeof unit})`);
-                }
-                
                 if (normalizedChartUnit === normalizedCurrent) {
                     currentUnitPosition = unitIndex;
                     foundCurrentMatch = true;
-                    console.log(`🔍 FOUND CURRENT MATCH at position ${unitIndex}: "${normalizedChartUnit}"`);
                 }
                 if (normalizedChartUnit === normalizedTarget) {
                     targetUnitPosition = unitIndex;
                     foundTargetMatch = true;
-                    console.log(`🔍 FOUND TARGET MATCH at position ${unitIndex}: "${normalizedChartUnit}"`);
                 }
                 unitIndex++;
             }
         }
         
-        console.log(`🔍 Search complete: found current=${foundCurrentMatch}, found target=${foundTargetMatch}, total units=${unitIndex}`);
-        
-        console.log('🔍 DEBUG Arrow calculation:', {
-            current_unit: booking.current_unit,
-            target_unit: booking.target_unit,
-            normalized_current: normalizedCurrent,
-            normalized_target: normalizedTarget,
-            currentPos: currentUnitPosition,
-            targetPos: targetUnitPosition,
-            total_categories: this.chartData.categories.length,
-            total_units: unitIndex
-        });
-        
         // Determine arrow direction based on positions
         if (currentUnitPosition === -1 || targetUnitPosition === -1) {
-            console.log('🔍 DEBUG Arrow - Units not found in chart');
             return ""; // No arrow if units not found
         }
         

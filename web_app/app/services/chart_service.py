@@ -55,36 +55,7 @@ class BookingChartService:
             
             self.logger.info(f"Fresh RMS data: {len(reservations_df)} reservations, {len(inventory_df)} units")
             
-            # DEBUG: Log all guest names we received from RMS
-            target_guests = ['Coombs', 'JIANMIN', 'Trembath', 'Anderson', 'Murray', 'Peterson', 'Brown']
-            self.logger.info(f"🔍 DEBUG: Looking for specific guests in RMS data: {target_guests}")
-            
-            found_guests = {}
-            for _, res in reservations_df.iterrows():
-                guest_name = res.get('Surname', '').strip()
-                if guest_name in target_guests:
-                    if guest_name not in found_guests:
-                        found_guests[guest_name] = []
-                    found_guests[guest_name].append({
-                        'res_no': res.get('Res No'),
-                        'arrive': res.get('Arrive'),
-                        'depart': res.get('Depart'),
-                        'unit': res.get('Unit/Site'),
-                        'status': res.get('Status')
-                    })
-            
-            self.logger.info(f"🔍 DEBUG: Found guests in RMS data: {list(found_guests.keys())}")
-            for guest, reservations_list in found_guests.items():
-                for res in reservations_list:
-                    self.logger.info(f"  {guest}: Res#{res['res_no']} | {res['arrive']} → {res['depart']} | {res['unit']} | {res['status']}")
-            
-            if not found_guests:
-                self.logger.warning(f"🔍 DEBUG: None of the target guests found in RMS response!")
-                self.logger.info(f"🔍 DEBUG: Sample guests from RMS (first 10):")
-                for i, (_, res) in enumerate(reservations_df.head(10).iterrows()):
-                    self.logger.info(f"  {i+1}. {res.get('Surname', 'Unknown')} | Res#{res.get('Res No')} | {res.get('Arrive')} → {res.get('Depart')} | {res.get('Unit/Site')}")
-            
-            self.logger.info(f"🔍 DEBUG: Total reservations returned from RMS API: {len(reservations_data)} raw, {len(reservations_df)} after conversion")
+
             
             # Get move suggestions for highlighting only
             latest_analysis = db.query(DefragMove).filter(
