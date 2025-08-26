@@ -4,7 +4,7 @@ Returns current application version based on Git tags and commits.
 """
 from fastapi import APIRouter
 from datetime import datetime, timedelta
-from ....utils.version import get_git_version, get_version_info
+from app.utils.version import get_git_version, get_version_info
 
 router = APIRouter()
 

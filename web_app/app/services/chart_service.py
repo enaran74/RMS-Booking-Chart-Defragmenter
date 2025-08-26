@@ -11,13 +11,13 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Any
 from app.core.database import get_db
 from app.services.defrag_service import DefragService
-from utils import get_logger
+import logging
 
 
 class BookingChartService:
     def __init__(self):
         """Initialize the booking chart service"""
-        self.logger = get_logger()
+        self.logger = logging.getLogger(__name__)
         self.defrag_service = DefragService()
         self.logger.info("BookingChartService initialized")
 

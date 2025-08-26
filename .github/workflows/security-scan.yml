@@ -25,7 +25,7 @@ jobs:
           extra_args: --debug --only-verified
 
       - name: Run TruffleHog (Push - scan recent commits)
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
         uses: trufflesecurity/trufflehog@main
         with:
           base: ${{ github.event.before }}
@@ -33,11 +33,11 @@ jobs:
           extra_args: --debug --only-verified
         continue-on-error: true
 
-      - name: Run TruffleHog (Fallback - full repo scan)
-        if: failure()
+      - name: Run TruffleHog (Fallback - filesystem scan)
+        if: github.event_name == 'push' && (github.event.before == '0000000000000000000000000000000000000000' || failure())
         run: |
-          # Fallback: scan the entire repository if diff scanning fails
-          docker run --rm -v "$(pwd):/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified --debug || echo "Full repo scan completed with potential findings"
+          # Fallback: scan the entire repository for new repos or when diff fails
+          docker run --rm -v "$(pwd):/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified || echo "Full repo scan completed"
 
   bandit:
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
           bandit -r . || true
 
       - name: Upload Bandit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-report
@@ -88,7 +88,7 @@ jobs:
           safety check || true
 
       - name: Upload Safety report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: safety-report
