@@ -3,7 +3,7 @@ Version API endpoint.
 Returns current application version based on Git tags and commits.
 """
 from fastapi import APIRouter
-from datetime import datetime
+from datetime import datetime, timedelta
 from ....utils.version import get_git_version, get_version_info
 
 router = APIRouter()
@@ -21,7 +21,7 @@ async def get_version():
     
     return {
         "version": version_info["version"],
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": (datetime.now() + timedelta(hours=10)).isoformat() + "+10:00",  # AEST timestamp
         "is_release": version_info["is_release"],
         "base_version": version_info["base_version"],
         "commits_ahead": version_info["commits_ahead"],

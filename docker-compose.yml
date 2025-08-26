@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
+      - TZ=Australia/Sydney
       - DB_HOST=localhost
       - DB_PORT=5433
       - DB_NAME=${DB_NAME:-defrag_db}
@@ -26,6 +27,9 @@ services:
       - defrag_logs:/app/logs
       - defrag_output:/app/output
       - ./app/static/uploads:/app/app/static/uploads
+      # Timezone configuration
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
       # Bind-mount application code to avoid stale templates without rebuilding
       - ./app:/app/app
       - ./main.py:/app/main.py
