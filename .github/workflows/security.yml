@@ -19,6 +19,10 @@ on:
       - '**/Dockerfile'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write  # Required for uploading SARIF results
+
 jobs:
   dependency-scan:
     name: Dependency Vulnerability Scan

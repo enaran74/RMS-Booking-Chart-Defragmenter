@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write  # Required for uploading security results
+
 jobs:
   trufflehog:
     runs-on: ubuntu-latest
