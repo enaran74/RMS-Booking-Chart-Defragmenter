@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.3.0%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.3.0%201%20g4a64bb8%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -47,7 +47,7 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 ### Installation
 
 ```bash
-# Download and run the automated installer
+# Download and run the automated installer (will prompt for admin credentials)
 curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragmenter/main/install.sh | bash
 ```
 
@@ -69,7 +69,7 @@ nano .env
 - **🌐 Web Interface**: [http://localhost:8000](http://localhost:8000)
 - **📊 Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 - **📖 API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **👤 Default Login**: username=`admin`, password=`Configur8&1`
+- **👤 Secure Login**: Admin credentials configured during installation
 - **🔐 Session Security**: 30-minute automatic logout with countdown timer
 
 ---
@@ -180,6 +180,7 @@ docker compose up -d
 
 #### **Docker Benefits**
 - ✅ **Fast deployment**: 5-10 minutes with pre-built images
+- ✅ **Secure setup**: Prompts for admin credentials during installation
 - ✅ **No build failures**: Production-ready containers
 - ✅ **Automatic networking**: Detects VPN/Tailscale conflicts
 - ✅ **Easy updates**: Simple `docker compose pull`
@@ -316,9 +317,8 @@ APP_PASSWORD=your_app_password_here
 #### **1. Access the System**
 
 - Navigate to [http://localhost:8000](http://localhost:8000)
-- Login with: `admin` / `Configur8&1`
+- Login with the admin credentials you configured during installation
 - **🔐 Session expires after 30 minutes with visual countdown**
-- **⚠️ Change default passwords in production!**
 
 #### **2. Manage Properties**
 

@@ -131,6 +131,9 @@ main() {
         print_status "Environment configuration created"
     fi
     
+    # Configure admin credentials securely
+    configure_admin_credentials
+    
     # Pull the latest images
     print_info "Pulling latest Docker images..."
     docker compose pull
@@ -152,8 +155,8 @@ main() {
     echo "3. Access the web interface:"
     echo "   ${CYAN}http://localhost:8000${NC}"
     echo ""
-    print_warning "Default login: username=admin, password=Configur8&1"
-    print_warning "Change these credentials in production!"
+    print_info "🔐 Admin credentials have been configured during installation"
+    print_warning "Keep your admin credentials secure!"
     echo ""
     print_info "🔧 New features in v2.3.0:"
     echo "   • 🔐 Automatic session management (30-min timeout with countdown)"
@@ -161,6 +164,61 @@ main() {
     echo "   • 🎯 Enhanced move suggestions with directional arrows"
     echo "   • 🧹 Production-ready code with cleaned debug output"
     echo "   • 🖥️ Improved UX and interface consistency"
+}
+
+configure_admin_credentials() {
+    print_header "🔐 Admin Account Setup"
+    echo ""
+    
+    # Prompt for admin username
+    while true; do
+        read -p "Enter admin username (default: admin): " admin_user
+        admin_user=${admin_user:-admin}
+        
+        if [[ "$admin_user" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            break
+        else
+            print_warning "Username must contain only letters, numbers, and underscores"
+        fi
+    done
+    
+    # Prompt for admin password
+    while true; do
+        echo ""
+        echo "Enter admin password (minimum 8 characters):"
+        read -s admin_pass
+        echo ""
+        echo "Confirm admin password:"
+        read -s admin_pass_confirm
+        echo ""
+        
+        if [ "$admin_pass" != "$admin_pass_confirm" ]; then
+            print_warning "Passwords don't match. Please try again."
+            continue
+        fi
+        
+        if [ ${#admin_pass} -lt 8 ]; then
+            print_warning "Password must be at least 8 characters long. Please try again."
+            continue
+        fi
+        
+        break
+    done
+    
+    # Update .env file with admin credentials
+    if [ -f .env ]; then
+        # Update existing .env file
+        sed -i.bak "s/^ADMIN_USERNAME=.*/ADMIN_USERNAME=$admin_user/" .env
+        sed -i.bak "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=$admin_pass/" .env
+        rm -f .env.bak
+    else
+        # Create new .env file with admin credentials
+        echo "ADMIN_USERNAME=$admin_user" >> .env
+        echo "ADMIN_PASSWORD=$admin_pass" >> .env
+    fi
+    
+    print_status "Admin credentials configured successfully"
+    echo ""
 }
 
 create_management_scripts() {
