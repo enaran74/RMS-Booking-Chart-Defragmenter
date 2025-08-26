@@ -197,7 +197,7 @@
         <!-- Main Application -->
         <div class="d-none" id="main-app">
             <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-3 sidebar-narrow">
                     <!-- Admin Setup Link -->
                     <div class="card card-dhp mb-3 d-none" id="admin-setup-card">
                         <div class="card-header">
@@ -280,7 +280,7 @@
                     </div>
                 </div>
                 
-                <div class="col-md-9">
+                <div class="col-md-9 content-wide">
                     <!-- Move Suggestions Display -->
                     <div class="card card-dhp">
                         <div class="card-header d-flex justify-content-between align-items-center">
@@ -1153,7 +1153,7 @@
                     // Set current property code for chart functionality
                     setCurrentPropertyCode(propertyFilter);
                     
-                    displayMoveSuggestions(data);
+                    displayMoveSuggestions({...data, propertyCode: propertyFilter});
                 } else {
                     console.log('No existing move suggestions found, use Load Move Suggestions to generate new ones');
                     // Clear the display
@@ -2598,7 +2598,7 @@
                     // Set current property code for chart functionality
                     setCurrentPropertyCode(propertyCode);
                     
-                    displayMoveSuggestions(generateData);
+                    displayMoveSuggestions({...generateData, propertyCode});
                 } else {
                     // No suggestions generated - show "No Move Suggestions Found"
                     console.log('❌ moveCount is 0 - No move suggestions generated - displaying empty state');
@@ -3035,23 +3035,12 @@
                                                         <div>
                                                             <i class="${getCategoryIcon(category)} me-2 text-primary"></i>${category}
                                                         </div>
-                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                                onclick="toggleCategoryChart('${category}', ${categoryIndex})"
-                                                                id="chart-toggle-${categoryIndex}">
-                                                            <i class="fas fa-chart-gantt me-1"></i>
-                                                            Show Chart
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
-                                        
-                                        // Add chart container row (hidden by default)
-                                        html += `
-                                            <tr id="chart-row-${categoryIndex}" style="display: none;">
-                                                <td colspan="10" class="p-0">
-                                                    <div id="category-chart-${categoryIndex}" class="category-chart-container">
-                                                        <!-- Chart will be dynamically loaded here -->
+                                                                                                <button type="button" class="btn btn-xs btn-outline-primary" 
+                                                onclick="toggleCategoryChart('${category}', ${categoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
+                                                id="chart-toggle-${categoryIndex}">
+                                            <i class="fas fa-calendar-alt me-1"></i>
+                                            Show Chart
+                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -3097,6 +3086,19 @@
                                                 </tr>
                                             `;
                                         });
+                                        
+                                        // Add chart container row AFTER all moves (hidden by default)
+                                        html += `
+                                            <tr id="chart-row-${categoryIndex}" style="display: none;">
+                                                <td colspan="10" class="p-0">
+                                                    <div class="category-chart-wrapper">
+                                                        <div id="category-chart-${categoryIndex}" class="category-chart-container">
+                                                            <!-- Chart will be dynamically loaded here -->
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
                                     });
                                     return html;
                                 })()}
@@ -3129,10 +3131,12 @@
         let categoryCharts = {};
 
         // Toggle category chart display
-        async function toggleCategoryChart(category, categoryIndex) {
+        async function toggleCategoryChart(category, categoryIndex, propertyCode) {
             const chartRow = document.getElementById(`chart-row-${categoryIndex}`);
             const chartContainer = document.getElementById(`category-chart-${categoryIndex}`);
             const toggleButton = document.getElementById(`chart-toggle-${categoryIndex}`);
+            
+            console.log('toggleCategoryChart called with:', { category, categoryIndex, propertyCode });
             
             if (!chartRow || !chartContainer || !toggleButton) {
                 console.error('Chart elements not found');
@@ -3142,29 +3146,36 @@
             if (chartRow.style.display === 'none') {
                 // Show chart
                 chartRow.style.display = '';
-                toggleButton.innerHTML = '<i class="fas fa-chart-gantt me-1"></i>Hide Chart';
+                toggleButton.innerHTML = '<i class="fas fa-calendar-alt me-1"></i>Hide Chart';
                 toggleButton.classList.remove('btn-outline-primary');
                 toggleButton.classList.add('btn-primary');
                 
                 // Load chart if not already loaded
                 if (!categoryCharts[categoryIndex]) {
-                    await loadCategoryChart(category, categoryIndex);
+                    await loadCategoryChart(category, categoryIndex, propertyCode);
                 }
             } else {
                 // Hide chart
                 chartRow.style.display = 'none';
-                toggleButton.innerHTML = '<i class="fas fa-chart-gantt me-1"></i>Show Chart';
+                toggleButton.innerHTML = '<i class="fas fa-calendar-alt me-1"></i>Show Chart';
                 toggleButton.classList.remove('btn-primary');
                 toggleButton.classList.add('btn-outline-primary');
             }
         }
 
         // Load chart data for specific category
-        async function loadCategoryChart(category, categoryIndex) {
+        async function loadCategoryChart(category, categoryIndex, propertyCode) {
             const chartContainer = document.getElementById(`category-chart-${categoryIndex}`);
             
-            if (!chartContainer || !currentPropertyCode) {
-                console.error('Chart container or property code not available');
+            console.log('loadCategoryChart called with:', { category, categoryIndex, propertyCode });
+            
+            if (!chartContainer) {
+                console.error('Chart container not found:', `category-chart-${categoryIndex}`);
+                return;
+            }
+            
+            if (!propertyCode) {
+                console.error('Property code not provided. Current value:', propertyCode);
                 return;
             }
             
@@ -3189,13 +3200,17 @@
                     allowToggle: false  // We handle toggling at category level
                 });
                 
-                await chart.loadChart(currentPropertyCode);
+                console.log('About to call chart.loadChart with propertyCode:', propertyCode);
+                await chart.loadChart(propertyCode);
+                console.log('chart.loadChart completed. Chart data:', chart.chartData);
                 
                 // Filter chart data to show only this category
-                if (chart.chartData) {
+                if (chart.chartData && chart.chartData.categories) {
+                    console.log('Original categories:', chart.chartData.categories.map(c => c.name));
                     chart.chartData.categories = chart.chartData.categories.filter(
                         cat => cat.name === category
                     );
+                    console.log('Filtered categories for', category, ':', chart.chartData.categories.map(c => c.name));
                     chart.renderChart();
                     
                     // Expand the category by default
@@ -3205,6 +3220,16 @@
                             categoryGrid.classList.add('show');
                         }
                     }, 100);
+                    
+                    console.log(`Chart loaded and rendered for category: ${category}`);
+                } else {
+                    console.error(`No chart data loaded for category: ${category}. Chart data:`, chart.chartData);
+                    chartContainer.innerHTML = `
+                        <div class="chart-error">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No chart data available for ${category}
+                        </div>
+                    `;
                 }
                 
                 // Store chart instance

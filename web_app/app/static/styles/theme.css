@@ -27,6 +27,47 @@ body {
   max-width: 1400px;
 }
 
+/* Custom sidebar width - increase by 60px from standard Bootstrap widths */
+@media (min-width: 768px) {
+  .sidebar-narrow {
+    flex: 0 0 340px;
+    max-width: 340px;
+  }
+  
+  .content-wide {
+    flex: 1 1 auto;
+    max-width: calc(100% - 340px);
+  }
+}
+
+/* Extra small button size for chart toggles */
+.btn-xs {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  border-radius: 0.2rem;
+}
+
+/* Compact category headers */
+.table-secondary td {
+  padding: 0.3rem 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Also target the specific table structure */
+#moves-container .table-secondary td {
+  padding: 0.3rem 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Reduce font size of category names by 2 points */
+.table-secondary td.fw-bold {
+  font-size: calc(1rem - 2px) !important;
+}
+
+#moves-container .table-secondary td.fw-bold {
+  font-size: calc(1rem - 2px) !important;
+}
+
 .container-fluid-edge {
   padding-left: 2rem;
   padding-right: 2rem;
@@ -241,7 +282,79 @@ body {
   border: 1px solid var(--dhp-gray-300);
   border-radius: 8px;
   background: white;
-  overflow: hidden;
+  overflow: hidden; /* Prevent page-wide scrollbar; inner scroller handles overflow */
+}
+
+.category-chart-container {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden; /* prevent expanding moves table */
+  min-width: 0;     /* allow table cell to shrink to viewport */
+}
+
+.category-chart-wrapper {
+  display: block;
+  width: 100%;
+  max-width: calc(100vw - 40px); /* Account for page margins/padding */
+  overflow: hidden; /* hard containment so table can't expand */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+/* Force table cell containing chart to not expand */
+td:has(.category-chart-wrapper),
+.category-chart-wrapper:parent {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Prevent moves container and its parent from expanding beyond viewport */
+#moves-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Constrain the entire defrag moves card */
+.card:has(#moves-container) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Any table inside moves container should not expand beyond viewport */
+#moves-container table,
+#defrag-moves-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  overflow-x: hidden;
+}
+
+/* Exception: Allow booking chart table to expand freely */
+#moves-container .booking-chart-table,
+.category-chart-container .booking-chart-table {
+  width: auto !important;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+
+/* Prevent page-level horizontal scrolling */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Ensure main container doesn't expand */
+.container-fluid {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
 }
 
 .chart-category {
@@ -286,19 +399,36 @@ body {
 
 .chart-grid {
   display: none; /* Hidden by default - shown when expanded */
-  overflow-x: auto;
   background: white;
+  width: 100%;
 }
 
 .chart-grid.show {
   display: block;
 }
 
-.booking-chart-table {
+/* Dedicated scroller so only the chart scrolls horizontally */
+.chart-scroller {
+  display: block;
   width: 100%;
-  min-width: 800px; /* Ensure horizontal scroll on small screens */
+  max-width: 100%;
+  min-width: 0; /* critical to prevent parent table from growing */
+  overflow-x: auto !important; /* Force horizontal scrolling for chart */
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px; /* ensure scrollbar area is visible */
+}
+
+.booking-chart-table {
+  width: max-content; /* Expand to content width so grid can scroll */
+  min-width: 1200px; /* Increase baseline width to ensure scrolling is needed */
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 9px; /* Smaller font for density */
+  display: table; /* Use table display for proper table rendering */
+  white-space: nowrap; /* Prevent cell content wrapping */
+  line-height: 1.1; /* Tighter line spacing */
+  table-layout: auto !important; /* Allow columns to expand to content */
 }
 
 .chart-header-row {
@@ -307,37 +437,49 @@ body {
 }
 
 .chart-header-cell {
-  padding: 8px 4px;
+  padding: 4px 3px; /* Reduced padding for density */
   text-align: center;
   font-weight: 600;
   border-right: 1px solid var(--dhp-gray-300);
   white-space: nowrap;
-  min-width: 35px;
+  min-width: 40px; /* Slightly narrower columns */
+  font-size: 8px; /* Smaller header font */
+  line-height: 1.1;
 }
 
 .chart-unit-cell {
-  padding: 8px 8px;
+  padding: 3px 6px; /* Reduced padding for density */
   font-weight: 500;
   background-color: var(--dhp-gray-50);
   border-right: 2px solid var(--dhp-gray-300);
   border-bottom: 1px solid var(--dhp-gray-200);
-  width: 120px;
-  min-width: 120px;
-  max-width: 120px;
+  width: 140px !important; /* Optimal width to show most unit names */
+  min-width: 140px !important;
+  max-width: 140px !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 9px !important; /* Good readable font size */
+  line-height: 1.2 !important;
+  cursor: help; /* Indicate hover tooltip available */
+}
+
+/* Enhanced tooltip styling for unit cells */
+.chart-unit-cell:hover {
+  background-color: var(--dhp-gray-100);
+  transition: background-color 0.2s ease;
 }
 
 .chart-booking-cell {
-  padding: 2px 4px;
+  padding: 1px 3px; /* Minimal padding for density */
   text-align: center;
-  border-right: 1px solid var(--dhp-gray-300);
-  border-bottom: 1px solid var(--dhp-gray-200);
-  min-height: 24px;
+  border: 1px solid var(--dhp-gray-300) !important; /* Consistent light grey borders for all cells */
+  min-height: 18px; /* Reduced row height */
   vertical-align: middle;
   position: relative;
-  min-width: 35px;
+  min-width: 40px; /* Match reduced header width */
+  font-size: 7px; /* Smallest readable font for booking text */
+  line-height: 1.1;
 }
 
 .chart-booking-cell.empty {
@@ -376,13 +518,13 @@ body {
   font-weight: bold;
 }
 
-.move-suggestion::after {
-  content: "🔄";
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
+/* Fixed bookings (cannot be moved) - clean styling with dart icon only */
+.fixed-booking {
+  font-weight: 600;
+  position: relative;
 }
+
+/* Move suggestion arrows are now handled in JavaScript based on direction */
 
 .fixed-booking::before {
   content: "🎯";
@@ -451,9 +593,9 @@ body {
   }
   
   .chart-unit-cell {
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
+    width: 200px !important; /* Keep unit cell wide on medium screens */
+    min-width: 200px !important;
+    max-width: 200px !important;
   }
   
   .chart-header-cell,
@@ -478,9 +620,9 @@ body {
   }
   
   .chart-unit-cell {
-    width: 80px;
-    min-width: 80px;
-    max-width: 80px;
+    width: 180px !important; /* Keep unit cell reasonably wide even on mobile */
+    min-width: 180px !important;
+    max-width: 180px !important;
     padding: 6px 4px;
   }
   
@@ -514,6 +656,16 @@ body {
   border-width: 5px;
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+}
+
+/* Ensure table cell that contains the chart doesn't allow overflow growth */
+#defrag-moves-table td, #defrag-moves-table th {
+  min-width: 0;
+}
+
+/* Generic: any cell that wraps category-chart-container */
+.category-chart-container:where(*) {
+  min-width: 0;
 }
 
 
