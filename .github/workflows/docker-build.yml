@@ -126,8 +126,8 @@ jobs:
         echo "Testing image: $IMAGE_TAG"
         
         # Basic smoke test
-        docker run --rm "$IMAGE_TAG" python --version
-        docker run --rm "$IMAGE_TAG" ls -la /app/
+        docker run --rm --entrypoint="" "$IMAGE_TAG" python --version
+        docker run --rm --entrypoint="" "$IMAGE_TAG" ls -la /app/
         
         # Test container starts without credentials (web mode)
         timeout 5s docker run --rm \

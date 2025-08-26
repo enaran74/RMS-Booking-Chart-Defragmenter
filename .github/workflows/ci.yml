@@ -206,11 +206,11 @@ jobs:
         docker build -t rms-defragmenter:test .
         
         # Test basic container functionality
-        docker run --rm rms-defragmenter:test python --version
+        docker run --rm --entrypoint="" rms-defragmenter:test python --version
         
         # Test that required files exist in the image
-        docker run --rm rms-defragmenter:test ls -la /app/
-        docker run --rm rms-defragmenter:test python -c "import sys; print(f'Python version: {sys.version}')"
+        docker run --rm --entrypoint="" rms-defragmenter:test ls -la /app/
+        docker run --rm --entrypoint="" rms-defragmenter:test python -c "import sys; print(f'Python version: {sys.version}')"
         
         # Test container environment without full startup (no RMS credentials needed)
         docker run --rm \
