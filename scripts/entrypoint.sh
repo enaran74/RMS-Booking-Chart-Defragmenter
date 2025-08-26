@@ -92,8 +92,14 @@ log_info "Validating environment configuration..."
 
 # Check if this is CLI mode (has arguments and is not web mode)
 CLI_MODE=false
+log_info "Arguments received: $# args: $*"
+log_info "Environment: CI=$CI GITHUB_ACTIONS=$GITHUB_ACTIONS"
+
 if [ "$#" -gt 0 ] && [ "$1" != "web" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ] && [ "$1" != "test" ]; then
     CLI_MODE=true
+    log_info "Initial CLI_MODE detection: true (based on arguments)"
+else
+    log_info "Initial CLI_MODE detection: false (web mode default)"
 fi
 
 # Special handling for CI test environment
@@ -101,6 +107,8 @@ if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
     log_info "CI environment detected - forcing web mode"
     CLI_MODE=false
 fi
+
+log_info "Final CLI_MODE decision: $CLI_MODE"
 
 # Check required RMS credentials (only for CLI mode, web app gets them from user setup)
 if [ "$CLI_MODE" = "true" ]; then
