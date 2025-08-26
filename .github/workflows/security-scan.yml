@@ -1,0 +1,95 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    name: Secret Scanning
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for proper diff
+
+      - name: Run TruffleHog (PR)
+        if: github.event_name == 'pull_request'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --debug --only-verified
+
+      - name: Run TruffleHog (Push - scan recent commits)
+        if: github.event_name == 'push'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          base: ${{ github.event.before }}
+          head: ${{ github.event.after }}
+          extra_args: --debug --only-verified
+        continue-on-error: true
+
+      - name: Run TruffleHog (Fallback - full repo scan)
+        if: failure()
+        run: |
+          # Fallback: scan the entire repository if diff scanning fails
+          docker run --rm -v "$(pwd):/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified --debug || echo "Full repo scan completed with potential findings"
+
+  bandit:
+    runs-on: ubuntu-latest
+    name: Python Security Analysis
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit
+        run: |
+          bandit -r . -f json -o bandit-report.json || true
+          bandit -r . || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  safety:
+    runs-on: ubuntu-latest
+    name: Dependency Vulnerability Scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Run Safety
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+          safety check || true
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: safety-report
+          path: safety-report.json
