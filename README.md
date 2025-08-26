@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.3.0%201%20g4a64bb8%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.3.0%202%20gde57168%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -57,12 +57,14 @@ curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragme
 # Navigate to installation directory
 cd ~/rms-defragmenter
 
-# Configure your RMS credentials and options (single unified .env)
-nano .env
-
 # Start the system
 ./start.sh
+
+# Access the web interface to complete configuration
+open http://your-vps-ip:8000
 ```
+
+The system will automatically guide you through configuration via the **Setup Wizard** on first access.
 
 ### Access the System
 
@@ -170,12 +172,11 @@ curl -fsSL https://raw.githubusercontent.com/enaran74/RMS-Booking-Chart-Defragme
 git clone https://github.com/enaran74/RMS-Booking-Chart-Defragmenter.git
 cd RMS-Booking-Chart-Defragmenter
 
-# Configure credentials (single .env used by web + CLI)
-cp env.example .env
-nano .env
-
 # Start system (auto-detects host networking needs)
 docker compose up -d
+
+# Complete setup via web interface
+# Navigate to http://localhost:8000 and use the Setup Wizard
 ```
 
 #### **Docker Benefits**
@@ -212,13 +213,12 @@ sudo -u postgres createuser defrag_user
 sudo -u postgres createdb defrag_db -O defrag_user
 sudo -u postgres psql -c "ALTER USER defrag_user PASSWORD 'DefragDB2024!';"
 
-# Configure environment
-cp env.example .env
-nano .env  # Edit RMS credentials and database settings
-
 # Start web application
 cd web_app
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Complete setup via web interface
+# Navigate to http://localhost:8000 and use the Setup Wizard
 ```
 
 #### **Native Installation Benefits**
@@ -257,12 +257,43 @@ See [DEVELOPER_README.md](DEVELOPER_README.md) for complete development guide.
 
 ## ⚙️ Configuration
 
-### **Required Configuration**
+### **🎯 Recommended: Web-Based Setup (Easy)**
 
-Edit `.env` file with your RMS credentials (shared by web and CLI):
+The modern approach uses the intuitive **Setup Wizard** and **Setup Page**:
+
+**First-Time Setup (Setup Wizard):**
+1. Start the system: `./start.sh`
+2. Access web interface: `http://your-server:8000`
+3. Complete the **Setup Wizard** with:
+   - RMS API credentials (Agent ID, passwords, Client ID)
+   - Target properties (CALI, SADE, ALL, etc.)
+   - System mode (Training vs Live)
+   - Email notifications (optional)
+4. The system automatically creates and manages the `.env` file
+
+**Ongoing Configuration (Setup Page):**
+- Access **Setup** from the main navigation
+- Modify any configuration setting via web interface
+- All settings are automatically synchronized to `.env`
+- No manual file editing required
+- Real-time validation and testing
+
+**🎯 Benefits:**
+- ✅ **User-friendly**: Guided step-by-step setup
+- ✅ **Validation**: Real-time credential testing
+- ✅ **Error-free**: No typos in manual editing
+- ✅ **Synchronized**: Automatically updates all locations
+- ✅ **Secure**: Proper formatting and escaping
+
+### **⚙️ Alternative: Manual Configuration**
+
+For advanced users who prefer manual configuration:
 
 ```bash
-# RMS API Credentials (REQUIRED)
+# Edit .env file directly (shared by web and CLI)
+nano .env
+
+# Required RMS API credentials:
 AGENT_ID=your_agent_id_here
 AGENT_PASSWORD=your_agent_password_here
 CLIENT_ID=your_client_id_here
