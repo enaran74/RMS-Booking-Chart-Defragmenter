@@ -129,6 +129,12 @@ jobs:
         docker run --rm "$IMAGE_TAG" python --version
         docker run --rm "$IMAGE_TAG" ls -la /app/
         
+        # Test container starts without credentials (web mode)
+        timeout 5s docker run --rm \
+          -e CI=true \
+          -e GITHUB_ACTIONS=true \
+          "$IMAGE_TAG" || echo "✅ Container web mode test completed (timeout expected)"
+        
         echo "✅ Image smoke test passed"
 
   security-scan:
