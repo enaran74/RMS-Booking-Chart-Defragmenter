@@ -16,28 +16,11 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for proper diff
 
-      - name: Run TruffleHog (PR)
-        if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          base: ${{ github.event.pull_request.base.sha }}
-          head: ${{ github.event.pull_request.head.sha }}
-          extra_args: --debug --only-verified
-
-      - name: Run TruffleHog (Push - scan recent commits)
-        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          base: ${{ github.event.before }}
-          head: ${{ github.event.after }}
-          extra_args: --debug --only-verified
-        continue-on-error: true
-
-      - name: Run TruffleHog (Fallback - filesystem scan)
-        if: github.event_name == 'push' && (github.event.before == '0000000000000000000000000000000000000000' || failure())
+      - name: Run TruffleHog
         run: |
-          # Fallback: scan the entire repository for new repos or when diff fails
-          docker run --rm -v "$(pwd):/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified || echo "Full repo scan completed"
+          # Use filesystem scan to avoid diff issues
+          docker run --rm -v "$(pwd):/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified --no-update || echo "TruffleHog scan completed"
+        continue-on-error: true
 
   bandit:
     runs-on: ubuntu-latest

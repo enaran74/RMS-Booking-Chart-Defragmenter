@@ -220,12 +220,14 @@ jobs:
         
         # Test that web app can start without RMS credentials (normal mode)
         timeout 10s docker run --rm \
+          -e CI=true \
+          -e GITHUB_ACTIONS=true \
           -e DB_HOST=localhost \
           -e DB_PORT=5432 \
           -e DB_NAME=test_db \
           -e DB_USER=test_user \
           -e DB_PASSWORD=test_pass \
-          rms-defragmenter:test web || echo "✅ Container startup test completed (timeout expected)"
+          rms-defragmenter:test || echo "✅ Container startup test completed (timeout expected)"
 
   markdown-docs:
     name: Documentation Quality
@@ -241,7 +243,14 @@ jobs:
         node-version: '18'
         
     - name: Install markdownlint
-      run: npm install -g markdownlint-cli
+      run: |
+        # Retry npm install with exponential backoff for rate limiting
+        for i in {1..3}; do
+          npm install -g markdownlint-cli && break || {
+            echo "npm install failed, attempt $i/3"
+            sleep $((i * 5))
+          }
+        done
       
     - name: Lint Markdown files
       run: |
