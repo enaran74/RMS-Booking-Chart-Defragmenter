@@ -410,7 +410,7 @@ class BookingChart {
     createTooltipContent(booking) {
         if (booking.is_ghost_booking) {
             return `
-                <div><strong>👻 Ghost Booking</strong></div>
+                <div><strong>🎯 Move Suggestion Location</strong></div>
                 <div>Guest: ${booking.guest_name}</div>
                 <div>Original Res: ${booking.original_reservation_no}</div>
                 <div>Target Location: ${booking.target_unit}</div>
