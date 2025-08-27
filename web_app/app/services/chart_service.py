@@ -216,6 +216,11 @@ class BookingChartService:
                     
                     # Convert bookings to spans
                     booking_spans = self._create_booking_spans(unit_bookings, date_range, suggestions_lookup)
+                    
+                    # Add ghost bookings for move suggestions targeting this unit
+                    ghost_bookings = self._create_ghost_bookings(unit, date_range, suggestions_lookup, occupancy)
+                    booking_spans.extend(ghost_bookings)
+                    
                     unit_data["bookings"] = booking_spans
                     
                     category_data["units"].append(unit_data)
@@ -383,13 +388,75 @@ class BookingChartService:
         
         return spans
 
+    def _create_ghost_bookings(self, target_unit: str, date_range: List[str], 
+                             suggestions_lookup: Dict[str, Dict], occupancy: Dict[str, Dict]) -> List[Dict]:
+        """Create ghost bookings for move suggestions targeting this unit"""
+        ghost_bookings = []
+        
+        # Find all move suggestions that target this unit
+        for reservation_no, suggestion_info in suggestions_lookup.items():
+            if suggestion_info.get('target_unit') == target_unit:
+                # Find the original booking to get dates and guest name
+                original_booking = self._find_booking_by_reservation(reservation_no, occupancy)
+                if original_booking:
+                    # Create ghost booking with same dates as original
+                    ghost_booking = {
+                        'start_date': original_booking['start_date'],
+                        'end_date': original_booking['end_date'],
+                        'reservation_no': f"GHOST-{reservation_no}",  # Unique identifier
+                        'guest_name': original_booking['guest_name'],
+                        'status': 'Ghost',  # Special status for ghost bookings
+                        'nights': original_booking['nights'],
+                        'is_fixed': False,
+                        'is_move_suggestion': False,  # Not a move suggestion itself
+                        'is_ghost_booking': True,  # New flag for ghost bookings
+                        'original_reservation_no': reservation_no,  # Reference to original
+                        'target_unit': target_unit,
+                        'current_unit': suggestion_info.get('current_unit', ''),
+                        'suggestion_order': suggestion_info.get('order', ''),
+                        'move_score': suggestion_info.get('score', 0),
+                        'color_class': 'status-ghost'  # Special CSS class for ghost styling
+                    }
+                    ghost_bookings.append(ghost_booking)
+        
+        return ghost_bookings
+
+    def _find_booking_by_reservation(self, reservation_no: str, occupancy: Dict[str, Dict]) -> Dict:
+        """Find booking details by reservation number across all units"""
+        for unit_code, unit_bookings in occupancy.items():
+            for date_str, booking in unit_bookings.items():
+                if booking.get('res_no') == reservation_no:
+                    # Found the booking, now calculate its span
+                    start_date = date_str
+                    end_date = date_str
+                    nights = 1
+                    
+                    # Find consecutive nights for the same reservation
+                    date_keys = sorted([d for d, b in unit_bookings.items() if b.get('res_no') == reservation_no])
+                    if date_keys:
+                        start_date = date_keys[0]
+                        end_date = date_keys[-1]
+                        nights = len(date_keys)
+                    
+                    return {
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'guest_name': booking.get('surname', ''),
+                        'status': booking.get('status', ''),
+                        'nights': nights,
+                        'is_fixed': booking.get('fixed', False)
+                    }
+        return None
+
     def _get_status_color_class(self, status: str) -> str:
         """Get CSS color class for booking status (matching CLI Excel colors)"""
         if not status:
             return 'status-confirmed'
         
         status_lower = status.lower()
-        if status_lower == 'arrived':
+        if status_lower == 'ghost':
+            return 'status-ghost'
+        elif status_lower == 'arrived':
             return 'status-arrived'
         elif status_lower == 'confirmed':
             return 'status-confirmed'

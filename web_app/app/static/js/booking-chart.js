@@ -326,6 +326,11 @@ class BookingChart {
             cell.classList.add('move-suggestion');
         }
 
+        // Add ghost booking styling
+        if (booking.is_ghost_booking) {
+            cell.classList.add('ghost-booking');
+        }
+
         // Add fixed booking styling
         if (booking.is_fixed) {
             cell.classList.add('fixed-booking');
@@ -334,8 +339,12 @@ class BookingChart {
         // Set cell content with appropriate text for different booking types
         let cellContent = booking.guest_name;
         
+        // Handle ghost bookings specially
+        if (booking.is_ghost_booking) {
+            cellContent = `(${booking.guest_name})`; // Wrap ghost bookings in parentheses
+        }
         // Handle special booking statuses (matching CLI behavior)
-        if (!booking.guest_name || booking.guest_name.trim() === '') {
+        else if (!booking.guest_name || booking.guest_name.trim() === '') {
             if (booking.status === 'Maintenance') {
                 cellContent = 'Out Of Order'; // Display "Out Of Order" for maintenance bookings
             } else if (booking.status === 'Pencil') {
@@ -399,6 +408,20 @@ class BookingChart {
     }
 
     createTooltipContent(booking) {
+        if (booking.is_ghost_booking) {
+            return `
+                <div><strong>👻 Ghost Booking</strong></div>
+                <div>Guest: ${booking.guest_name}</div>
+                <div>Original Res: ${booking.original_reservation_no}</div>
+                <div>Target Location: ${booking.target_unit}</div>
+                <div>Current Location: ${booking.current_unit}</div>
+                <div>Check-in: ${this.formatDate(booking.start_date)}</div>
+                <div>Check-out: ${this.formatDate(booking.end_date)}</div>
+                <div>Nights: ${booking.nights}</div>
+                <div><em>Shows suggested move location</em></div>
+            `;
+        }
+        
         let content = `
             <div><strong>${booking.guest_name}</strong></div>
             <div>Reservation: ${booking.reservation_no}</div>
