@@ -111,8 +111,8 @@ RUN chmod 0644 /etc/cron.d/defrag-cron && crontab /etc/cron.d/defrag-cron
 # Set proper ownership
 RUN chown -R appuser:appuser /app
 
-# Switch to application user
-USER appuser
+# Note: Container runs as root to enable cron daemon
+# The web application will run as appuser via the entrypoint script
 
 # Expose port
 EXPOSE 8000

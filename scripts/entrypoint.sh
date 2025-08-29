@@ -193,18 +193,17 @@ log_error() {
 # Start the web application
 start_web_app() {
     log_info "Starting FastAPI web application..."
-    cd /app/web
+    cd /app/app/web
     
     # Wait a bit for database migrations if needed
     sleep 5
     
-    # Start the web server
-    exec uvicorn main:app \
+    # Start the web server as appuser for security
+    exec su -s /bin/bash -c "uvicorn main:app \
         --host ${WEB_APP_HOST:-0.0.0.0} \
         --port ${WEB_APP_PORT:-8000} \
         --log-level ${LOG_LEVEL,,} \
-        --access-log \
-        2>&1 | tee -a /app/logs/web_app.log
+        2>&1 | tee -a /app/logs/web_app.log" appuser
 }
 
 # Trap signals for graceful shutdown
