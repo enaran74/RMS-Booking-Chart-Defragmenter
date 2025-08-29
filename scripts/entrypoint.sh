@@ -203,7 +203,7 @@ start_web_app() {
     exec su -s /bin/bash -c "uvicorn main:app \
         --host ${WEB_APP_HOST:-0.0.0.0} \
         --port ${WEB_APP_PORT:-8000} \
-        --log-level ${LOG_LEVEL,,} \
+        --log-level ${LOG_LEVEL:-info} \
         2>&1 | tee -a /app/logs/web_app.log" appuser
 }
 
