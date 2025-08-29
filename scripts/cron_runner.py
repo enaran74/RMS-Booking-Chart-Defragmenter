@@ -32,28 +32,34 @@ def load_config():
     """Load configuration from Docker container .env file"""
     try:
         # Import the web app configuration system
-        from app.core.config import app_config
+        from app.core.config import settings, reload_settings
         
         # Force reload of settings from .env files
-        app_config.settings.reload()
+        reload_settings()
         
         logger.info("Configuration loaded from .env file successfully")
-        return app_config.settings
+        logger.info(f"Agent ID: {settings.AGENT_ID[:4]}... (masked)")
+        logger.info(f"Database: {settings.DB_NAME}")
+        logger.info(f"Training mode: {settings.USE_TRAINING_DB}")
+        
+        return settings
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
         return None
 
 def validate_rms_credentials(settings):
     """Validate RMS credentials from configuration"""
-    required_attrs = ['RMS_AGENT_ID', 'RMS_AGENT_PASSWORD', 'RMS_CLIENT_ID', 'RMS_CLIENT_PASSWORD']
+    required_attrs = ['AGENT_ID', 'AGENT_PASSWORD', 'CLIENT_ID', 'CLIENT_PASSWORD']
     missing = []
     
     for attr in required_attrs:
-        if not getattr(settings, attr, None):
+        value = getattr(settings, attr, None)
+        if not value or value == "SETUP_REQUIRED_VIA_ENVIRONMENT_VARIABLE":
             missing.append(attr)
     
     if missing:
-        logger.error(f"Missing required RMS credentials: {', '.join(missing)}")
+        logger.error(f"Missing or placeholder RMS credentials: {', '.join(missing)}")
+        logger.error("Please configure RMS credentials via the web interface Settings menu")
         return False
     
     return True
@@ -110,10 +116,10 @@ def run_analysis():
     # Set environment for the subprocess - pass RMS credentials
     env = os.environ.copy()
     env.update({
-        'AGENT_ID': settings.RMS_AGENT_ID,
-        'AGENT_PASSWORD': settings.RMS_AGENT_PASSWORD,
-        'CLIENT_ID': settings.RMS_CLIENT_ID,
-        'CLIENT_PASSWORD': settings.RMS_CLIENT_PASSWORD,
+        'AGENT_ID': settings.AGENT_ID,
+        'AGENT_PASSWORD': settings.AGENT_PASSWORD,
+        'CLIENT_ID': settings.CLIENT_ID,
+        'CLIENT_PASSWORD': settings.CLIENT_PASSWORD,
         'PYTHONPATH': '/app:/app/app/original',
         'LOG_LEVEL': getattr(settings, 'LOG_LEVEL', 'INFO')
     })
@@ -155,6 +161,12 @@ def run_analysis():
             logger.info("✅ Defragmentation analysis completed successfully")
         else:
             logger.error(f"❌ Defragmentation analysis failed with exit code {result.returncode}")
+        
+        # Check for known formatting errors in output
+        if "Unknown format code 'f' for object of type 'str'" in result.stderr:
+            logger.warning("⚠️  Known issue: String formatting error in original CLI code")
+            logger.warning("⚠️  Analysis may have partially completed despite the error")
+            logger.warning("⚠️  Check output directory for generated files")
         
         return result.returncode
         
