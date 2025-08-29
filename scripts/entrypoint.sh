@@ -77,10 +77,11 @@ fi
 log_info "🚀 Starting RMS Booking Chart Defragmenter Unified System"
 log_info "Container started at $(date)"
 
-# Set timezone
+# Set timezone via environment variable
 if [ -n "${TZ}" ]; then
     log_info "Setting timezone to ${TZ}"
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+    export TZ="${TZ}"
+    # Note: /etc/timezone and /etc/localtime are managed by the container environment
 fi
 
 # Create required directories

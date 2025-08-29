@@ -26,9 +26,6 @@ services:
     volumes:
       - defrag_logs:/app/logs
       - defrag_output:/app/output
-      # Timezone configuration
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
     depends_on:
       postgres:
         condition: service_healthy
