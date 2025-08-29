@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  defrag-postgres:
+    image: postgres:15-alpine
+    container_name: defrag-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-defrag_db}
+      - POSTGRES_USER=${DB_USER:-defrag_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-SECURE_DB_PASSWORD_REQUIRED}
+      - TZ=Australia/Sydney
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-defrag_user} -d ${DB_NAME:-defrag_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RMS Defragmenter Web Application  
+  defrag-app:
+    image: python:3.11-slim-bookworm
+    container_name: defrag-app
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Australia/Sydney
+      - DB_HOST=localhost
+      - DB_PORT=5433
+      - DB_NAME=${DB_NAME:-defrag_db}
+      - DB_USER=${DB_USER:-defrag_user}
+      - DB_PASSWORD=${DB_PASSWORD:-SECURE_DB_PASSWORD_REQUIRED}
+      - SECRET_KEY=${SECRET_KEY:-SECURE_SECRET_KEY_REQUIRED}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-SECURE_JWT_KEY_REQUIRED}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - WEB_APP_HOST=0.0.0.0
+      - WEB_APP_PORT=8000
+      - PYTHONPATH=/app/web
+    volumes:
+      - ./web_app:/app/web
+      - ./requirements.txt:/app/requirements.txt
+      - ./defrag_analyzer.py:/app/defrag_analyzer.py
+      - ./utils.py:/app/utils.py
+      - defrag_logs:/app/logs
+      - defrag_output:/app/output
+    working_dir: /app/web
+    command: >
+      bash -c "
+        apt-get update && 
+        apt-get install -y --no-install-recommends postgresql-client libmagic1 &&
+        pip install --no-cache-dir -r /app/requirements.txt &&
+        pip install --no-cache-dir slowapi python-magic &&
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    depends_on:
+      defrag-postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  defrag_logs:
+  defrag_output:

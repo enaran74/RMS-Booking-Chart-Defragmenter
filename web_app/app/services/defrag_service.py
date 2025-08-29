@@ -167,7 +167,7 @@ class DefragService:
             logger.info(f"Authenticating with RMS API for {property_code}")
             auth_success = self.rms_client.authenticate()
             if not auth_success:
-                error_msg = f"RMS authentication failed for {property_code}. Check your RMS credentials in config.env"
+                error_msg = f"RMS authentication failed for {property_code}. Please check your RMS credentials in the Settings menu"
                 logger.error(error_msg)
                 await websocket_manager.send_progress_update(
                     property_code,

@@ -193,7 +193,7 @@ log_error() {
 # Start the web application
 start_web_app() {
     log_info "Starting FastAPI web application..."
-    cd /app/app/web
+    cd /app/web
     
     # Wait a bit for database migrations if needed
     sleep 5
@@ -204,7 +204,6 @@ start_web_app() {
         --port ${WEB_APP_PORT:-8000} \
         --log-level ${LOG_LEVEL,,} \
         --access-log \
-        --reload \
         2>&1 | tee -a /app/logs/web_app.log
 }
 

@@ -182,12 +182,13 @@ async def restart_application_containers() -> None:
 def sync_env_files(primary_path: Path, content: str) -> None:
     """Synchronize .env file between host and container locations"""
     try:
-        # Define both locations
-        host_path = Path("/opt/defrag-app/.env")
-        container_path = Path("/app/.env")
+        # Define all required locations
+        host_path = Path("/opt/defrag-app/.env")        # For docker-compose variable substitution
+        container_path = Path("/app/.env")              # Container root location
+        working_dir_path = Path("/app/web/.env")        # Working directory for Pydantic Settings
         
-        # Ensure both locations have the same content
-        for path in [host_path, container_path]:
+        # Ensure all locations have the same content
+        for path in [host_path, container_path, working_dir_path]:
             if path != primary_path:  # Don't write to the same file we just wrote
                 try:
                     path.parent.mkdir(parents=True, exist_ok=True)

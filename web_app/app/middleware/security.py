@@ -34,10 +34,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             csp_directives = [
                 "default-src 'self'",
                 "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
-                "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
+                "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com",
                 "img-src 'self' data: blob:",
-                "font-src 'self' cdn.jsdelivr.net",
-                "connect-src 'self'",
+                "font-src 'self' cdn.jsdelivr.net cdnjs.cloudflare.com",
+                "connect-src 'self' ws: wss:",
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 "form-action 'self'"
@@ -74,7 +74,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = ", ".join(permissions_policy)
         
         # Remove server information
-        response.headers.pop("Server", None)
+        if "Server" in response.headers:
+            del response.headers["Server"]
         
         return response
 

@@ -26,24 +26,9 @@ services:
     volumes:
       - defrag_logs:/app/logs
       - defrag_output:/app/output
-      - ./app/static/uploads:/app/app/static/uploads
       # Timezone configuration
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      # Bind-mount application code to avoid stale templates without rebuilding
-      - ./app:/app/app
-      - ./main.py:/app/main.py
-      - ./defrag_analyzer.py:/app/defrag_analyzer.py
-      - ./utils.py:/app/utils.py
-      - ./holiday_client.py:/app/holiday_client.py
-      - ./school_holiday_client.py:/app/school_holiday_client.py
-      - ./school_holidays.json:/app/school_holidays.json
-      - ./rms_client.py:/app/rms_client.py
-      - ./excel_generator.py:/app/excel_generator.py
-      - ./email_sender.py:/app/email_sender.py
-      # Expose host .env into container so Setup can read it
-      - /opt/defrag-app/.env:/app/.env
-      - /opt/defrag-app/.env:/opt/defrag-app/.env
     depends_on:
       postgres:
         condition: service_healthy

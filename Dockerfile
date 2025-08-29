@@ -55,6 +55,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     # User switching utility for CLI mode
     gosu \
+    # File type detection for security middleware
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -82,12 +84,16 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     websockets schedule croniter \
     pytest pytest-asyncio pytest-cov structlog \
     email-validator \
+    slowapi python-magic \
     && rm -rf /wheels
 
 # Copy application files
 COPY start.py defrag_analyzer.py rms_client.py excel_generator.py \
      email_sender.py holiday_client.py school_holiday_client.py \
      utils.py school_holidays.json ./app/original/
+
+# Copy core modules to root for web app access
+COPY defrag_analyzer.py utils.py ./app/
 
 COPY web_app/main.py ./app/web/
 COPY web_app/app/ ./app/web/app/

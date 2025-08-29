@@ -594,12 +594,13 @@ async def load_properties_into_database(setup_data: SetupWizardData, db: Session
 def sync_env_files_wizard(primary_path: Path, content: str) -> None:
     """Synchronize .env file between host and container locations (wizard version)"""
     try:
-        # Define both locations (same as setup page)
-        host_path = Path("/opt/defrag-app/.env")
-        container_path = Path("/app/.env")
+        # Define all required locations
+        host_path = Path("/opt/defrag-app/.env")        # For docker-compose variable substitution
+        container_path = Path("/app/.env")              # Container root location
+        working_dir_path = Path("/app/web/.env")        # Working directory for Pydantic Settings
         
         # Sync to all locations
-        for path in [host_path, container_path]:
+        for path in [host_path, container_path, working_dir_path]:
             if path != primary_path:  # Don't write to the same file we just wrote
                 try:
                     path.parent.mkdir(parents=True, exist_ok=True)
