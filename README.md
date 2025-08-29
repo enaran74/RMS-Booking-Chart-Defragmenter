@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.3.0%2015%20g6f06a57%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.3.0%2016%20g5551140%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -17,7 +17,7 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 
 ---
 
-## 🆕 What's New in v2.4.0
+## 🆕 What's New in v2.5.0
 
 ### 🚀 **Major New Features**
 
@@ -41,6 +41,16 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 - **🧪 Comprehensive Testing**: Automated CI/CD with security scanning and Docker builds
 - **📖 Enhanced Documentation**: Updated deployment guides and troubleshooting sections
 - **🌐 Production Ready**: Optimized for enterprise deployment with proper logging and monitoring
+
+### 📌 **v2.5.0 Stability Checkpoint**
+
+This version represents a **stable, production-ready release** with all core functionality complete:
+- ✅ **Fully functional RMS move execution** via web interface
+- ✅ **Complete CLI integration** with email notifications and manual execution
+- ✅ **Enterprise-grade security** and deployment pipeline
+- ✅ **Comprehensive documentation** and user guides
+
+**Next**: Holiday analysis integration planned for v2.6.0 to add school holiday optimization to the web interface.
 
 ---
 
