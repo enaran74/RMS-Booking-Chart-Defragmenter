@@ -112,7 +112,7 @@ def run_analysis():
     cmd = build_command(settings)
     logger.info(f"Executing command: {' '.join(cmd)}")
     
-    # Set environment for the subprocess - pass RMS credentials
+    # Set environment for the subprocess - pass RMS credentials and email settings
     env = os.environ.copy()
     env.update({
         'AGENT_ID': settings.AGENT_ID,
@@ -122,6 +122,19 @@ def run_analysis():
         'PYTHONPATH': '/app:/app/app/original',
         'LOG_LEVEL': getattr(settings, 'LOG_LEVEL', 'INFO')
     })
+    
+    # Add email configuration if emails are enabled
+    if getattr(settings, 'ENABLE_EMAILS', False):
+        env.update({
+            'SMTP_SERVER': getattr(settings, 'SMTP_SERVER', 'smtp.gmail.com'),
+            'SMTP_PORT': str(getattr(settings, 'SMTP_PORT', 587)),
+            'SENDER_EMAIL': getattr(settings, 'SENDER_EMAIL', ''),
+            'APP_PASSWORD': getattr(settings, 'APP_PASSWORD', ''),
+            'SENDER_DISPLAY_NAME': getattr(settings, 'SENDER_DISPLAY_NAME', 'DHP Systems'),
+            'TEST_RECIPIENT': getattr(settings, 'TEST_RECIPIENT', ''),
+            'CONSOLIDATED_EMAIL_RECIPIENT': getattr(settings, 'CONSOLIDATED_EMAIL_RECIPIENT', ''),
+            'SEND_CONSOLIDATED_EMAIL': str(getattr(settings, 'SEND_CONSOLIDATED_EMAIL', False)).lower()
+        })
     
     try:
         # Change to the original CLI directory

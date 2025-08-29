@@ -57,7 +57,7 @@ class EmailSender:
         try:
             # Determine recipient email based on training mode
             if is_training_mode:
-                recipient_email = "operations@discoveryparks.com.au"
+                recipient_email = self.test_recipient
                 recipient_display = f"{recipient_email} (training mode)"
             else:
                 recipient_email = property_email if property_email else self.test_recipient
@@ -237,7 +237,7 @@ class EmailSender:
         try:
             # Determine recipient email based on training mode
             if is_training_mode:
-                recipient_email = "operations@discoveryparks.com.au"
+                recipient_email = self.test_recipient
                 recipient_display = f"{recipient_email} (training mode)"
             else:
                 recipient_email = property_email if property_email else self.test_recipient

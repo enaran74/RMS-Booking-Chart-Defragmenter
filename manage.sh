@@ -11,7 +11,12 @@ NC='\033[0m' # No Color
 
 # Configuration
 SERVICE_NAME="bookingchart-defragmenter.service"
-INSTALL_DIR="/opt/bookingchart-defragmenter"
+# Support both Docker and traditional installations
+if [ -d "/opt/defrag-app" ]; then
+    INSTALL_DIR="/opt/defrag-app"
+else
+    INSTALL_DIR="/opt/bookingchart-defragmenter"
+fi
 LOG_DIR="/var/log/bookingchart-defragmenter"
 
 # Function to print colored output

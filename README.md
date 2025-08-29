@@ -1,6 +1,6 @@
 # RMS Booking Chart Defragmenter
 
-![Version](https://img.shields.io/badge/version-v2.3.0%2014%20g485d267%20dirty-blue.svg)
+![Version](https://img.shields.io/badge/version-v2.3.0%2015%20g6f06a57%20dirty-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production-success.svg)
 
-A comprehensive system for optimizing accommodation bookings across multiple properties through automated defragmentation analysis, interactive booking charts, and an intuitive web interface with secure session management.
+A comprehensive system for optimizing accommodation bookings across multiple properties through automated defragmentation analysis, interactive booking charts, and direct RMS move execution via an intuitive web interface with enterprise-grade security.
 
 **Developed by:** Mr Tim Curtis, Operations Systems Manager
 **Organization:** Discovery Holiday Parks
@@ -17,20 +17,30 @@ A comprehensive system for optimizing accommodation bookings across multiple pro
 
 ---
 
-## 🆕 What's New in v2.3.0
+## 🆕 What's New in v2.4.0
 
-### ✨ **Latest Features**
-- **🔐 Automatic Session Management**: 30-minute session timeout with visual countdown
-- **📊 Interactive Booking Charts**: Visual booking chart display with move suggestions
-- **🎯 Enhanced Move Visualization**: Directional arrows showing move suggestions
-- **🧹 Production-Ready Code**: Cleaned debug output for optimal performance
-- **🖥️ Improved UX**: Better state management and interface consistency
+### 🚀 **Major New Features**
 
-### 🔧 **Enhanced Deployment Options**
-- **🐳 Docker-First Approach**: Streamlined containerized deployment
-- **⚡ Fast Development**: Bind-mounted templates for rapid iteration
-- **🌐 Host Network Support**: Automatic detection for VPN/Tailscale environments
-- **🔄 CI/CD Pipeline**: Automated testing, security scanning, and Docker builds
+- **⚡ RMS Move Execution**: Web interface now applies defragmentation moves directly to RMS
+- **🎯 Interactive Move Management**: Select, preview, and apply moves with real-time feedback
+- **📊 Enhanced Booking Charts**: Visual booking chart display with move suggestions and directional arrows
+- **🔄 Live Progress Tracking**: WebSocket-powered real-time progress updates during move execution
+- **📧 Unified Email System**: Consistent email functionality between web interface and scheduled analysis
+
+### 🔧 **System Improvements**
+
+- **⚙️ Unified CLI Integration**: `manage.sh run` now supports all features including email notifications
+- **🐳 Enhanced Docker Deployment**: Improved container management and environment synchronization
+- **🔐 Advanced Security**: Comprehensive security middleware with CSP, rate limiting, and audit logging
+- **📱 Responsive Design**: Better mobile and desktop experience with improved state management
+- **🗄️ Database Persistence**: Move history and user preferences stored in PostgreSQL
+
+### 🛠️ **Developer Experience**
+
+- **🔄 Fast Deploy Pipeline**: Rapid development with bind-mounted code for instant updates
+- **🧪 Comprehensive Testing**: Automated CI/CD with security scanning and Docker builds
+- **📖 Enhanced Documentation**: Updated deployment guides and troubleshooting sections
+- **🌐 Production Ready**: Optimized for enterprise deployment with proper logging and monitoring
 
 ---
 
@@ -105,11 +115,14 @@ The RMS Booking Chart Defragmenter provides a complete solution combining:
 
 ### 🖥️ **Modern Web Interface**
 
-- **Real-Time Management**: Interactive move suggestion management
-- **User Authentication**: Role-based access control
-- **Database Persistence**: PostgreSQL for data integrity
-- **WebSocket Updates**: Live progress tracking
-- **RESTful API**: Full programmatic access
+- **⚡ Direct RMS Integration**: Apply defragmentation moves directly to RMS system
+- **🎯 Interactive Move Management**: Select, preview, and execute moves with real-time feedback
+- **📊 Visual Booking Charts**: Enhanced booking chart display with directional move arrows
+- **🔄 Live Progress Tracking**: WebSocket-powered real-time updates during move execution
+- **🔐 Enterprise Security**: JWT authentication, session management, and comprehensive audit logging
+- **🗄️ Database Persistence**: PostgreSQL for move history and user preferences
+- **📱 Responsive Design**: Optimized for both desktop and mobile interfaces
+- **🌐 RESTful API**: Full programmatic access with comprehensive documentation
 
 ### 🔄 **Production Benefits**
 
@@ -425,9 +438,56 @@ docker exec defrag-app crontab -e
 ```
 
 The CLI uses environment variables from your `.env` file:
+
 - `TARGET_PROPERTIES`: Which properties to analyze (default: ALL)
 - `ENABLE_EMAILS`: Send email notifications (default: false)
 - `USE_TRAINING_DB`: Use training database (default: false)
+
+---
+
+## 🎮 System Operation
+
+### **🌐 Web Interface Usage**
+
+Access the web interface at `http://your-server:8000`:
+
+1. **📊 View Booking Charts**: Interactive charts showing current reservations and fragmentation
+2. **🎯 Load Move Suggestions**: Generate defragmentation recommendations for selected properties
+3. **⚡ Execute Moves**: Select and apply moves directly to the RMS system with real-time progress
+4. **📈 Track Progress**: Monitor move execution via WebSocket updates
+5. **📋 Review History**: View previous moves and analysis results
+6. **⚙️ Manage Settings**: Configure RMS credentials, email settings, and analysis parameters
+
+### **🖥️ Manual CLI Execution**
+
+Run defragmentation analysis manually using the unified command:
+
+```bash
+# Run analysis with current .env settings (emails, training mode, target properties)
+./manage.sh run
+```
+
+**Features of Manual Execution:**
+
+- ✅ **Same Configuration**: Uses identical settings as scheduled cron job
+- ✅ **Email Support**: Sends notifications if `ENABLE_EMAILS=true`
+- ✅ **Training Mode**: Respects `USE_TRAINING_DB` setting for safe testing
+- ✅ **Property Filtering**: Honors `TARGET_PROPERTIES` configuration
+- ✅ **Real-time Output**: Shows progress and results in terminal
+- ✅ **Docker Integration**: Executes inside container with proper environment
+
+### **📅 Scheduled Analysis**
+
+The system automatically runs analysis via cron:
+
+```bash
+# Default schedule: Daily at 2:00 AM
+# View current cron configuration
+docker exec defrag-app crontab -l
+
+# Check cron service status
+docker exec defrag-app service cron status
+```
 
 ---
 

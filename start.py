@@ -538,7 +538,14 @@ class MultiPropertyAnalyzer:
                     property_email,
                     self.use_training_db
                 )
-                self.logger.log_email_operation("Property analysis", property_email or "unknown", email_success)
+                
+                # Determine actual recipient used (same logic as email_sender.py)
+                if self.use_training_db:
+                    actual_recipient = self.email_sender.test_recipient
+                else:
+                    actual_recipient = property_email if property_email else self.email_sender.test_recipient
+                
+                self.logger.log_email_operation("Property analysis", actual_recipient or "unknown", email_success)
             else:
                 self.logger.debug(f"Email notifications disabled - skipping email for {property_name}")
                 print(f"📧 Email notifications disabled - skipping email for {property_name}")
@@ -988,8 +995,10 @@ class MultiPropertyAnalyzer:
             
             if email_success:
                 print(f"✅ Consolidated report email sent successfully")
+                self.logger.log_email_operation("Consolidated report", os.environ.get('CONSOLIDATED_EMAIL_RECIPIENT', 'unknown'), True)
             else:
                 print(f"❌ Consolidated report email failed to send")
+                self.logger.log_email_operation("Consolidated report", os.environ.get('CONSOLIDATED_EMAIL_RECIPIENT', 'unknown'), False)
         else:
             print(f"📧 Consolidated report email: {'Disabled' if not self.enable_emails else 'Not configured'}")
     
