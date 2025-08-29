@@ -44,7 +44,7 @@ def build_command():
     # Base command - use the main CLI interface
     cmd = [
         sys.executable,
-        "/app/start.py"
+        "/app/app/original/start.py"
     ]
     
     # Add target properties
@@ -85,8 +85,8 @@ def run_analysis():
     env['LOG_LEVEL'] = os.getenv('LOG_LEVEL', 'INFO')
     
     try:
-        # Change to the app directory
-        os.chdir('/app')
+        # Change to the original CLI directory
+        os.chdir('/app/app/original')
         
         # Execute the analysis
         start_time = datetime.now()
