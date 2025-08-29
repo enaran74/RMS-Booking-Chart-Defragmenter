@@ -332,6 +332,8 @@ class MultiPropertyAnalyzer:
         print(f"✅ Successful: {successful_analyses}")
         print(f"❌ Failed: {failed_analyses}")
         success_rate = (successful_analyses/total_properties)*100 if total_properties > 0 else 0.0
+        # Ensure success_rate is always a float for formatting
+        success_rate = float(success_rate) if success_rate is not None else 0.0
         print(f"📈 Success Rate: {success_rate:.1f}%")
         
         return successful_analyses > 0
@@ -556,7 +558,7 @@ class MultiPropertyAnalyzer:
             # Log property analysis completion
             total_duration = time.time() - start_time
             self.logger.log_performance_metric("Property analysis", total_duration, f"for {property_name}")
-            self.logger.log_property_analysis_complete(clean_property_code, len(suggestions), output_filename)
+            self.logger.log_property_analysis_complete(clean_property_code, len(suggestions), total_duration)
             self.logger.log_function_exit("_analyze_single_property", excel_success)
             
             return excel_success
