@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RMS Booking Chart Defragmenter - Cron Runner
-Executes the original defragmentation analysis on schedule
+Executes the defragmentation analysis using Docker container environment
 """
 
 import os
@@ -10,6 +10,10 @@ import subprocess
 import logging
 from datetime import datetime
 from pathlib import Path
+
+# Add the app directory to Python path for imports
+sys.path.append('/app')
+sys.path.append('/app/app/web')
 
 # Setup logging
 log_file = "/app/logs/cron_runner.log"
@@ -24,65 +28,95 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def validate_environment():
-    """Validate required environment variables"""
-    required_vars = ['AGENT_ID', 'AGENT_PASSWORD', 'CLIENT_ID', 'CLIENT_PASSWORD']
-    missing_vars = []
+def load_config():
+    """Load configuration from Docker container .env file"""
+    try:
+        # Import the web app configuration system
+        from app.core.config import app_config
+        
+        # Force reload of settings from .env files
+        app_config.settings.reload()
+        
+        logger.info("Configuration loaded from .env file successfully")
+        return app_config.settings
+    except Exception as e:
+        logger.error(f"Failed to load configuration: {e}")
+        return None
+
+def validate_rms_credentials(settings):
+    """Validate RMS credentials from configuration"""
+    required_attrs = ['RMS_AGENT_ID', 'RMS_AGENT_PASSWORD', 'RMS_CLIENT_ID', 'RMS_CLIENT_PASSWORD']
+    missing = []
     
-    for var in required_vars:
-        if not os.getenv(var):
-            missing_vars.append(var)
+    for attr in required_attrs:
+        if not getattr(settings, attr, None):
+            missing.append(attr)
     
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    if missing:
+        logger.error(f"Missing required RMS credentials: {', '.join(missing)}")
         return False
     
     return True
 
-def build_command():
-    """Build the command to execute the defragmentation analysis"""
-    # Base command - use the main CLI interface
+def build_command(settings):
+    """Build the command to execute the defragmentation analysis using Docker container approach"""
+    # Use the original CLI through start.py with proper environment
     cmd = [
         sys.executable,
         "/app/app/original/start.py"
     ]
     
-    # Add target properties
-    target_properties = os.getenv('TARGET_PROPERTIES', 'ALL')
-    cmd.extend(["-p", target_properties])
+    # Add target properties from configuration
+    target_properties = getattr(settings, 'TARGET_PROPERTIES', 'ALL')
+    if target_properties and target_properties.upper() != 'ALL':
+        cmd.extend(["-p", target_properties])
     
     # Add email flag if enabled
-    if os.getenv('ENABLE_EMAILS', 'false').lower() == 'true':
+    if getattr(settings, 'ENABLE_EMAILS', False):
         cmd.append("-e")
     
-    # Add training database flag if enabled
-    if os.getenv('USE_TRAINING_DB', 'false').lower() == 'true':
+    # Add training database flag if enabled  
+    if getattr(settings, 'USE_TRAINING_DB', False):
         cmd.append("-t")
+    
+    logger.info(f"Target properties: {target_properties}")
+    logger.info(f"Email notifications: {getattr(settings, 'ENABLE_EMAILS', False)}")
+    logger.info(f"Training database: {getattr(settings, 'USE_TRAINING_DB', False)}")
     
     return cmd
 
 def run_analysis():
-    """Execute the defragmentation analysis"""
+    """Execute the defragmentation analysis using Docker container configuration"""
     logger.info("=" * 80)
     logger.info("STARTING SCHEDULED DEFRAGMENTATION ANALYSIS")
     logger.info("=" * 80)
     logger.info(f"Execution time: {datetime.now().isoformat()}")
     
-    # Validate environment
-    if not validate_environment():
-        logger.error("Environment validation failed - aborting execution")
+    # Load configuration from .env file
+    settings = load_config()
+    if not settings:
+        logger.error("Configuration loading failed - aborting execution")
         return 1
     
-    # Build command
-    cmd = build_command()
+    # Validate RMS credentials
+    if not validate_rms_credentials(settings):
+        logger.error("RMS credentials validation failed - aborting execution")
+        return 1
+    
+    # Build command with configuration
+    cmd = build_command(settings)
     logger.info(f"Executing command: {' '.join(cmd)}")
     
-    # Set environment for the subprocess
+    # Set environment for the subprocess - pass RMS credentials
     env = os.environ.copy()
-    
-    # Additional environment setup
-    env['PYTHONPATH'] = '/app'
-    env['LOG_LEVEL'] = os.getenv('LOG_LEVEL', 'INFO')
+    env.update({
+        'AGENT_ID': settings.RMS_AGENT_ID,
+        'AGENT_PASSWORD': settings.RMS_AGENT_PASSWORD,
+        'CLIENT_ID': settings.RMS_CLIENT_ID,
+        'CLIENT_PASSWORD': settings.RMS_CLIENT_PASSWORD,
+        'PYTHONPATH': '/app:/app/app/original',
+        'LOG_LEVEL': getattr(settings, 'LOG_LEVEL', 'INFO')
+    })
     
     try:
         # Change to the original CLI directory
