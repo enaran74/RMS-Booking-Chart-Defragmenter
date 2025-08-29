@@ -106,7 +106,7 @@ RUN chmod +x ./scripts/entrypoint.sh ./scripts/health_check.sh
 
 # Set up cron
 COPY scripts/crontab /etc/cron.d/defrag-cron
-RUN chmod 0644 /etc/cron.d/defrag-cron && crontab /etc/cron.d/defrag-cron
+RUN chmod 0644 /etc/cron.d/defrag-cron
 
 # Set proper ownership
 RUN chown -R appuser:appuser /app
