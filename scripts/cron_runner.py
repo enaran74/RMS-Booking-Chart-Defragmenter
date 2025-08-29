@@ -40,7 +40,6 @@ def load_config():
         logger.info("Configuration loaded from .env file successfully")
         logger.info(f"Agent ID: {settings.AGENT_ID[:4]}... (masked)")
         logger.info(f"Database: {settings.DB_NAME}")
-        logger.info(f"Training mode: {settings.USE_TRAINING_DB}")
         
         return settings
     except Exception as e:
