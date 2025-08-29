@@ -373,6 +373,104 @@ class LightweightRMSClient:
             logger.error(f"Error fetching areas/units: {e}")
             return None
     
+    def get_property_areas_for_moves(self, property_id: int) -> Optional[List[Dict[str, Any]]]:
+        """Get areas/units for a specific property optimized for move operations (uses lite model)"""
+        if not self._ensure_authenticated():
+            logger.error("Failed to authenticate with RMS API")
+            return None
+        
+        try:
+            logger.info(f"Fetching areas for move operations - property {property_id}")
+            
+            params = {
+                'propertyId': property_id,
+                'modelType': 'full',  # Use full model to get complete area names for exact matching
+                'limit': 2000,  # Increased limit to get all areas
+                'inactive': 'false'  # Only get active areas to avoid inactive/old units
+            }
+            
+            # Use correct RMS API endpoint for areas
+            url = f"{self.base_url}/areas"
+            self._send_websocket_debug(f"🌐 GET {url} (propertyId={property_id}, modelType=full, limit=2000, inactive=false)")
+            
+            # Enhanced logging: Log the complete request details
+            logger.info(f"🔍 AREAS API REQUEST DETAILS:")
+            logger.info(f"   URL: {url}")
+            logger.info(f"   Params: {params}")
+            logger.info(f"   Headers: {dict(self.session.headers)}")
+            
+            response = self.session.get(url, params=params)
+            
+            # Enhanced logging: Log the complete response details
+            logger.info(f"🔍 AREAS API RESPONSE DETAILS:")
+            logger.info(f"   Status Code: {response.status_code}")
+            logger.info(f"   Response Headers: {dict(response.headers)}")
+            
+            if response.status_code == 200:
+                areas = response.json()
+                logger.info(f"   Response Body Length: {len(response.text)} characters")
+                logger.info(f"   Number of Areas Returned: {len(areas)}")
+                
+                # Log first 5 complete area objects for analysis
+                logger.info(f"🔍 FIRST 5 AREAS FROM RMS API:")
+                for i, area in enumerate(areas[:5]):
+                    logger.info(f"   Area {i+1}: {area}")
+                
+                # Log specific CALI-103 related areas
+                cali_103_areas = [area for area in areas if 'CALI-103' in str(area.get('name', ''))]
+                logger.info(f"🔍 ALL CALI-103 RELATED AREAS:")
+                for area in cali_103_areas:
+                    logger.info(f"   CALI-103 Area: {area}")
+                
+                logger.info(f"✅ Retrieved {len(areas)} areas for property {property_id} (full model)")
+                self._send_websocket_debug(f"📡 Areas Response: {response.status_code} → {len(areas)} areas for move operations")
+                return areas
+            else:
+                logger.error(f"❌ Failed to fetch areas: {response.status_code} - {response.text}")
+                self._send_websocket_debug(f"❌ Areas API failed: {response.status_code} - {response.text[:100]}...")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error fetching areas for moves: {e}")
+            self._send_websocket_debug(f"❌ Areas fetch error: {str(e)}")
+            return None
+    
+    def create_area_name_to_id_mapping(self, areas: List[Dict[str, Any]]) -> Dict[str, int]:
+        """Create a mapping from area names to area IDs for move operations
+        
+        Args:
+            areas: List of area objects from RMS API (lite model)
+            
+        Returns:
+            Dict mapping area names to area IDs, e.g. {"Room 3": 7, "Room 5": 9}
+        """
+        if not areas:
+            logger.warning("No areas provided for name-to-ID mapping")
+            return {}
+        
+        name_to_id = {}
+        for area in areas:
+            area_name = area.get('name')
+            area_id = area.get('id')
+            if area_name and area_id:
+                name_to_id[area_name] = area_id
+            else:
+                logger.warning(f"Skipping area with missing name or id: {area}")
+        
+        logger.info(f"Created area name-to-ID mapping with {len(name_to_id)} entries")
+        self._send_websocket_debug(f"🗺️ Created area mapping: {len(name_to_id)} area names → IDs")
+        
+        # Enhanced Debug: Log all area mappings for troubleshooting
+        logger.info("📋 Complete area name-to-ID mapping:")
+        for name, area_id in sorted(name_to_id.items()):
+            logger.info(f"   '{name}' → {area_id}")
+        
+        # Debug: Log first few mappings for WebSocket
+        for i, (name, area_id) in enumerate(list(name_to_id.items())[:5]):
+            logger.debug(f"   Area mapping {i}: '{name}' → {area_id}")
+        
+        return name_to_id
+    
     async def analyze_simple_defragmentation(self, property_id: int, property_code: str = "UNKNOWN") -> List[Dict[str, Any]]:
         """Perform proper defragmentation analysis using sophisticated algorithms"""
         print(f"🚨🚨🚨 ANALYZE_SIMPLE_DEFRAGMENTATION CALLED FOR {property_id} 🚨🚨🚨")

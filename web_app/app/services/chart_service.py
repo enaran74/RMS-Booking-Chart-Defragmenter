@@ -240,17 +240,22 @@ class BookingChartService:
         
         self.logger.info(f"Building suggestions lookup from {len(suggestions)} suggestions")
         
-        for suggestion in suggestions:
+        for idx, suggestion in enumerate(suggestions):
             # Get current unit from the reservation (same as CLI)
             res_no = suggestion.get('reservation_id')  # Web format uses 'reservation_id'
             if res_no:
                 res_row = reservations_df[reservations_df['Res No'] == res_no]
                 current_unit = res_row.iloc[0]['Unit/Site'] if not res_row.empty else None
                 
+                target_unit = suggestion.get('to_unit', '')
+                current_unit_from_suggestion = suggestion.get('from_unit', '')
+                
+                self.logger.info(f"🔍 Suggestion {idx}: res#{res_no} from '{current_unit_from_suggestion}' to '{target_unit}'")
+                
                 suggestions_lookup[res_no] = {
                     'order': suggestion.get('sequential_order'),
-                    'target_unit': suggestion.get('to_unit'),  # Use 'to_unit' from move suggestions
-                    'current_unit': suggestion.get('from_unit'),  # Use 'from_unit' from move suggestions
+                    'target_unit': target_unit,  # Use 'target_unit' from move suggestions
+                    'current_unit': current_unit_from_suggestion,  # Use 'current_unit' from move suggestions
                     'score': suggestion.get('score', 0),
                     'is_move_suggestion': True
                 }
@@ -393,12 +398,26 @@ class BookingChartService:
         """Create ghost bookings for move suggestions targeting this unit"""
         ghost_bookings = []
         
+        # Debug: Log what we're looking for
+        self.logger.info(f"🔍 Creating ghost bookings for target unit: {target_unit}")
+        self.logger.info(f"🔍 Available suggestions: {len(suggestions_lookup)} total")
+        
         # Find all move suggestions that target this unit
         for reservation_no, suggestion_info in suggestions_lookup.items():
-            if suggestion_info.get('target_unit') == target_unit:
+            suggestion_target = suggestion_info.get('target_unit', '')
+            
+            # Normalize both unit names for comparison (remove extra spaces)
+            normalized_suggestion_target = ' '.join(suggestion_target.split())
+            normalized_target_unit = ' '.join(target_unit.split())
+            
+            self.logger.info(f"🔍 Checking suggestion res#{reservation_no}: target='{suggestion_target}' (normalized: '{normalized_suggestion_target}') vs unit='{target_unit}' (normalized: '{normalized_target_unit}')")
+            
+            if normalized_suggestion_target == normalized_target_unit:
+                self.logger.info(f"✅ Found matching suggestion for {target_unit}: res#{reservation_no}")
                 # Find the original booking to get dates and guest name
                 original_booking = self._find_booking_by_reservation(reservation_no, occupancy)
                 if original_booking:
+                    self.logger.info(f"✅ Found original booking for res#{reservation_no}: {original_booking['guest_name']}")
                     # Create ghost booking with same dates as original
                     ghost_booking = {
                         'start_date': original_booking['start_date'],
@@ -418,7 +437,10 @@ class BookingChartService:
                         'color_class': 'status-ghost'  # Special CSS class for ghost styling
                     }
                     ghost_bookings.append(ghost_booking)
+                else:
+                    self.logger.warning(f"⚠️ Could not find original booking for res#{reservation_no}")
         
+        self.logger.info(f"🔍 Created {len(ghost_bookings)} ghost bookings for {target_unit}")
         return ghost_bookings
 
     def _find_booking_by_reservation(self, reservation_no: str, occupancy: Dict[str, Dict]) -> Dict:

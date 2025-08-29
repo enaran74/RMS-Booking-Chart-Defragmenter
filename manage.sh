@@ -205,6 +205,7 @@ case "$1" in
         sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/core "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
         sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/models "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
         sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/schemas "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
+        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/middleware "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
         sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no web_app/main.py "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/main.py" || true
         sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no web_app/VERSION_INFO "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/VERSION_INFO" || true
         print_info "Restarting app container on VPS..."

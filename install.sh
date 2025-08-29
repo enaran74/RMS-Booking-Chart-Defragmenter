@@ -166,6 +166,17 @@ main() {
     echo "   • 🖥️ Improved UX and interface consistency"
 }
 
+generate_secure_password() {
+    # Generate a cryptographically secure password using /dev/urandom
+    # Use base64 encoding for readability, then clean it up
+    openssl rand -base64 32 | tr -d "=+/" | cut -c1-20
+}
+
+generate_secure_key() {
+    # Generate a cryptographically secure key for secrets
+    openssl rand -hex 32
+}
+
 configure_admin_credentials() {
     print_header "🔐 Admin Account Setup"
     echo ""
@@ -182,28 +193,53 @@ configure_admin_credentials() {
         fi
     done
     
-    # Prompt for admin password
-    while true; do
+    # Generate secure password or allow user input
+    echo ""
+    print_info "Password Options:"
+    echo "1. Generate a secure random password (recommended)"
+    echo "2. Enter your own password"
+    read -p "Choose option (1 or 2, default: 1): " password_option
+    password_option=${password_option:-1}
+    
+    if [ "$password_option" = "1" ]; then
+        admin_pass=$(generate_secure_password)
+        print_status "Generated secure password: $admin_pass"
+        print_warning "IMPORTANT: Save this password in a secure location!"
         echo ""
-        echo "Enter admin password (minimum 8 characters):"
-        read -s admin_pass
-        echo ""
-        echo "Confirm admin password:"
-        read -s admin_pass_confirm
-        echo ""
-        
-        if [ "$admin_pass" != "$admin_pass_confirm" ]; then
-            print_warning "Passwords don't match. Please try again."
-            continue
-        fi
-        
-        if [ ${#admin_pass} -lt 8 ]; then
-            print_warning "Password must be at least 8 characters long. Please try again."
-            continue
-        fi
-        
-        break
-    done
+        read -p "Press Enter to continue after saving the password..."
+    else
+        # Prompt for admin password
+        while true; do
+            echo ""
+            echo "Enter admin password (minimum 12 characters, include uppercase, lowercase, digits, and special characters):"
+            read -s admin_pass
+            echo ""
+            echo "Confirm admin password:"
+            read -s admin_pass_confirm
+            echo ""
+            
+            if [ "$admin_pass" != "$admin_pass_confirm" ]; then
+                print_warning "Passwords don't match. Please try again."
+                continue
+            fi
+            
+            if [ ${#admin_pass} -lt 12 ]; then
+                print_warning "Password must be at least 12 characters long. Please try again."
+                continue
+            fi
+            
+            # Basic password strength check
+            if ! echo "$admin_pass" | grep -q '[A-Z]' || \
+               ! echo "$admin_pass" | grep -q '[a-z]' || \
+               ! echo "$admin_pass" | grep -q '[0-9]' || \
+               ! echo "$admin_pass" | grep -q '[^A-Za-z0-9]'; then
+                print_warning "Password must include uppercase, lowercase, digits, and special characters. Please try again."
+                continue
+            fi
+            
+            break
+        done
+    fi
     
     # Update .env file with admin credentials
     if [ -f .env ]; then

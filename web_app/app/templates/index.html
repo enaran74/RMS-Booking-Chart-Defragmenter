@@ -13,6 +13,30 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/static/styles/theme.css" rel="stylesheet">
     <style>
+        /* Panel header alignment fix - ensure consistent height across all panels */
+        .card-dhp .card-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 2px solid #00a650;
+            min-height: 3.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-dhp .card-header h6 {
+            margin: 0;
+            line-height: 1.4;
+        }
+        
+        .card-dhp .card-header.d-flex {
+            padding: 0.75rem 1rem;
+        }
+        
+        .card-dhp .card-header .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+        
         .move-card {
             transition: transform 0.2s;
         }
@@ -284,11 +308,21 @@
                     <!-- Move Suggestions Display -->
                     <div class="card card-dhp">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
-                                <i class="fas fa-exchange-alt me-2"></i>
-                                Defragmentation Moves
-                                <span id="cache-status" class="badge bg-secondary ms-2">No data loaded</span>
-                            </h6>
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-outline-secondary btn-sm me-3" id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+                                    <i class="fas fa-chevron-left" id="sidebar-toggle-icon"></i>
+                                </button>
+                                <h6 class="mb-0">
+                                    <i class="fas fa-exchange-alt me-2"></i>
+                                    Defragmentation Moves
+                                    <span id="cache-status" class="badge bg-secondary ms-2">No data loaded</span>
+                                </h6>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <button type="button" class="btn btn-success btn-sm" id="apply-selected-moves" onclick="applySelectedMoves()" disabled>
+                                    <i class="fas fa-play me-1"></i>Apply Selected Moves
+                                </button>
+                            </div>
                             
                         </div>
                         <div class="card-body">
@@ -815,27 +849,42 @@
         
         let currentUser = null;
         let authToken = null;
+        let refreshToken = null;
+        let tokenExpiresAt = null;
         
-        // Session management
+        // Session management - Updated for 15-minute tokens with refresh
         let logoutTimer = null;
         let countdownTimer = null;
-        const SESSION_TIMEOUT_MINUTES = 30; // Back to 30 minutes for production
+        let sessionExtensionModal = null;
+        let sessionCheckInterval = null;
+        const SESSION_TIMEOUT_MINUTES = 15; // Updated to match server config
         const SESSION_TIMEOUT_MS = SESSION_TIMEOUT_MINUTES * 60 * 1000;
+        const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes warning
+        const CRITICAL_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes critical warning
         
-        // Start automatic logout timer
-        function startSessionTimer() {
+        // Enhanced session timer with refresh token support
+        function startSessionTimer(expiresAt = null) {
+            console.log('Starting session timer with expires at:', expiresAt);
             
             // Clear any existing timers
             if (logoutTimer) clearTimeout(logoutTimer);
             if (countdownTimer) clearInterval(countdownTimer);
+            if (sessionCheckInterval) clearInterval(sessionCheckInterval);
             
-            // Set the logout timer
-            const loginTime = Date.now();
-            const expiryTime = loginTime + SESSION_TIMEOUT_MS;
+            // Calculate expiry time
+            let expiryTime;
+            if (expiresAt) {
+                tokenExpiresAt = new Date(expiresAt);
+                expiryTime = tokenExpiresAt.getTime();
+            } else {
+                expiryTime = Date.now() + SESSION_TIMEOUT_MS;
+                tokenExpiresAt = new Date(expiryTime);
+            }
             
-            logoutTimer = setTimeout(() => {
-                sessionExpiredLogout();
-            }, SESSION_TIMEOUT_MS);
+            console.log('Token expires at:', tokenExpiresAt);
+            
+            // Set up periodic session check
+            sessionCheckInterval = setInterval(checkSessionStatus, 30000); // Check every 30 seconds
             
             // Show and start countdown timer
             showSessionTimer();
@@ -844,6 +893,162 @@
             countdownTimer = setInterval(() => {
                 updateCountdown(expiryTime);
             }, 1000);
+        }
+
+        // Check session status and handle near-expiry
+        async function checkSessionStatus() {
+            if (!authToken || !tokenExpiresAt) return;
+            
+            const now = Date.now();
+            const timeRemaining = tokenExpiresAt.getTime() - now;
+            
+            console.log('Session check - time remaining:', Math.floor(timeRemaining / 1000), 'seconds');
+            
+            // Check if token is near expiry
+            if (timeRemaining <= WARNING_THRESHOLD_MS && timeRemaining > 0) {
+                if (!sessionExtensionModal || !sessionExtensionModal._element.classList.contains('show')) {
+                    showSessionExtensionModal(timeRemaining);
+                }
+            }
+            
+            // Auto-refresh if very close to expiry (1 minute) and user hasn't been prompted
+            if (timeRemaining <= 60000 && timeRemaining > 30000 && refreshToken) {
+                console.log('Auto-refreshing token due to near expiry');
+                await attemptTokenRefresh();
+            }
+        }
+
+        // Show session extension modal
+        function showSessionExtensionModal(timeRemaining) {
+            const minutes = Math.floor(timeRemaining / 60000);
+            const seconds = Math.floor((timeRemaining % 60000) / 1000);
+            
+            // Create modal if it doesn't exist
+            if (!document.getElementById('sessionExtensionModal')) {
+                const modalHtml = `
+                    <div class="modal fade" id="sessionExtensionModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-clock me-2"></i>Session Expiring Soon
+                                    </h5>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>Your session will expire in <span id="sessionModalCountdown"></span></strong>
+                                    </div>
+                                    <p>Would you like to extend your session?</p>
+                                </div>
+                                <div class="modal-footer justify-content-center">
+                                    <button type="button" class="btn btn-success me-2" onclick="extendSession()">
+                                        <i class="fas fa-clock me-1"></i>Extend Session
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="logoutNow()">
+                                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            }
+            
+            // Update countdown in modal
+            const countdownEl = document.getElementById('sessionModalCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // Show modal
+            sessionExtensionModal = new bootstrap.Modal(document.getElementById('sessionExtensionModal'));
+            sessionExtensionModal.show();
+            
+            // Update modal countdown every second
+            const modalCountdownInterval = setInterval(() => {
+                const now = Date.now();
+                const remaining = tokenExpiresAt.getTime() - now;
+                
+                if (remaining <= 0) {
+                    clearInterval(modalCountdownInterval);
+                    sessionExtensionModal.hide();
+                    sessionExpiredLogout();
+                    return;
+                }
+                
+                const mins = Math.floor(remaining / 60000);
+                const secs = Math.floor((remaining % 60000) / 1000);
+                if (countdownEl) {
+                    countdownEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        // Extend session by refreshing token
+        async function extendSession() {
+            console.log('Extending session...');
+            const success = await attemptTokenRefresh();
+            
+            if (success) {
+                // Hide modal
+                if (sessionExtensionModal) {
+                    sessionExtensionModal.hide();
+                }
+                
+                // Show success message
+                showAlert('Session extended successfully!', 'success');
+            } else {
+                showAlert('Failed to extend session. You will be logged out.', 'danger');
+                setTimeout(() => {
+                    sessionExpiredLogout();
+                }, 2000);
+            }
+        }
+
+        // Attempt to refresh the access token
+        async function attemptTokenRefresh() {
+            if (!refreshToken) {
+                console.log('No refresh token available');
+                return false;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/auth/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refresh_token: refreshToken
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update tokens
+                    authToken = data.access_token;
+                    refreshToken = data.refresh_token;
+                    
+                    // Store in localStorage
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('refreshToken', refreshToken);
+                    
+                    // Restart session timer with new expiry
+                    startSessionTimer(data.expires_at);
+                    
+                    console.log('Token refreshed successfully, new expiry:', data.expires_at);
+                    return true;
+                } else {
+                    console.error('Token refresh failed:', response.status);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error refreshing token:', error);
+                return false;
+            }
         }
         
         // Stop session timer
@@ -923,15 +1128,18 @@
                 if (response.ok) {
                     const data = await response.json();
                     authToken = data.access_token;
-                    // Store token in localStorage for cross-page access
+                    refreshToken = data.refresh_token;
+                    
+                    // Store tokens in localStorage for cross-page access
                     localStorage.setItem('authToken', data.access_token);
+                    localStorage.setItem('refreshToken', data.refresh_token);
                     currentUser = { username };
                     showMainApp();
                     if (window.refreshHeaderUser) { window.refreshHeaderUser(); }
                     loadUserInfo();
                     refreshMoves();
-                    // Start session timer
-                    startSessionTimer();
+                    // Start session timer with token expiry
+                    startSessionTimer(data.expires_at);
                 } else {
                     alert('Login failed. Please check your credentials.');
                 }
@@ -977,10 +1185,13 @@
             stopSessionTimer();
             
             authToken = null;
+            refreshToken = null;
             currentUser = null;
+            tokenExpiresAt = null;
             
-            // Clear token from localStorage
+            // Clear tokens from localStorage
             localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
             
             // Clear all cached data
             window.availableProperties = null;
@@ -1143,7 +1354,32 @@
                    propertyFilter.innerHTML = '<option value="">Select Property</option>';
                    
                    if (userProperties && userProperties.length > 0) {
-                       userProperties.forEach((up, index) => {
+                       // Sort properties alphabetically by display name
+                       const sortedProperties = userProperties.sort((a, b) => {
+                           let nameA = '';
+                           let nameB = '';
+                           
+                           // Extract display names for sorting
+                           if (a.property) {
+                               nameA = a.property.property_name || a.property.property_code || `Property ${a.property_id}`;
+                           } else if (a.property_code) {
+                               nameA = a.property_name || a.property_code;
+                           } else {
+                               nameA = `Property ${a.property_id}`;
+                           }
+                           
+                           if (b.property) {
+                               nameB = b.property.property_name || b.property.property_code || `Property ${b.property_id}`;
+                           } else if (b.property_code) {
+                               nameB = b.property_name || b.property_code;
+                           } else {
+                               nameB = `Property ${b.property_id}`;
+                           }
+                           
+                           return nameA.localeCompare(nameB);
+                       });
+                       
+                       sortedProperties.forEach((up, index) => {
                            
                            const option = document.createElement('option');
                            
@@ -1176,6 +1412,43 @@
                            
                        });
                    }
+                   
+                   // Add property change event listener after populating the dropdown
+                   // Remove any existing listeners first to avoid duplicates
+                   const existingListener = propertyFilter.onPropertyChange;
+                   if (existingListener) {
+                       propertyFilter.removeEventListener('change', existingListener);
+                   }
+                   
+                   // Create the new listener function
+                   const propertyChangeHandler = function() {
+                       console.log('Property filter changed, resetting move suggestions button state');
+                       // Reset to the original "Load Move Suggestions" button when property changes
+                       showLoadButton();
+                       // Clear any existing move suggestions display since we're switching properties
+                       const movesContainer = document.getElementById('moves-container');
+                       if (movesContainer) {
+                           movesContainer.innerHTML = `
+                               <p class="text-muted text-center">
+                                   <i class="fas fa-info-circle me-2"></i>
+                                   Select a property and click "Load Move Suggestions" to begin
+                               </p>
+                           `;
+                       }
+                       // Reset move count
+                       const countElement = document.getElementById('move-count');
+                       if (countElement) {
+                           countElement.textContent = '0';
+                       }
+                       // Update move selection UI to clear any selection states
+                       updateMoveSelectionUI();
+                   };
+                   
+                   // Add the listener and store reference for cleanup
+                   propertyFilter.addEventListener('change', propertyChangeHandler);
+                   propertyFilter.onPropertyChange = propertyChangeHandler;
+                   
+                   console.log('Property change event listener attached successfully');
                }
 
 
@@ -2293,6 +2566,8 @@
                    login(username, password);
                });
 
+               // Property filter change listener moved to populatePropertyFilter function
+
                // Status filter removed; refresh bound to property changes and explicit actions only
                // Note: property-filter change should NOT auto-refresh moves - user must click "Load Move Suggestions"
 
@@ -2470,17 +2745,53 @@
     function handleRmsWebSocketMessage(data) {
         // Update progress bar for progress updates
         if (data.type === 'progress_update' && data.progress !== null && data.progress !== undefined) {
-            const progressBar = document.getElementById('rms-progress-bar');
-            const progressText = document.getElementById('rms-progress-text');
-            const progressPercentage = document.getElementById('rms-progress-percentage');
-            
-            if (progressBar) {
-                progressBar.style.width = `${data.progress}%`;
-                progressBar.style.backgroundColor = '#007bff';
-                progressBar.style.transition = 'width 0.3s ease';
+            // Check if this is a move application progress update
+            if (data.property_code === 'MOVES' && data.step === 'apply_move') {
+                console.log('🔄 Received move progress update:', data);
+                
+                // Update the move application progress bar
+                const moveProgressBar = document.getElementById('apply-progress-bar');
+                const moveProgressStatus = document.getElementById('progress-status');
+                const moveProgressDetails = document.getElementById('progress-details');
+                
+                console.log('📊 Progress bar elements found:', {
+                    moveProgressBar: !!moveProgressBar,
+                    moveProgressStatus: !!moveProgressStatus,
+                    moveProgressDetails: !!moveProgressDetails
+                });
+                
+                if (moveProgressBar) {
+                    console.log(`📈 Updating progress bar: ${data.progress}%`);
+                    moveProgressBar.style.width = `${data.progress}%`;
+                    moveProgressBar.textContent = `${Math.round(data.progress)}%`;
+                    moveProgressBar.style.transition = 'width 0.3s ease';
+                }
+                if (moveProgressStatus) {
+                    // Extract move numbers from the message (e.g., "Starting move 2/5")
+                    const matches = data.message.match(/move (\d+)\/(\d+)/);
+                    if (matches) {
+                        moveProgressStatus.textContent = `${matches[1]}/${matches[2]} moves processed`;
+                        console.log(`📝 Updated status: ${matches[1]}/${matches[2]} moves processed`);
+                    }
+                }
+                if (moveProgressDetails) {
+                    moveProgressDetails.textContent = data.message;
+                    console.log(`💬 Updated details: ${data.message}`);
+                }
+            } else {
+                // Update the RMS analysis progress bar (existing functionality)
+                const progressBar = document.getElementById('rms-progress-bar');
+                const progressText = document.getElementById('rms-progress-text');
+                const progressPercentage = document.getElementById('rms-progress-percentage');
+                
+                if (progressBar) {
+                    progressBar.style.width = `${data.progress}%`;
+                    progressBar.style.backgroundColor = '#007bff';
+                    progressBar.style.transition = 'width 0.3s ease';
+                }
+                if (progressText) progressText.textContent = data.message;
+                if (progressPercentage) progressPercentage.textContent = `${Math.round(data.progress)}%`;
             }
-            if (progressText) progressText.textContent = data.message;
-            if (progressPercentage) progressPercentage.textContent = `${Math.round(data.progress)}%`;
         }
         
         switch (data.type) {
@@ -2723,22 +3034,29 @@
             return;
         }
 
-        try {
-            // Show loading state
-            const refreshBtn = document.getElementById('refresh-moves-btn');
-            const originalText = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
-            refreshBtn.disabled = true;
+        // Show loading state
+        const refreshBtn = document.getElementById('refresh-moves-btn');
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        refreshBtn.disabled = true;
 
-            // Show debug panel immediately and connect to WebSocket
+        try {
+            // Show debug panel immediately
             showRmsDebugPanel();
             addRmsDebugLine('info', 'Preparing to refresh move suggestions...');
             
-            // Connect to WebSocket for real-time updates and wait for connection
-            await connectRmsWebSocketAndWait(propertyFilter);
-            
-            // Now that WebSocket is connected, start the analysis
-            addRmsDebugLine('info', 'Starting fresh move suggestions analysis...');
+            // Try to connect to WebSocket for real-time updates, but don't wait indefinitely
+            try {
+                console.log('Attempting WebSocket connection for refresh...');
+                await Promise.race([
+                    connectRmsWebSocketAndWait(propertyFilter),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('WebSocket connection timeout')), 5000))
+                ]);
+                addRmsDebugLine('info', 'WebSocket connected - starting fresh analysis...');
+            } catch (wsError) {
+                console.warn('WebSocket connection failed or timed out, proceeding without real-time updates:', wsError);
+                addRmsDebugLine('warning', 'WebSocket unavailable - proceeding without real-time updates');
+            }
 
             // Use the property code directly from the option value
             const propertyCode = propertyFilter;
@@ -2767,19 +3085,30 @@
             if (response.ok) {
                 const data = await response.json();
                 console.log('Refresh suggestions API response data:', data);
+                addRmsDebugLine('success', 'Move suggestions refreshed successfully');
 
-                console.log('Refresh suggestions completed - move data will be displayed by loadMoveSuggestions()');
-                // Don't call loadMoveSuggestions() here - it causes duplicate batch creation
+                // After generating fresh suggestions, load and display them
+                console.log('Loading refreshed move suggestions...');
+                setTimeout(async () => {
+                    try {
+                        await loadMoveSuggestions();
+                        console.log('Refreshed move suggestions loaded successfully');
+                    } catch (loadError) {
+                        console.error('Error loading refreshed suggestions:', loadError);
+                        addRmsDebugLine('error', 'Failed to load refreshed suggestions');
+                    }
+                }, 1000); // Small delay to let generation complete
 
-                console.log('Refresh suggestions completed successfully');
             } else {
                 const error = await response.json();
                 console.error('Refresh suggestions API error:', error);
+                addRmsDebugLine('error', `Refresh failed: ${error.detail}`);
                 alert(`Failed to refresh move suggestions: ${error.detail}`);
             }
         } catch (error) {
             console.error('Error refreshing move suggestions:', error);
             console.error('Error stack:', error.stack);
+            addRmsDebugLine('error', `Refresh error: ${error.message}`);
             alert('Failed to refresh move suggestions.');
         } finally {
             // Restore button state
@@ -2896,21 +3225,29 @@
             console.log('DOMContentLoaded event fired');
             // Check if user is already logged in with a valid token
             const savedToken = localStorage.getItem('authToken');
+            const savedRefreshToken = localStorage.getItem('refreshToken');
             console.log('Saved token found:', !!savedToken);
+            console.log('Saved refresh token found:', !!savedRefreshToken);
             
             if (savedToken) {
                 console.log('Attempting auto-login with saved token...');
                 // Verify the token is still valid before auto-login
-                verifyTokenAndLogin(savedToken);
+                verifyTokenAndLogin(savedToken, savedRefreshToken);
             } else {
                 console.log('No saved token, showing login page');
             }
         });
 
         // Verify token and auto-login if valid
-        async function verifyTokenAndLogin(token) {
+        async function verifyTokenAndLogin(token, refreshTokenParam = null) {
             try {
                 console.log('verifyTokenAndLogin called with token:', token ? token.substring(0, 20) + '...' : 'No token');
+                
+                // Set refresh token if provided
+                if (refreshTokenParam) {
+                    refreshToken = refreshTokenParam;
+                }
+                
                 const response = await fetch('/api/v1/auth/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -2925,18 +3262,59 @@
                     showMainApp();
                     loadUserInfo();
                     refreshMoves();
-                    // Start session timer for auto-login
+                    // Start session timer for auto-login - check token expiry
                     startSessionTimer();
                 } else {
-                    // Token is invalid, remove it and show login
+                    // Token is invalid, try refresh if available
+                    if (refreshToken) {
+                        console.log('Access token invalid, attempting refresh...');
+                        const refreshed = await attemptTokenRefresh();
+                        if (refreshed) {
+                            // Retry verification with new token
+                            return await verifyTokenAndLogin(authToken, refreshToken);
+                        }
+                    }
+                    
+                    // Token is invalid and refresh failed, remove tokens and show login
                     localStorage.removeItem('authToken');
+                    localStorage.removeItem('refreshToken');
                     console.log('Invalid token found, showing login page');
                 }
             } catch (error) {
-                // Error occurred, remove token and show login
+                // Error occurred, remove tokens and show login
                 localStorage.removeItem('authToken');
+                localStorage.removeItem('refreshToken');
                 console.error('Error verifying token:', error);
             }
+        }
+
+        // Logout immediately without confirmation
+        function logoutNow() {
+            logout();
+            showLoginPage();
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            // Create alert element
+            const alertId = 'session-alert-' + Date.now();
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                const alertEl = document.getElementById(alertId);
+                if (alertEl) {
+                    alertEl.remove();
+                }
+            }, 5000);
         }
 
         // Force logout and show login screen (useful for testing)
@@ -3062,11 +3440,41 @@
                 }
 
                 const tableHtml = `
+
+                    
+                    <!-- Progress Indicator (hidden by default) -->
+                    <div id="move-application-progress" class="mb-3" style="display: none;">
+                        <div class="card border-primary">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-primary">Applying Moves to RMS</span>
+                                    <span id="progress-status" class="text-muted small"></span>
+                                </div>
+                                <div class="progress mb-2" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         id="apply-progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div id="progress-details" class="small text-muted"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Display Area -->
+                    <div id="move-application-errors" style="display: none;">
+                        <!-- Errors will be displayed here -->
+                    </div>
+                    
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm table-dhp" style="font-size: 0.85rem;">
+                        <table class="table table-sm table-dhp" style="font-size: 0.85rem;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 60px;">Select</th>
+                                    <th style="width: 60px;">
+                                        <div class="d-flex align-items-center">
+                                            <input type="checkbox" id="select-all-moves" onchange="toggleAllMoves(this.checked)" style="margin-right: 5px;">
+                                            <label for="select-all-moves" style="font-size: inherit; font-weight: inherit; margin: 0;">All</label>
+                                        </div>
+                                    </th>
+                                    <th style="width: 70px;">Priority</th>
                                     <th style="width: 50px;">Order</th>
                                     <th style="width: 90px;">From Unit</th>
                                     <th style="width: 90px;">To Unit</th>
@@ -3075,7 +3483,7 @@
                                     <th style="width: 85px;">Check-in</th>
                                     <th style="width: 85px;">Check-out</th>
                                     <th style="width: 70px;">Freed Nights</th>
-                                    <th style="width: 80px;">Importance</th>
+                                    <th style="width: 80px;" class="text-end">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -3118,7 +3526,7 @@
                                         // Add category header row with chart toggle button
                                         html += `
                                             <tr class="table-secondary">
-                                                <td colspan="10" class="fw-bold text-start ps-3">
+                                                <td colspan="11" class="fw-bold text-start ps-3">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <div>
                                                             <i class="${getCategoryIcon(category)} me-2 text-primary"></i>${category}
@@ -3145,14 +3553,31 @@
                                                 }
                                             }
                                             
+                                            // Determine move status and colors
+                                            const moveStatus = move.status || 'pending';
+                                            const statusBadgeClass = getStatusBadgeClass(moveStatus);
+                                            const rowClass = moveStatus === 'applied' ? 'table-success' : moveStatus === 'failed' ? 'table-danger' : '';
+                                            const isDisabled = moveStatus === 'applied' || moveStatus === 'failed';
+                                            
                                             html += `
-                                                <tr>
+                                                <tr class="${rowClass}" id="move-row-${move.reservation_id}">
                                                     <td>
-                                                        <select class="form-select form-select-sm" id="move-select-${move.id}" onchange="handleMoveSelection(${move.id}, this.value)">
-                                                            <option value="">—</option>
-                                                            <option value="accept" class="text-success">✓ Accept</option>
-                                                            <option value="reject" class="text-danger">✗ Reject</option>
-                                                        </select>
+                                                        <div class="form-check">
+                                                            <input type="checkbox" class="form-check-input move-checkbox" 
+                                                                   id="move-checkbox-${move.reservation_id}" 
+                                                                   data-move-id="${move.reservation_id}"
+                                                                   data-reservation-id="${move.reservation_id || ''}"
+                                                                   data-from-unit="${move.from_unit || ''}"
+                                                                   data-to-unit="${move.to_unit || ''}"
+                                                                   data-from-area-id="${move.from_area_id || ''}"
+                                                                   data-to-area-id="${move.to_area_id || ''}"
+                                                                   data-guest="${move.guest || ''}"
+                                                                   onchange="updateMoveSelection()"
+                                                                   ${isDisabled ? 'disabled' : ''}>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        ${move.strategic_importance ? `<span class="badge bg-dhp-${move.strategic_importance.toLowerCase()}">${move.strategic_importance}</span>` : '<span class="text-muted">-</span>'}
                                                     </td>
                                                     <td><small><strong>${categoryMoveNumber}</strong></small></td>
                                                     <td><small><code>${move.from_unit || 'N/A'}</code></small></td>
@@ -3166,9 +3591,9 @@
                                                             ${move.nights_freed || 0}
                                                         </span>
                                                     </td>
-                                                    <td>
-                                                        <span class="badge badge-${getStrategicImportanceColor(move.strategic_importance || 'unknown')}">
-                                                            ${move.strategic_importance || 'N/A'}
+                                                    <td class="text-end">
+                                                        <span class="badge ${statusBadgeClass}" id="status-badge-${move.reservation_id}">
+                                                            ${getStatusDisplayText(moveStatus)}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -3178,7 +3603,7 @@
                                         // Add chart container row AFTER all moves (hidden by default)
                                         html += `
                                             <tr id="chart-row-${categoryIndex}" style="display: none;">
-                                                <td colspan="10" class="p-0">
+                                                <td colspan="11" class="p-0">
                                                     <div class="category-chart-wrapper">
                                                         <div id="category-chart-${categoryIndex}" class="category-chart-container">
                                                             <!-- Chart will be dynamically loaded here -->
@@ -3362,6 +3787,386 @@
                 });
             }
         });
+
+        // Sidebar collapse functionality
+        function toggleSidebar() {
+            const mainApp = document.getElementById('main-app');
+            const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+            
+            if (mainApp && sidebarToggleIcon) {
+                // Toggle the collapsed class
+                mainApp.classList.toggle('sidebar-collapsed');
+                
+                // Update button title and icon direction
+                const isCollapsed = mainApp.classList.contains('sidebar-collapsed');
+                const toggleButton = document.getElementById('sidebar-toggle');
+                
+                if (isCollapsed) {
+                    toggleButton.title = 'Show sidebar';
+                    // Icon rotation is handled by CSS
+                } else {
+                    toggleButton.title = 'Hide sidebar';
+                    // Icon rotation is handled by CSS
+                }
+                
+                // Store the state in localStorage to persist across page reloads
+                localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
+            }
+        }
+
+        // Restore sidebar state on page load
+        function restoreSidebarState() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            const mainApp = document.getElementById('main-app');
+            
+            if (isCollapsed && mainApp) {
+                mainApp.classList.add('sidebar-collapsed');
+                const toggleButton = document.getElementById('sidebar-toggle');
+                if (toggleButton) {
+                    toggleButton.title = 'Show sidebar';
+                }
+            }
+        }
+
+        // Initialize sidebar state when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            restoreSidebarState();
+        });
+
+        // ===== NEW: Move Application Functions =====
+
+        // Helper functions for status display
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'pending': return 'bg-warning text-dark';
+                case 'applied': return 'bg-success';
+                case 'failed': return 'bg-danger';
+                default: return 'bg-secondary';
+            }
+        }
+
+        function getStatusDisplayText(status) {
+            switch (status) {
+                case 'pending': return 'Pending';
+                case 'applied': return 'Applied';
+                case 'failed': return 'Failed';
+                default: return 'Unknown';
+            }
+        }
+
+        // Update move selection count and button states
+        function updateMoveSelection() {
+            const checkboxes = document.querySelectorAll('.move-checkbox:not(:disabled)');
+            const checkedBoxes = document.querySelectorAll('.move-checkbox:checked:not(:disabled)');
+            const selectedCount = checkedBoxes.length;
+            
+            // Update count display
+            const countElement = document.getElementById('selected-count');
+            if (countElement) {
+                countElement.textContent = `${selectedCount} selected`;
+            }
+            
+            // Enable/disable apply button
+            const applyButton = document.getElementById('apply-selected-moves');
+            if (applyButton) {
+                applyButton.disabled = selectedCount === 0;
+            }
+            
+            // Update "select all" checkbox state
+            const selectAllCheckbox = document.getElementById('select-all-moves');
+            if (selectAllCheckbox) {
+                if (selectedCount === 0) {
+                    selectAllCheckbox.indeterminate = false;
+                    selectAllCheckbox.checked = false;
+                } else if (selectedCount === checkboxes.length) {
+                    selectAllCheckbox.indeterminate = false;
+                    selectAllCheckbox.checked = true;
+                } else {
+                    selectAllCheckbox.indeterminate = true;
+                }
+            }
+        }
+
+        // Toggle all moves selection
+        function toggleAllMoves(checked) {
+            const checkboxes = document.querySelectorAll('.move-checkbox:not(:disabled)');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+            });
+            updateMoveSelection();
+        }
+
+        // Collect selected move data
+        function getSelectedMoves() {
+            const checkedBoxes = document.querySelectorAll('.move-checkbox:checked:not(:disabled)');
+            const moves = [];
+            
+            console.log(`Found ${checkedBoxes.length} checked boxes`);
+            
+            checkedBoxes.forEach((checkbox, index) => {
+                const rawAreaId = checkbox.dataset.toAreaId;
+                const parsedAreaId = rawAreaId && rawAreaId !== '' ? parseInt(rawAreaId) : null;
+                
+                const moveData = {
+                    move_id: checkbox.dataset.moveId,
+                    reservation_id: checkbox.dataset.reservationId,
+                    from_unit: checkbox.dataset.fromUnit,
+                    to_unit: checkbox.dataset.toUnit,
+                    from_area_id: checkbox.dataset.fromAreaId && checkbox.dataset.fromAreaId !== '' ? parseInt(checkbox.dataset.fromAreaId) : null,
+                    to_area_id: parsedAreaId,
+                    guest: checkbox.dataset.guest
+                };
+                
+                console.log(`Move ${index + 1} data:`, moveData);
+                
+                // Validate required fields - relaxed validation for debugging
+                if (moveData.reservation_id) {
+                    if (!moveData.to_area_id) {
+                        console.warn(`Move ${index + 1}: Missing area ID mapping - will attempt anyway`, moveData);
+                    }
+                    moves.push(moveData);
+                } else {
+                    console.warn(`Move ${index + 1}: Missing reservation ID:`, moveData);
+                }
+            });
+            
+            console.log(`Collected ${moves.length} valid moves out of ${checkedBoxes.length} selected`);
+            return moves;
+        }
+
+        // Show progress indicator
+        function showMoveProgress(currentMove, totalMoves, message) {
+            const progressContainer = document.getElementById('move-application-progress');
+            const progressBar = document.getElementById('apply-progress-bar');
+            const progressStatus = document.getElementById('progress-status');
+            const progressDetails = document.getElementById('progress-details');
+            
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+            }
+            
+            const percentage = totalMoves > 0 ? Math.round((currentMove / totalMoves) * 100) : 0;
+            
+            if (progressBar) {
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${percentage}%`;
+            }
+            
+            if (progressStatus) {
+                progressStatus.textContent = `${currentMove}/${totalMoves} moves processed`;
+            }
+            
+            if (progressDetails) {
+                progressDetails.textContent = message;
+            }
+        }
+
+        // Hide progress indicator
+        function hideMoveProgress() {
+            const progressContainer = document.getElementById('move-application-progress');
+            if (progressContainer) {
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        // Show error messages
+        function showMoveErrors(errors) {
+            const errorContainer = document.getElementById('move-application-errors');
+            if (!errorContainer || !errors || errors.length === 0) return;
+            
+            const errorHtml = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <h6 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Move Application Errors</h6>
+                    <div class="small">
+                        ${errors.map(error => `
+                            <div class="mb-1">
+                                <strong>Reservation ${error.reservation_id}:</strong> ${error.error}
+                                ${error.current_unit && error.target_unit ? 
+                                    `<br><span class="text-muted">${error.current_unit} → ${error.target_unit}</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            errorContainer.innerHTML = errorHtml;
+            errorContainer.style.display = 'block';
+        }
+
+        // Create detailed confirmation dialog
+        // Removed createMoveConfirmationDialog function - no longer needed
+
+        // Update move status in the UI
+        function updateMoveStatus(moveId, status, message) {
+            const row = document.getElementById(`move-row-${moveId}`);
+            const statusBadge = document.getElementById(`status-badge-${moveId}`);
+            const checkbox = document.getElementById(`move-checkbox-${moveId}`);
+            
+            if (row) {
+                // Update row styling
+                row.className = status === 'applied' ? 'table-success' : 
+                              status === 'failed' ? 'table-danger' : '';
+            }
+            
+            if (statusBadge) {
+                statusBadge.className = `badge ${getStatusBadgeClass(status)}`;
+                statusBadge.textContent = getStatusDisplayText(status);
+                if (message) {
+                    statusBadge.title = message;
+                }
+            }
+            
+            if (checkbox) {
+                // Disable checkbox for applied/failed moves
+                if (status === 'applied' || status === 'failed') {
+                    checkbox.disabled = true;
+                    checkbox.checked = false;
+                }
+            }
+        }
+
+        // Apply selected moves
+        async function applySelectedMoves() {
+            const selectedMoves = getSelectedMoves();
+            
+            if (selectedMoves.length === 0) {
+                alert('Please select at least one move to apply.');
+                return;
+            }
+            
+            // Removed confirmation dialog - user can see details in progress bar
+            
+            await applyMovesToRMS(selectedMoves);
+        }
+
+
+
+        // Main function to apply moves to RMS
+        async function applyMovesToRMS(moves) {
+            if (!authToken) {
+                alert('Authentication token not available. Please refresh the page and try again.');
+                return;
+            }
+            
+            if (!moves || moves.length === 0) {
+                alert('No valid moves to apply.');
+                return;
+            }
+            
+            // Check WebSocket connection status
+            console.log('🔌 WebSocket status when starting moves:', {
+                rmsWebSocket: !!rmsWebSocket,
+                readyState: rmsWebSocket ? rmsWebSocket.readyState : 'N/A',
+                CONNECTING: 0,
+                OPEN: 1,
+                CLOSING: 2,
+                CLOSED: 3
+            });
+            
+            // Reconnect WebSocket if needed for real-time progress updates
+            if (!rmsWebSocket || rmsWebSocket.readyState !== 1) {
+                console.log('🔄 WebSocket not connected, reconnecting for move progress updates...');
+                try {
+                    await connectRmsWebSocketAndWait('MOVES'); // Use 'MOVES' as property code for move operations
+                    console.log('✅ WebSocket reconnected for move operations');
+                } catch (error) {
+                    console.warn('⚠️ Failed to reconnect WebSocket, progress updates may not work:', error);
+                    // Continue anyway - moves will still work, just no real-time progress
+                }
+            }
+            
+            console.log('Applying moves to RMS:', moves);
+            
+            try {
+                // Disable button during operation
+                const applySelectedBtn = document.getElementById('apply-selected-moves');
+                if (applySelectedBtn) applySelectedBtn.disabled = true;
+                
+                // Show progress
+                showMoveProgress(0, moves.length, 'Preparing to apply moves...');
+                
+                // Make API call to apply batch moves
+                const response = await fetch('/api/v1/defrag-moves/apply-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        moves: moves
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Batch apply result:', result);
+                
+                if (response.ok) {
+                    // Process detailed results and simulate progress updates
+                    const detailedResults = result.detailed_results || [];
+                    const errors = [];
+                    
+                    console.log('📊 Simulating progress for', detailedResults.length, 'moves');
+                    
+                    // Simulate progress updates for each move with delay
+                    for (let i = 0; i < detailedResults.length; i++) {
+                        const moveResult = detailedResults[i];
+                        
+                        // Show progress for this move
+                        const progress = ((i + 1) / detailedResults.length) * 100;
+                        const status = moveResult.success ? "✅ Completed" : "❌ Failed";
+                        showMoveProgress(i + 1, detailedResults.length, 
+                            `${status} move ${i + 1}/${detailedResults.length}: ${moveResult.current_unit} → ${moveResult.target_unit}`);
+                        
+                        // Update UI status
+                        if (moveResult.success) {
+                            updateMoveStatus(moveResult.move_id, 'applied', moveResult.message);
+                        } else {
+                            updateMoveStatus(moveResult.move_id, 'failed', moveResult.error);
+                            errors.push({
+                                reservation_id: moveResult.reservation_id,
+                                error: moveResult.error,
+                                current_unit: moveResult.current_unit,
+                                target_unit: moveResult.target_unit
+                            });
+                        }
+                        
+                        // Add small delay to show progress animation
+                        if (i < detailedResults.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                    }
+                    
+                    // Hide progress - final completion
+                    hideMoveProgress();
+                    
+                    // Success feedback now provided by progress bar and visual status updates
+                    console.log(`Move application completed: ${result.successful_moves} successful, ${result.failed_moves} failed, ${result.total_moves} total`);
+                    
+                    // Show errors if any
+                    if (errors.length > 0) {
+                        showMoveErrors(errors);
+                    }
+                    
+                } else {
+                    hideMoveProgress();
+                    console.error('Batch apply failed:', result);
+                    alert(`Failed to apply moves: ${result.detail || 'Unknown error'}`);
+                }
+                
+            } catch (error) {
+                hideMoveProgress();
+                console.error('Error applying moves:', error);
+                alert(`Error applying moves: ${error.message}`);
+            } finally {
+                // Re-enable button
+                const applySelectedBtn = document.getElementById('apply-selected-moves');
+                if (applySelectedBtn) applySelectedBtn.disabled = false;
+                
+                // Update selection count
+                updateMoveSelection();
+            }
+        }
     </script>
     
     <!-- Booking Chart Component -->

@@ -45,17 +45,64 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "access"
+    })
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm="HS256")
     return encoded_jwt
 
-def verify_token(token: str) -> Optional[dict]:
+def create_refresh_token(data: dict) -> str:
+    """Create JWT refresh token with longer expiry"""
+    to_encode = data.copy()
+    # Refresh tokens last 7 days
+    expire = datetime.utcnow() + timedelta(days=7)
+    
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "refresh"
+    })
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm="HS256")
+    return encoded_jwt
+
+def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
     """Verify JWT token and return payload"""
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+        
+        # Verify token type if specified
+        if token_type and payload.get("type") != token_type:
+            return None
+            
         return payload
     except JWTError:
         return None
+
+def get_token_expiry_info(token: str) -> Optional[dict]:
+    """Get token expiry information without full validation"""
+    try:
+        # Decode without verification to get expiry info
+        payload = jwt.decode(token, options={"verify_signature": False})
+        exp = payload.get("exp")
+        iat = payload.get("iat")
+        
+        if exp:
+            exp_datetime = datetime.fromtimestamp(exp)
+            now = datetime.utcnow()
+            time_remaining = exp_datetime - now
+            
+            return {
+                "expires_at": exp_datetime,
+                "issued_at": datetime.fromtimestamp(iat) if iat else None,
+                "time_remaining_seconds": max(0, int(time_remaining.total_seconds())),
+                "is_expired": time_remaining.total_seconds() <= 0,
+                "expires_soon": time_remaining.total_seconds() <= 300  # 5 minutes
+            }
+    except Exception:
+        pass
+    return None
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

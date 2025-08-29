@@ -12,7 +12,10 @@ class UserLogin(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+    expires_in: int  # seconds until access token expires
+    expires_at: str  # ISO timestamp of access token expiry
 
 class UserCreate(BaseModel):
     username: str
@@ -36,6 +39,16 @@ class PasswordChange(BaseModel):
 
 class PasswordReset(BaseModel):
     new_password: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class TokenStatusResponse(BaseModel):
+    valid: bool
+    expires_at: Optional[str] = None
+    expires_in: Optional[int] = None
+    expires_soon: bool = False
+    time_remaining_seconds: int = 0
 
 class UserResponse(BaseModel):
     id: int

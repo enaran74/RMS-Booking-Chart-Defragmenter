@@ -623,19 +623,28 @@ async def get_table_records(
 ):
     """Get records from a specific table"""
     try:
-        # Validate table name to prevent SQL injection
-        allowed_tables = ['users', 'properties', 'user_properties', 'defrag_moves', 'move_batches']
+        # Validate table name to prevent SQL injection - use strict allowlist
+        allowed_tables = {
+            "users": "users",
+            "properties": "properties", 
+            "user_properties": "user_properties",
+            "defrag_moves": "defrag_moves",
+            "move_batches": "move_batches"
+        }
+        
         if table_name not in allowed_tables:
             raise HTTPException(status_code=400, detail=f"Table {table_name} not allowed")
         
+        safe_table_name = allowed_tables[table_name]
+        
         # Get total count
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
+        count_query = text(f"SELECT COUNT(*) FROM {safe_table_name}")  # nosec B608: table_name validated against allowed_tables
         total_result = db.execute(count_query)
         total_count = total_result.scalar()
         
         # Get records with pagination
         # Use parameters for limit/offset values
-        records_query = text(f"SELECT * FROM {table_name} ORDER BY id LIMIT :limit OFFSET :offset")  # nosec B608: table_name validated
+        records_query = text(f"SELECT * FROM {safe_table_name} ORDER BY id LIMIT :limit OFFSET :offset")  # nosec B608: table_name validated
         records_result = db.execute(records_query, {"limit": limit, "offset": offset})
         
         # Convert to list of dictionaries
@@ -686,8 +695,15 @@ async def delete_all_records_from_table(
             detail="Only admin users can delete all records from tables"
         )
     
-    # Validate table name to prevent SQL injection
-    allowed_tables = ["defrag_moves", "move_batches", "properties", "user_properties", "users"]
+    # Validate table name to prevent SQL injection - use strict allowlist
+    allowed_tables = {
+        "defrag_moves": "defrag_moves", 
+        "move_batches": "move_batches", 
+        "properties": "properties", 
+        "user_properties": "user_properties", 
+        "users": "users"
+    }
+    
     if table_name not in allowed_tables:
         raise HTTPException(
             status_code=400,
@@ -705,13 +721,14 @@ async def delete_all_records_from_table(
     try:
         logger.info(f"Admin user {current_user.username} is deleting all records from table {table_name}")
         
-        # Get count before deletion
-        count_query = text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
+        # Get count before deletion using safe table name
+        safe_table_name = allowed_tables[table_name]  # Use validated table name
+        count_query = text(f"SELECT COUNT(*) FROM {safe_table_name}")  # nosec B608: table_name validated against allowed_tables
         count_result = db.execute(count_query)
         record_count = count_result.scalar()
         
-        # Delete all records
-        delete_query = text(f"DELETE FROM {table_name}")  # nosec B608: table_name validated against allowed_tables
+        # Delete all records using safe table name
+        delete_query = text(f"DELETE FROM {safe_table_name}")  # nosec B608: table_name validated against allowed_tables
         db.execute(delete_query)
         db.commit()
         

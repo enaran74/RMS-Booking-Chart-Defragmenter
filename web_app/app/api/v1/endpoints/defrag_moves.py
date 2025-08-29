@@ -396,6 +396,9 @@ async def get_move_suggestions(
                     # Core move data with consistent field names
                     'from_unit': individual_move.get('current_unit', individual_move.get('from_unit', '')),
                     'to_unit': individual_move.get('target_unit', individual_move.get('to_unit', '')),
+                    # NEW: Area IDs for RMS API operations
+                    'from_area_id': individual_move.get('from_area_id'),
+                    'to_area_id': individual_move.get('to_area_id'),
                     'guest': individual_move.get('guest_name', individual_move.get('guest', '')),
                     'reservation_id': individual_move.get('reservation_id', ''),
                     'check_in': individual_move.get('check_in', ''),
@@ -762,3 +765,206 @@ async def get_move_history(
     except Exception as e:
         logger.error(f"Error in get_move_history: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error retrieving move history: {str(e)}")
+
+
+# NEW: Move Application Endpoints
+
+@router.post("/apply-single")
+async def apply_single_move(
+    move_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Apply a single move suggestion to RMS"""
+    try:
+        from app.services.rms_reservation_service import RMSReservationService
+        
+        logger.info(f"User {current_user.username} applying single move")
+        
+        # Validate required fields
+        reservation_id = move_data.get('reservation_id')
+        to_area_id = move_data.get('to_area_id')
+        
+        if not reservation_id:
+            raise HTTPException(status_code=400, detail="Missing reservation_id")
+        if not to_area_id:
+            # Log the issue but provide more details for debugging
+            logger.warning(f"Missing area ID for reservation {reservation_id}. Move data: {move_data}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing target area ID for reservation {reservation_id}. The unit name '{move_data.get('to_unit', 'Unknown')}' could not be mapped to an RMS area ID. This may indicate an issue with the area mapping during move generation."
+            )
+        
+        # Initialize RMS service and apply the move
+        rms_service = RMSReservationService()
+        result = await rms_service.update_reservation_area(
+            reservation_id=reservation_id,
+            target_area_id=to_area_id,
+            username=current_user.username,
+            current_unit_name=move_data.get('from_unit', 'Unknown'),
+            target_unit_name=move_data.get('to_unit', 'Unknown')
+        )
+        
+        # Update move status in database if we have move_id
+        move_id = move_data.get('move_id')
+        if move_id and result['success']:
+            try:
+                move_record = db.query(DefragMove).filter(DefragMove.id == move_id).first()
+                if move_record:
+                    move_record.status = 'applied'
+                    move_record.processed_at = datetime.now()
+                    move_record.processed_by = current_user.id
+                    move_record.is_processed = True
+                    db.commit()
+                    logger.info(f"Updated move record {move_id} status to 'applied'")
+            except Exception as e:
+                logger.warning(f"Failed to update move status in database: {e}")
+                # Don't fail the whole operation for database update issues
+        
+        return {
+            "success": result['success'],
+            "message": result.get('message', result.get('error', 'Unknown result')),
+            "reservation_id": reservation_id,
+            "error_type": result.get('error_type') if not result['success'] else None,
+            "applied_by": current_user.username,
+            "applied_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error applying single move: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to apply move: {str(e)}")
+
+
+@router.post("/apply-batch")
+async def apply_batch_moves(
+    batch_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Apply multiple move suggestions to RMS"""
+    try:
+        from app.services.rms_reservation_service import RMSReservationService
+        
+        moves = batch_data.get('moves', [])
+        if not moves:
+            raise HTTPException(status_code=400, detail="No moves provided")
+        
+        logger.info(f"User {current_user.username} applying batch of {len(moves)} moves")
+        
+        # Initialize RMS service and apply the moves
+        rms_service = RMSReservationService()
+        result = await rms_service.update_multiple_reservations(moves, current_user.username)
+        
+        # Update move statuses in database
+        successful_move_ids = []
+        failed_move_ids = []
+        
+        for detail in result.get('detailed_results', []):
+            move_index = detail.get('move_index', 0)
+            if move_index < len(moves):
+                move_id = moves[move_index].get('move_id')
+                if move_id:
+                    if detail.get('success'):
+                        successful_move_ids.append(move_id)
+                    else:
+                        failed_move_ids.append(move_id)
+        
+        # Update successful moves
+        if successful_move_ids:
+            try:
+                db.query(DefragMove).filter(DefragMove.id.in_(successful_move_ids)).update({
+                    'status': 'applied',
+                    'processed_at': datetime.now(),
+                    'processed_by': current_user.id,
+                    'is_processed': True
+                }, synchronize_session=False)
+                db.commit()
+                logger.info(f"Updated {len(successful_move_ids)} successful moves to 'applied' status")
+            except Exception as e:
+                logger.warning(f"Failed to update successful move statuses: {e}")
+        
+        # Update failed moves
+        if failed_move_ids:
+            try:
+                db.query(DefragMove).filter(DefragMove.id.in_(failed_move_ids)).update({
+                    'status': 'failed',
+                    'processed_at': datetime.now(),
+                    'processed_by': current_user.id,
+                    'is_processed': True
+                }, synchronize_session=False)
+                db.commit()
+                logger.info(f"Updated {len(failed_move_ids)} failed moves to 'failed' status")
+            except Exception as e:
+                logger.warning(f"Failed to update failed move statuses: {e}")
+        
+        return {
+            "success": result['success'],
+            "message": result['message'],
+            "total_moves": result['total_moves'],
+            "successful_moves": result['successful_moves'],
+            "failed_moves": result['failed_moves'],
+            "detailed_results": result['detailed_results'],
+            "applied_by": current_user.username,
+            "applied_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error applying batch moves: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to apply batch moves: {str(e)}")
+
+
+@router.get("/batch/{batch_id}/status")
+async def get_batch_application_status(
+    batch_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the application status of moves in a batch"""
+    try:
+        # Get all moves in the batch
+        moves = db.query(DefragMove).filter(DefragMove.batch_id == batch_id).all()
+        
+        if not moves:
+            raise HTTPException(status_code=404, detail=f"No moves found for batch {batch_id}")
+        
+        # Count statuses
+        status_counts = {
+            'pending': 0,
+            'applied': 0,
+            'failed': 0,
+            'total': len(moves)
+        }
+        
+        move_details = []
+        for move in moves:
+            status_counts[move.status] = status_counts.get(move.status, 0) + 1
+            
+            # Extract individual moves from move_data
+            if move.move_data and 'moves' in move.move_data:
+                for individual_move in move.move_data['moves']:
+                    move_details.append({
+                        'reservation_id': individual_move.get('reservation_id'),
+                        'from_unit': individual_move.get('from_unit'),
+                        'to_unit': individual_move.get('to_unit'),
+                        'guest': individual_move.get('guest'),
+                        'status': move.status,
+                        'processed_at': move.processed_at.isoformat() if move.processed_at else None,
+                        'processed_by': move.processed_by_user.username if move.processed_by_user else None
+                    })
+        
+        return {
+            "success": True,
+            "batch_id": batch_id,
+            "status_summary": status_counts,
+            "move_details": move_details
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting batch status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get batch status: {str(e)}")

@@ -24,6 +24,11 @@ logging.basicConfig(
 
 from app.core import config as app_config
 from app.core.websocket_manager import websocket_manager
+from app.middleware.security import (
+    SecurityHeadersMiddleware, 
+    ErrorSanitizationMiddleware, 
+    setup_rate_limiting
+)
 
 # Import all models to ensure they are registered with SQLAlchemy BEFORE creating the engine
 from app.models.user import User
@@ -50,7 +55,7 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
+# Add security middleware (order matters - CORS first, then security)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=app_config.settings.CORS_ORIGINS,
@@ -58,6 +63,22 @@ app.add_middleware(
     allow_methods=app_config.settings.CORS_ALLOW_METHODS,
     allow_headers=app_config.settings.CORS_ALLOW_HEADERS,
 )
+
+# Add security headers middleware
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    enable_csp=True,
+    enable_hsts=app_config.settings.DEBUG is False  # Only enable HSTS in production
+)
+
+# Add error sanitization middleware
+app.add_middleware(
+    ErrorSanitizationMiddleware,
+    debug_mode=app_config.settings.DEBUG
+)
+
+# Setup rate limiting
+rate_limiter = setup_rate_limiting(app)
 
 # Security
 security = HTTPBearer()
@@ -144,17 +165,7 @@ async def health_check():
         "version": "1.0.0"
     }
 
-@app.get("/static/images/dhp_logo_white.svg")
-async def serve_logo():
-    """Serve the DHP logo directly"""
-    logo_path = "app/static/images/dhp_logo_white.svg"
-    return FileResponse(logo_path, media_type="image/svg+xml")
 
-@app.get("/static/images/dhp_circle_logo.svg")
-async def serve_circle_logo():
-    """Serve the DHP circular logo directly for favicon"""
-    logo_path = "app/static/images/dhp_circle_logo.svg"
-    return FileResponse(logo_path, media_type="image/svg+xml")
 
 @app.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: HTTPAuthorizationCredentials = Depends(security)):

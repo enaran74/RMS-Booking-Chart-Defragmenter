@@ -47,25 +47,119 @@ body {
   border-radius: 0.2rem;
 }
 
-/* Compact category headers */
+/* ========================================
+   DEFRAGMENTATION MOVES CATEGORY HEADERS
+   ======================================== */
+
+/* Style category headers to match main theme */
+.table-secondary {
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  border: none !important;
+}
+
 .table-secondary td {
-  padding: 0.3rem 0.75rem !important;
+  padding: 0.4rem 0.75rem !important;
   line-height: 1.2 !important;
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-bottom: 1px solid var(--dhp-brand-green) !important;
 }
 
 /* Also target the specific table structure */
-#moves-container .table-secondary td {
-  padding: 0.3rem 0.75rem !important;
-  line-height: 1.2 !important;
+#moves-container .table-secondary {
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  border: none !important;
 }
 
-/* Reduce font size of category names by 2 points */
+#moves-container .table-secondary td {
+  padding: 0.4rem 0.75rem !important;
+  line-height: 1.2 !important;
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-bottom: 1px solid var(--dhp-brand-green) !important;
+}
+
+/* Category header text styling */
 .table-secondary td.fw-bold {
-  font-size: calc(1rem - 2px) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: white !important;
 }
 
 #moves-container .table-secondary td.fw-bold {
-  font-size: calc(1rem - 2px) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: white !important;
+}
+
+/* Icon styling within category headers */
+.table-secondary .text-primary {
+  color: white !important;
+}
+
+#moves-container .table-secondary .text-primary {
+  color: white !important;
+}
+
+/* Button styling within category headers */
+.table-secondary .btn-outline-primary {
+  border-color: white !important;
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.table-secondary .btn-outline-primary:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: white !important;
+  color: white !important;
+}
+
+#moves-container .table-secondary .btn-outline-primary {
+  border-color: white !important;
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+#moves-container .table-secondary .btn-outline-primary:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: white !important;
+  color: white !important;
+}
+
+/* NUCLEAR OPTION: Completely disable hover effects for category headers */
+/* Use CSS specificity and multiple approaches to override Bootstrap */
+
+/* Method 1: Override all possible Bootstrap hover combinations */
+.table tbody tr.table-secondary:hover,
+.table tbody tr.table-secondary:hover td,
+.table-hover tbody tr.table-secondary:hover,
+.table-hover tbody tr.table-secondary:hover td,
+table.table tbody tr.table-secondary:hover,
+table.table tbody tr.table-secondary:hover td,
+table.table-hover tbody tr.table-secondary:hover,
+table.table-hover tbody tr.table-secondary:hover td,
+.table.table-hover tbody tr.table-secondary:hover,
+.table.table-hover tbody tr.table-secondary:hover td {
+  background-color: var(--dhp-brand-blue) !important;
+  background-image: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  color: white !important;
+}
+
+/* Method 2: Reset any background variations */
+.table tbody tr.table-secondary:hover * {
+  background: inherit !important;
+  color: inherit !important;
+}
+
+/* Method 3: Force all category header rows to ignore hover */
+tr[class*="table-secondary"]:hover,
+tr[class*="table-secondary"]:hover td {
+  background: linear-gradient(135deg, var(--dhp-brand-blue) 0%, var(--dhp-brand-teal) 100%) !important;
+  background-color: transparent !important;
+  color: white !important;
 }
 
 .container-fluid-edge {
@@ -160,11 +254,44 @@ body {
 .navbar-dhp .navbar-nav {
   display: flex !important;
   align-items: center !important; /* Center align with avatar */
+  overflow: visible !important;
 }
 
 /* Center align navbar elements */
 .navbar-dhp .navbar-nav > * {
   align-self: center;
+}
+
+/* Dropdown menu positioning and z-index */
+.navbar-dhp .dropdown-menu {
+  position: absolute !important;
+  z-index: 9999 !important;
+  top: 100% !important;
+  left: auto !important;
+  right: 0 !important;
+  transform: none !important;
+  margin-top: 0.125rem !important;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure dropdown container doesn't constrain the menu */
+.navbar-dhp .dropdown {
+  position: relative !important;
+}
+
+/* Override any overflow constraints on navbar */
+.navbar-dhp {
+  overflow: visible !important;
+}
+
+/* Critical: Override global container-fluid overflow constraints for navbar dropdown */
+.navbar-dhp .container-fluid,
+.navbar-dhp .container-fluid-edge {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
 }
 
 /* Buttons */
@@ -220,6 +347,27 @@ body {
 .card-dhp .card-header {
   background: linear-gradient(135deg, var(--dhp-gray-100) 0%, var(--dhp-gray-200) 100%);
   border-bottom: 2px solid var(--dhp-brand-green);
+  min-height: 3.5rem; /* Ensure consistent header height */
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure simple headers (like Admin Setup) are properly aligned */
+.card-dhp .card-header h6 {
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Ensure complex headers (like Defragmentation Moves) maintain proper spacing */
+.card-dhp .card-header.d-flex {
+  padding: 0.75rem 1rem; /* Maintain standard Bootstrap padding */
+}
+
+/* Reduce button size in headers to fit the constrained height */
+.card-dhp .card-header .btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 /* Tables */
@@ -253,6 +401,11 @@ body {
 .badge-dhp-high { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
 .badge-dhp-medium { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); }
 .badge-dhp-low { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+
+/* Background color versions for Bootstrap badge classes */
+.bg-dhp-high { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important; color: white !important; }
+.bg-dhp-medium { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important; color: black !important; }
+.bg-dhp-low { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important; color: white !important; }
 
 /* Utilities */
 .section-title-dhp {
@@ -676,6 +829,60 @@ html, body {
 /* Generic: any cell that wraps category-chart-container */
 .category-chart-container:where(*) {
   min-width: 0;
+}
+
+/* ========================================
+   SIDEBAR COLLAPSE FUNCTIONALITY
+   ======================================== */
+
+/* Sidebar toggle button styling */
+#sidebar-toggle {
+  transition: all 0.3s ease;
+  border-color: var(--dhp-brand-blue);
+  color: var(--dhp-brand-blue);
+}
+
+#sidebar-toggle:hover {
+  background-color: var(--dhp-brand-blue);
+  border-color: var(--dhp-brand-blue);
+  color: white;
+}
+
+#sidebar-toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Collapsed state styles */
+.sidebar-collapsed .sidebar-narrow {
+  display: none !important;
+}
+
+.sidebar-collapsed .content-wide {
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+}
+
+/* Rotate arrow icon when collapsed */
+.sidebar-collapsed #sidebar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* Smooth transitions for sidebar and content */
+.sidebar-narrow {
+  transition: all 0.3s ease;
+}
+
+.content-wide {
+  transition: all 0.3s ease;
+}
+
+/* Ensure proper layout on different screen sizes */
+@media (max-width: 768px) {
+  /* On mobile, sidebar is already hidden by default in most layouts */
+  .sidebar-collapsed .content-wide {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 

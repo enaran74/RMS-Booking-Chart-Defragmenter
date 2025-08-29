@@ -11,37 +11,37 @@ python-dateutil>=2.8.2
 pytz>=2023.3
 
 # Web Framework
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-jinja2>=3.1.6
-python-multipart>=0.0.18
-aiofiles>=23.2.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+jinja2==3.1.6
+python-multipart==0.0.18
+aiofiles==23.2.0
 
 # Database & ORM
 sqlalchemy==2.0.23
-psycopg2-binary>=2.9.7
+psycopg2-binary==2.9.9
 alembic==1.12.1
 
 # Authentication & Security
-PyJWT>=2.8.0
-cryptography>=41.0.0
+PyJWT==2.8.0
+cryptography==41.0.7
 passlib[bcrypt]==1.7.4
-bcrypt>=4.0.1
+bcrypt==4.1.2
 
 # HTTP Clients & APIs
-requests>=2.31.0
-httpx>=0.25.2
-aiohttp>=3.9.1
+requests==2.31.0
+httpx==0.25.2
+aiohttp==3.9.1
 
 # Configuration & Settings
 pydantic==2.5.0
 pydantic-settings==2.1.0
-python-dotenv>=1.0.0
-email-validator>=2.1.0
+python-dotenv==1.0.0
+email-validator==2.1.0
 
 # File Format Support
-xlsxwriter>=3.1.9
-python-docx>=0.8.11
+xlsxwriter==3.1.9
+python-docx==0.8.11
 
 # CLI & Utilities
 click>=8.1.7
@@ -63,3 +63,7 @@ pytest-cov>=4.1.0
 
 # Monitoring & Logging
 structlog>=23.1.0
+
+# Rate Limiting & Security
+slowapi>=0.1.9
+python-magic>=0.4.27
