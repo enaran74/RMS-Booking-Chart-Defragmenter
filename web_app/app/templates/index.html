@@ -1435,6 +1435,8 @@
                                </p>
                            `;
                        }
+                       // Clear RMS debug panel when property changes
+                       clearRmsDebugPanel();
                        // Reset move count
                        const countElement = document.getElementById('move-count');
                        if (countElement) {
@@ -2920,6 +2922,29 @@
         document.getElementById('rms-debug-panel').style.display = 'block';
     }
     
+    function clearRmsDebugPanel() {
+        // Clear the debug output
+        const debugOutput = document.getElementById('rms-debug-output');
+        debugOutput.innerHTML = `
+            <div class="debug-line">
+                <span class="timestamp">[Ready]</span>
+                <span class="message">Ready to connect to RMS API...</span>
+            </div>
+        `;
+        
+        // Reset progress bar
+        const progressBar = document.getElementById('rms-progress-bar');
+        const progressText = document.getElementById('rms-progress-text');
+        const progressPercentage = document.getElementById('rms-progress-percentage');
+        
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.textContent = 'Initializing...';
+        if (progressPercentage) progressPercentage.textContent = '0%';
+        
+        // Reset status badge
+        updateRmsStatus('Disconnected', 'bg-secondary');
+    }
+    
     function closeRmsDebugPanel() {
         document.getElementById('rms-debug-panel').style.display = 'none';
         disconnectRmsWebSocket();
@@ -2944,7 +2969,8 @@
             loadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
             loadBtn.disabled = true;
 
-            // Show debug panel immediately and connect to WebSocket
+            // Clear and show debug panel immediately
+            clearRmsDebugPanel();
             showRmsDebugPanel();
             addRmsDebugLine('info', 'Preparing to load move suggestions...');
             
@@ -3043,7 +3069,8 @@
         refreshBtn.disabled = true;
 
         try {
-            // Show debug panel immediately
+            // Clear and show debug panel immediately
+            clearRmsDebugPanel();
             showRmsDebugPanel();
             addRmsDebugLine('info', 'Preparing to refresh move suggestions...');
             
@@ -3490,18 +3517,31 @@
                             </thead>
                             <tbody>
                                 ${(() => {
-                                    // Group moves by category
-                                    const groupedMoves = {};
+                                    // Group moves by two-tier system: Move Type -> Accommodation Category
+                                    const holidayMoves = {};
+                                    const regularMoves = {};
+                                    
                                     data.moves.forEach((move, index) => {
-                                        const category = move.category || 'Uncategorized';
-                                        if (!groupedMoves[category]) {
-                                            groupedMoves[category] = [];
+                                        const accommodationCategory = move.category || 'Uncategorized';
+                                        const moveWithIndex = { ...move, originalIndex: index };
+                                        
+                                        if (move.is_holiday_move) {
+                                            // Group holiday moves by accommodation category
+                                            if (!holidayMoves[accommodationCategory]) {
+                                                holidayMoves[accommodationCategory] = [];
+                                            }
+                                            holidayMoves[accommodationCategory].push(moveWithIndex);
+                                        } else {
+                                            // Group regular moves by accommodation category
+                                            if (!regularMoves[accommodationCategory]) {
+                                                regularMoves[accommodationCategory] = [];
+                                            }
+                                            regularMoves[accommodationCategory].push(moveWithIndex);
                                         }
-                                        groupedMoves[category].push({ ...move, originalIndex: index });
                                     });
                                     
                                     // Function to get appropriate icon for accommodation category
-                                    function getCategoryIcon(category) {
+                                    function getAccommodationIcon(category) {
                                         const categoryLower = category.toLowerCase();
                                         if (categoryLower.includes('cabin') || categoryLower.includes('cottage')) {
                                             return 'fas fa-home';
@@ -3522,32 +3562,26 @@
                                         }
                                     }
                                     
-                                    // Generate HTML for each category
+                                    // Function to get main section icon
+                                    function getMainSectionIcon(sectionType) {
+                                        if (sectionType === 'holiday') {
+                                            return 'fas fa-calendar-plus';
+                                        } else {
+                                            return 'fas fa-clock';
+                                        }
+                                    }
+                                    
+                                    // Generate HTML with two-tier structure
                                     let html = '';
-                                    Object.keys(groupedMoves).sort().forEach((category, categoryIndex) => {
-                                        // Add category header row with chart toggle button
-                                        html += `
-                                            <tr class="table-secondary">
-                                                <td colspan="11" class="fw-bold text-start ps-3">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <i class="${getCategoryIcon(category)} me-2 text-primary"></i>${category}
-                                                        </div>
-                                                                                                <button type="button" class="btn btn-xs btn-outline-primary" 
-                                                onclick="toggleCategoryChart('${category}', ${categoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
-                                                id="chart-toggle-${categoryIndex}">
-                                            <i class="fas fa-calendar-alt me-1"></i>
-                                            Show Chart
-                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
+                                    let globalCategoryIndex = 0;
+                                    
+                                    // Helper function to render moves for a category
+                                    function renderMovesForCategory(moves, categoryName, categoryIndex) {
+                                        let categoryHtml = '';
                                         
-                                        // Add moves for this category with category-relative ordering
-                                        groupedMoves[category].forEach((move, categoryIndex) => {
+                                        moves.forEach((move, moveIndex) => {
                                             // Extract the category-relative move number from sequential_order (e.g., "1.3" -> "3")
-                                            let categoryMoveNumber = categoryIndex + 1; // fallback
+                                            let categoryMoveNumber = moveIndex + 1; // fallback
                                             if (move.sequential_order && move.sequential_order.includes('.')) {
                                                 const parts = move.sequential_order.split('.');
                                                 if (parts.length === 2) {
@@ -3561,7 +3595,7 @@
                                             const rowClass = moveStatus === 'applied' ? 'table-success' : moveStatus === 'failed' ? 'table-danger' : '';
                                             const isDisabled = moveStatus === 'applied' || moveStatus === 'failed';
                                             
-                                            html += `
+                                            categoryHtml += `
                                                 <tr class="${rowClass}" id="move-row-${move.reservation_id}">
                                                     <td>
                                                         <div class="form-check">
@@ -3603,7 +3637,7 @@
                                         });
                                         
                                         // Add chart container row AFTER all moves (hidden by default)
-                                        html += `
+                                        categoryHtml += `
                                             <tr id="chart-row-${categoryIndex}" style="display: none;">
                                                 <td colspan="11" class="p-0">
                                                     <div class="category-chart-wrapper">
@@ -3614,7 +3648,113 @@
                                                 </td>
                                             </tr>
                                         `;
-                                    });
+                                        
+                                        return categoryHtml;
+                                    }
+                                    
+                                    // 1. PEAK PERIOD HOLIDAYS SECTION
+                                    if (Object.keys(holidayMoves).length > 0) {
+                                        // Get unique holiday period names from the moves
+                                        const holidayPeriods = new Set();
+                                        Object.values(holidayMoves).flat().forEach(move => {
+                                            if (move.holiday_period) {
+                                                holidayPeriods.add(move.holiday_period);
+                                            }
+                                        });
+                                        const periodNames = Array.from(holidayPeriods).join(', ');
+                                        
+                                        // Main Peak Period Holidays header with amber background
+                                        html += `
+                                            <tr style="background-color: #ffc107; color: #000;">
+                                                <td colspan="11" class="fw-bold text-start ps-2" style="font-size: 1.1rem;">
+                                                    <i class="${getMainSectionIcon('holiday')} me-2 text-dark"></i>Upcoming Peak Periods (Public Holidays or School Holidays)
+                                                    ${periodNames ? `<span class="fst-italic fw-normal ms-3" style="font-size: 0.85rem;">${periodNames}</span>` : ''}
+                                                </td>
+                                            </tr>
+                                        `;
+                                        
+                                        // Add subsections for each accommodation category within holidays
+                                        Object.keys(holidayMoves).sort().forEach((accommodationCategory) => {
+                                            // Accommodation category header (subsection)
+                                            html += `
+                                                <tr class="table-secondary">
+                                                    <td colspan="11" class="fw-bold text-start ps-4">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="${getAccommodationIcon(accommodationCategory)} me-2 text-primary"></i>${accommodationCategory}
+                                                            </div>
+                                                            <div class="btn-group" role="group">
+                                                                <button type="button" class="btn btn-xs btn-outline-primary" 
+                                                                    onclick="toggleCategoryChart('${accommodationCategory}', ${globalCategoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
+                                                                    id="chart-toggle-${globalCategoryIndex}">
+                                                                    <i class="fas fa-calendar-alt me-1"></i>
+                                                                    Show Chart
+                                                                </button>
+                                                                <button type="button" class="btn btn-xs btn-outline-success" 
+                                                                    onclick="explainCategoryMoves('${accommodationCategory}', ${globalCategoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
+                                                                    id="explain-toggle-${globalCategoryIndex}"
+                                                                    style="display: none;">
+                                                                    <i class="fas fa-robot me-1"></i>
+                                                                    Explain
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                            
+                                            // Add moves for this accommodation category within holidays
+                                            html += renderMovesForCategory(holidayMoves[accommodationCategory], accommodationCategory, globalCategoryIndex);
+                                            globalCategoryIndex++;
+                                        });
+                                    }
+                                    
+                                    // 2. REGULAR 31-NIGHT ADVANCE SUGGESTIONS SECTION
+                                    if (Object.keys(regularMoves).length > 0) {
+                                        // Main Regular Suggestions header
+                                        html += `
+                                            <tr class="table-success">
+                                                <td colspan="11" class="fw-bold text-start ps-2" style="font-size: 1.1rem;">
+                                                    <i class="${getMainSectionIcon('regular')} me-2 text-dark"></i>Next 31 Nights
+                                                </td>
+                                            </tr>
+                                        `;
+                                        
+                                        // Add subsections for each accommodation category within regular moves
+                                        Object.keys(regularMoves).sort().forEach((accommodationCategory) => {
+                                            // Accommodation category header (subsection)
+                                            html += `
+                                                <tr class="table-secondary">
+                                                    <td colspan="11" class="fw-bold text-start ps-4">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="${getAccommodationIcon(accommodationCategory)} me-2 text-primary"></i>${accommodationCategory}
+                                                            </div>
+                                                            <div class="btn-group" role="group">
+                                                                <button type="button" class="btn btn-xs btn-outline-primary" 
+                                                                    onclick="toggleCategoryChart('${accommodationCategory}', ${globalCategoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
+                                                                    id="chart-toggle-${globalCategoryIndex}">
+                                                                    <i class="fas fa-calendar-alt me-1"></i>
+                                                                    Show Chart
+                                                                </button>
+                                                                <button type="button" class="btn btn-xs btn-outline-success" 
+                                                                    onclick="explainCategoryMoves('${accommodationCategory}', ${globalCategoryIndex}, '${data.propertyCode || 'UNKNOWN'}')"
+                                                                    id="explain-toggle-${globalCategoryIndex}"
+                                                                    style="display: none;">
+                                                                    <i class="fas fa-robot me-1"></i>
+                                                                    Explain
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                            
+                                            // Add moves for this accommodation category within regular suggestions
+                                            html += renderMovesForCategory(regularMoves[accommodationCategory], accommodationCategory, globalCategoryIndex);
+                                            globalCategoryIndex++;
+                                        });
+                                    }
                                     return html;
                                 })()}
                             </tbody>
@@ -3629,6 +3769,11 @@
                 
                 container.innerHTML = tableHtml;
                 console.log('Move suggestions with checkboxes displayed successfully');
+                
+                // Check ChatGPT configuration and show/hide explain buttons
+                setTimeout(() => {
+                    checkChatGptConfiguration();
+                }, 100);
                 
             } catch (error) {
                 console.error('Error in displayMoveSuggestionsWithCheckboxes:', error);
@@ -3759,6 +3904,155 @@
                     </div>
                 `;
             }
+        }
+
+        // Explain category moves using ChatGPT
+        async function explainCategoryMoves(category, categoryIndex, propertyCode) {
+            console.log('explainCategoryMoves called with:', { category, categoryIndex, propertyCode });
+            
+            if (!propertyCode) {
+                console.error('Property code not provided');
+                showAlert('danger', 'Property code not available. Please load move suggestions first.');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                const explainButton = document.getElementById(`explain-toggle-${categoryIndex}`);
+                if (explainButton) {
+                    const originalContent = explainButton.innerHTML;
+                    explainButton.disabled = true;
+                    explainButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Explaining...';
+                    
+                    // Call the explanation API
+                    const response = await fetch(`/api/v1/defrag-moves/explain/${propertyCode}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken || localStorage.getItem('authToken')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    // Restore button state
+                    explainButton.disabled = false;
+                    explainButton.innerHTML = originalContent;
+                    
+                    if (response.ok && result.success) {
+                        // Show explanation in modal
+                        showExplanationModal(result.explanation, propertyCode, category);
+                    } else {
+                        const errorMessage = result.message || 'Failed to generate explanation';
+                        showAlert('danger', errorMessage);
+                        console.error('Explanation API error:', result);
+                    }
+                }
+            } catch (error) {
+                console.error('Error explaining moves:', error);
+                showAlert('danger', 'Error generating explanation. Please try again.');
+                
+                // Restore button state
+                const explainButton = document.getElementById(`explain-toggle-${categoryIndex}`);
+                if (explainButton) {
+                    explainButton.disabled = false;
+                    explainButton.innerHTML = '<i class="fas fa-robot me-1"></i>Explain';
+                }
+            }
+        }
+
+        // Show explanation modal
+        function showExplanationModal(explanation, propertyCode, category) {
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('explanationModal');
+            if (!modal) {
+                const modalHtml = `
+                    <div class="modal fade" id="explanationModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-robot me-2 text-success"></i>
+                                        Move Explanation
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body" id="explanation-content">
+                                    <!-- Content will be populated dynamically -->
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                modal = document.getElementById('explanationModal');
+            }
+            
+            // Update modal content
+            const titleElement = modal.querySelector('.modal-title');
+            const contentElement = modal.querySelector('#explanation-content');
+            
+            titleElement.innerHTML = `
+                <i class="fas fa-robot me-2 text-success"></i>
+                Move Explanation - ${propertyCode}${category ? ` (${category})` : ''}
+            `;
+            
+            // Format explanation with proper styling
+            const formattedExplanation = explanation
+                .replace(/\n/g, '<br>')
+                .replace(/•/g, '&bull;')
+                .replace(/✅/g, '<span class="text-success">✅</span>')
+                .replace(/❌/g, '<span class="text-danger">❌</span>')
+                .replace(/(\d+\.\s+[^:]+:)/g, '<strong class="text-primary">$1</strong>')
+                .replace(/(Move Analysis Explanation:|Assessment of the Suggested Moves:)/g, '<h6 class="mt-3 mb-2 text-dark">$1</h6>');
+            
+            contentElement.innerHTML = `
+                <div class="explanation-content">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>AI-Generated Analysis:</strong> This explanation was generated by ChatGPT based on your move suggestions and booking chart data.
+                    </div>
+                    <div class="explanation-text">
+                        ${formattedExplanation}
+                    </div>
+                </div>
+            `;
+            
+            // Show modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+        }
+
+        // Check if ChatGPT is configured and show/hide explain buttons
+        async function checkChatGptConfiguration() {
+            try {
+                // Check if we have environment variables loaded
+                const response = await fetch('/api/v1/setup/environment', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken || localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const hasApiKey = result.variables && result.variables.OPENAI_API_KEY && result.variables.OPENAI_API_KEY.trim() !== '';
+                    
+                    // Show/hide all explain buttons based on configuration
+                    const explainButtons = document.querySelectorAll('[id^="explain-toggle-"]');
+                    explainButtons.forEach(button => {
+                        button.style.display = hasApiKey ? 'inline-block' : 'none';
+                    });
+                    
+                    return hasApiKey;
+                }
+            } catch (error) {
+                console.error('Error checking ChatGPT configuration:', error);
+            }
+            
+            return false;
         }
 
         // Update current property code when move suggestions are loaded

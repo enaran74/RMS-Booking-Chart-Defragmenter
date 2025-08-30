@@ -1,0 +1,6 @@
+DEPLOYMENT TRACE TEST FILE
+=========================
+Created on local machine
+Timestamp: $(date)
+Content: This file should appear in the Docker container if bind mounts work
+Test ID: TRACE-001

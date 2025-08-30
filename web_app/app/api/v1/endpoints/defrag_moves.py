@@ -968,3 +968,67 @@ async def get_batch_application_status(
     except Exception as e:
         logger.error(f"Error getting batch status: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get batch status: {str(e)}")
+
+
+@router.post("/explain/{property_code}")
+async def explain_moves(
+    property_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate ChatGPT explanation for defragmentation moves"""
+    try:
+        logger.info(f"Generating move explanation for property {property_code}")
+        
+        # Get the property
+        property_obj = db.query(Property).filter(Property.property_code == property_code.upper()).first()
+        if not property_obj:
+            raise HTTPException(status_code=404, detail=f"Property {property_code} not found")
+        
+        # Get recent moves for this property
+        moves = db.query(DefragMove).filter(
+            DefragMove.property_code == property_code.upper(),
+            DefragMove.status.in_(['pending', 'approved'])
+        ).order_by(DefragMove.created_at.desc()).limit(20).all()
+        
+        if not moves:
+            raise HTTPException(
+                status_code=404, 
+                detail="No move suggestions found for this property. Please generate move suggestions first."
+            )
+        
+        # Convert moves to dictionary format
+        moves_data = []
+        for move in moves:
+            moves_data.append({
+                "guest_name": move.guest_name,
+                "from_unit_name": move.from_unit_name,
+                "to_unit_name": move.to_unit_name,
+                "check_in": move.check_in.isoformat() if move.check_in else "",
+                "check_out": move.check_out.isoformat() if move.check_out else "",
+                "nights": move.nights,
+                "nights_freed": move.nights_freed,
+                "strategic_importance_level": move.strategic_importance_level,
+                "reason": move.reason or "Defragmentation optimization"
+            })
+        
+        # Get chart data if available
+        from app.services.chart_service import chart_service
+        try:
+            chart_result = await chart_service.get_booking_chart(property_code)
+            chart_data = chart_result.get("data", {}) if chart_result.get("success") else {}
+        except Exception as e:
+            logger.warning(f"Could not load chart data for explanation: {e}")
+            chart_data = {}
+        
+        # Generate explanation using ChatGPT
+        from app.services.chatgpt_service import chatgpt_service
+        result = await chatgpt_service.explain_moves(moves_data, chart_data, property_code)
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating move explanation: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to generate explanation: {str(e)}")

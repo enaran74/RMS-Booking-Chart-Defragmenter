@@ -337,6 +337,9 @@
                                                             <button class="btn btn-outline-primary btn-sm me-2" onclick="testRmsConnectionFromConfig()">
                                                                 <i class="fas fa-flask me-1"></i>Test RMS API
                                                             </button>
+                                                            <button class="btn btn-outline-success btn-sm me-2" onclick="testChatGptConnectionFromConfig()">
+                                                                <i class="fas fa-robot me-1"></i>Test ChatGPT API
+                                                            </button>
                                                             <button class="btn btn-dhp-primary btn-sm" onclick="saveEnvironmentVariables()">
                                                                 <i class="fas fa-save me-1"></i>Save Configuration
                                                             </button>
@@ -1569,6 +1572,14 @@
                 },
 
                 {
+                    title: 'ChatGPT Integration',
+                    description: 'OpenAI ChatGPT API configuration for move explanation features',
+                    critical: false,
+                    variables: [
+                        { key: 'OPENAI_API_KEY', label: 'OpenAI API Key', type: 'password', placeholder: 'sk-...' }
+                    ]
+                },
+                {
                     title: 'System Configuration',
                     description: 'System settings (automatically configured with optimal defaults)',
                     critical: false,
@@ -1834,6 +1845,83 @@
             } catch (error) {
                 console.error('Error testing RMS connection:', error);
                 showAlert('danger', `Error testing RMS connection: ${error.message}`);
+            }
+        }
+        
+        async function testChatGptConnectionFromConfig() {
+            if (!authToken) {
+                showAlert('danger', 'Authentication required');
+                return;
+            }
+            
+            const form = document.getElementById('environment-variables-form');
+            if (!form) {
+                showAlert('danger', 'Environment form not found. Please load the configuration first.');
+                return;
+            }
+            
+            try {
+                // Collect form data for testing
+                const formData = new FormData(form);
+                const variables = {};
+                
+                for (const [key, value] of formData.entries()) {
+                    variables[key] = value.trim();
+                }
+                
+                // Validate ChatGPT API key
+                if (!variables['OPENAI_API_KEY']) {
+                    showAlert('warning', 'Please enter an OpenAI API key before testing.');
+                    return;
+                }
+                
+                if (!variables['OPENAI_API_KEY'].startsWith('sk-')) {
+                    showAlert('warning', 'OpenAI API key should start with "sk-". Please check your API key.');
+                    return;
+                }
+                
+                // Test the connection
+                showAlert('info', 'Testing ChatGPT API connection...');
+                
+                const response = await fetch('/api/v1/setup/test-chatgpt-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ variables })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.success) {
+                        showAlert('success', result.message);
+                        
+                        // Show detailed results if available
+                        if (result.details) {
+                            let detailsMessage = '<div class="mt-2 small">';
+                            for (const [key, value] of Object.entries(result.details)) {
+                                detailsMessage += `<strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}<br>`;
+                            }
+                            detailsMessage += '</div>';
+                            showAlert('info', detailsMessage);
+                        }
+                    } else {
+                        showAlert('danger', result.message);
+                        
+                        // Show error details if available
+                        if (result.details && result.details.error) {
+                            showAlert('warning', `<div class="mt-1"><strong>Error:</strong> ${result.details.error}</div>`);
+                        }
+                    }
+                } else {
+                    showAlert('danger', result.message || 'ChatGPT API test failed');
+                }
+                
+            } catch (error) {
+                console.error('Error testing ChatGPT connection:', error);
+                showAlert('danger', `Error testing ChatGPT connection: ${error.message}`);
             }
         }
 

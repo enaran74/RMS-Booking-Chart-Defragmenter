@@ -194,7 +194,8 @@ log_error() {
 # Start the web application
 start_web_app() {
     log_info "Starting FastAPI web application..."
-    cd /app/app/web
+    # IMPORTANT: Use bind-mounted web directory so fast-deploy code is served
+    cd /app/web
     
     # Wait a bit for database migrations if needed
     sleep 5

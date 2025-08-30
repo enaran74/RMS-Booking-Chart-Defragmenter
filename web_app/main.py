@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, WebSocke
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, PlainTextResponse
 from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -164,6 +164,38 @@ async def health_check():
         "service": "RMS Booking Chart Defragmenter Web App",
         "version": "1.0.0"
     }
+
+# Ultra-simple raw version endpoint (reads mounted file directly)
+@app.get("/api/v1/version-raw", response_class=PlainTextResponse)
+async def version_raw():
+    try:
+        logging.info("[version] /version-raw called")
+        # Preferred path for bind-mounted VERSION_INFO
+        candidates = [
+            "/app/web/VERSION_INFO",
+            "/app/app/VERSION_INFO",
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                logging.info(f"[version] reading version file: {path}")
+                with open(path, "r") as f:
+                    return f.read().strip()
+        return "v1.0.0-unknown"
+    except Exception:
+        return "v1.0.0-unknown"
+
+# Even simpler: expose version at a stable non-API path to avoid router issues
+@app.get("/version.txt", response_class=PlainTextResponse)
+async def version_txt():
+    try:
+        logging.info("[version] /version.txt called")
+        for path in ["/app/web/VERSION_INFO", "/app/app/VERSION_INFO"]:
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    return f.read().strip()
+        return "v1.0.0-unknown"
+    except Exception:
+        return "v1.0.0-unknown"
 
 
 

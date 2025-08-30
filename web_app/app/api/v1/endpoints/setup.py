@@ -934,3 +934,63 @@ async def test_rms_connection(
                 "type": type(error).__name__
             }
         }
+
+
+@router.post("/test-chatgpt-connection")
+async def test_chatgpt_connection(
+    test_data: EnvironmentVariableUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Test ChatGPT API connection using provided API key"""
+    try:
+        logger.info(f"Testing ChatGPT API connection for user {current_user.username}")
+        
+        # Extract API key from the test data
+        variables = test_data.variables
+        api_key = variables.get('OPENAI_API_KEY')
+        
+        # Validate API key
+        if not api_key:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing OpenAI API key"
+            )
+        
+        if not api_key.startswith('sk-'):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid OpenAI API key format. Key should start with 'sk-'"
+            )
+        
+        # Import and test using the ChatGPT service
+        from app.services.chatgpt_service import ChatGPTService
+        
+        # Temporarily set the API key for testing
+        original_key = os.environ.get('OPENAI_API_KEY')
+        os.environ['OPENAI_API_KEY'] = api_key
+        
+        try:
+            chatgpt_service = ChatGPTService()
+            result = await chatgpt_service.test_connection()
+            
+            return result
+            
+        finally:
+            # Restore original key
+            if original_key:
+                os.environ['OPENAI_API_KEY'] = original_key
+            elif 'OPENAI_API_KEY' in os.environ:
+                del os.environ['OPENAI_API_KEY']
+        
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.error(f"ChatGPT API test error: {error}")
+        return {
+            "success": False,
+            "message": f"ChatGPT API test failed: {str(error)}",
+            "details": {
+                "error": str(error)[:300],
+                "type": type(error).__name__
+            }
+        }

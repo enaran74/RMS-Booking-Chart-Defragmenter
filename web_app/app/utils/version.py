@@ -22,7 +22,8 @@ def get_git_version() -> str:
     version_paths = [
         Path(__file__).parent.parent.parent / "VERSION_INFO",  # web_app/VERSION_INFO
         Path(__file__).parent.parent / "VERSION_INFO",         # app/VERSION_INFO
-        Path("/app/app/VERSION_INFO"),                         # Docker container path
+        Path("/app/web/VERSION_INFO"),                         # Docker container path (correct)
+        Path("/app/app/VERSION_INFO"),                         # Docker container path (fallback)
     ]
     
     for version_file in version_paths:

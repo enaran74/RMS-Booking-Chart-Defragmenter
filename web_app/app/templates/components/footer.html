@@ -58,12 +58,27 @@
       var el = document.getElementById('versionStamp');
       if(!el) return;
       
-      // Fetch dynamic version from API
-      fetch('/api/v1/version')
-        .then(response => response.json())
-        .then(data => {
-          var ts = new Date(data.timestamp || Date.now());
-          el.textContent = 'RMS Defragmenter ' + data.version + ' • loaded ' + ts.toLocaleString();
+      // Fetch dynamic version from API with static fallback
+      function renderStamp(version, isoTimestamp){
+        // Prefer server-provided build timestamp (from VERSION_INFO mtime); fallback to lastModified
+        var ts = isoTimestamp ? new Date(isoTimestamp) : new Date(document.lastModified || Date.now());
+        el.textContent = 'RMS Defragmenter ' + version + ' • loaded ' + ts.toLocaleString();
+      }
+
+      // Prefer raw version (reads VERSION_INFO) for accuracy, zero dependencies
+      fetch('/api/v1/version-raw')
+        .then(r => {
+          if(!r.ok) throw new Error('version-raw ' + r.status);
+          return r.text();
+        })
+        .then(text => {
+          var version = (text || '').trim() || 'v1.0.0-unknown';
+          console.log('[Footer] version-raw:', version);
+          // Try to fetch stable build timestamp from static JSON endpoint
+          fetch('/api/v1/version/static')
+            .then(r => r.ok ? r.json() : Promise.reject('static meta ' + r.status))
+            .then(meta => { renderStamp(version, meta && meta.timestamp); })
+            .catch(() => { renderStamp(version); });
           
           // Append TRAINING indicator if present on window or meta
           var training = (window.APP_USE_TRAINING_DB === true);
@@ -90,10 +105,17 @@
           }
         })
         .catch(err => {
-          // Fallback to static version with timestamp
-          var ts = new Date(document.lastModified || Date.now());
-          el.textContent = 'RMS Defragmenter v1.0.0 • loaded ' + ts.toLocaleString();
-          console.warn('Failed to fetch version:', err);
+          // Try plain text fallback
+          fetch('/version.txt')
+            .then(r => r.ok ? r.text() : Promise.reject('version.txt ' + r.status))
+            .then(text => { renderStamp((text||'').trim() || 'v1.0.0-unknown'); })
+            .catch(() => {
+              // Fallback to dynamic API; still render client-local time
+              fetch('/api/v1/version')
+                .then(r => r.ok ? r.json() : Promise.reject('version api ' + r.status))
+                .then(data => { renderStamp(data.version || 'v1.0.0-unknown'); })
+                .catch(err2 => { renderStamp('v1.0.0-unknown'); console.warn('Version fetch fallback used:', err, err2); });
+            });
         });
         
     }catch(e){

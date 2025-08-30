@@ -14,6 +14,7 @@ class Property(Base):
     property_code = Column(String(50), unique=True, index=True, nullable=False)
     property_name = Column(String(255), nullable=False)
     rms_property_id = Column(Integer, nullable=True, index=True)  # RMS API property ID
+    state_code = Column(String(10), nullable=True, index=True)  # Australian state code (VIC, NSW, QLD, etc.)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

@@ -32,6 +32,12 @@ class DefragMove(Base):
     is_processed = Column(Boolean, default=False, nullable=False)  # Quick filter flag
     is_rejected = Column(Boolean, default=False, nullable=False)  # Quick filter flag
     
+    # Holiday analysis fields
+    is_holiday_move = Column(Boolean, default=False, nullable=False)  # Flag for holiday-related moves
+    holiday_period_name = Column(String(255), nullable=True)  # Name of holiday period (e.g., "Christmas Day", "Term 1 School Holidays")
+    holiday_type = Column(String(50), nullable=True)  # "Public Holiday" or "School Holiday"
+    holiday_importance = Column(String(20), nullable=True)  # "High", "Medium", "Low"
+    
     # Relationships - use string references to avoid circular imports
     property = relationship("Property", back_populates="defrag_moves")
     processed_by_user = relationship("User", foreign_keys=[processed_by], backref="processed_moves")
@@ -46,6 +52,8 @@ class DefragMove(Base):
         Index('idx_batch_id', 'batch_id'),
         Index('idx_status_flags', 'is_processed', 'is_rejected'),
         Index('idx_property_batch', 'property_code', 'batch_id'),
+        Index('idx_holiday_moves', 'is_holiday_move', 'holiday_type'),
+        Index('idx_holiday_importance', 'holiday_importance'),
     )
     
     def __repr__(self):

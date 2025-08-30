@@ -148,8 +148,47 @@ class RMSService:
             return ""
         return code.rstrip('- _').strip()
     
+    def _extract_state_code(self, property_data: Dict) -> Optional[str]:
+        """
+        Extract state code from property data for holiday analysis
+        
+        Args:
+            property_data: Property data dictionary from RMS API
+            
+        Returns:
+            State code (VIC, NSW, QLD, etc.) or None if not found
+        """
+        # Australian state to country mapping
+        STATE_COUNTRY_MAPPING = {
+            'VIC': 'AU', 'TAS': 'AU', 'ACT': 'AU', 'NSW': 'AU',
+            'QLD': 'AU', 'NT': 'AU', 'SA': 'AU', 'WA': 'AU'
+        }
+        
+        # Try multiple possible field names
+        state_fields = ['state', 'stateCode', 'region', 'location', 'address']
+        
+        for field in state_fields:
+            if field in property_data and property_data[field]:
+                state_code = str(property_data[field]).upper()
+                if state_code in STATE_COUNTRY_MAPPING:
+                    logger.debug(f"Found state code '{state_code}' in field '{field}'")
+                    return state_code
+        
+        # Fallback: extract from property name or code
+        property_name = property_data.get('name', '').upper()
+        property_code = property_data.get('code', '').upper()
+        
+        # Look for state abbreviations in name/code
+        for state_code in STATE_COUNTRY_MAPPING.keys():
+            if state_code in property_name or state_code in property_code:
+                logger.debug(f"Found state code '{state_code}' in property name/code")
+                return state_code
+        
+        logger.warning(f"Could not extract state code from property: {property_data.get('name', 'Unknown')}")
+        return None
+    
     def _extract_property_info(self, property_data: Dict) -> Optional[Dict]:
-        """Extract property code, name, RMS ID, and active status from RMS property data"""
+        """Extract property code, name, RMS ID, state code, and active status from RMS property data"""
         try:
             # Extract RMS property ID (this is the key field we need!)
             rms_property_id = None
@@ -170,6 +209,9 @@ class RMSService:
                     property_name = str(property_data[name_field])
                     break
             
+            # Extract state code for holiday analysis
+            state_code = self._extract_state_code(property_data)
+            
             # Extract active status - RMS API returns 'inactive' field, convert to 'is_active'
             is_active = True  # Default to active
             if 'inactive' in property_data:
@@ -180,6 +222,7 @@ class RMSService:
                     'code': self._clean_property_code(property_code),
                     'name': property_name.strip(),
                     'rms_id': rms_property_id,
+                    'state_code': state_code,
                     'is_active': is_active
                 }
             
@@ -252,6 +295,10 @@ class RMSService:
                         existing_property.rms_property_id = prop_info['rms_id']
                         updated = True
                         logger.info(f"🔧 Updated RMS property ID for {prop_info['code']}: {prop_info['rms_id']}")
+                    if existing_property.state_code != prop_info['state_code']:
+                        existing_property.state_code = prop_info['state_code']
+                        updated = True
+                        logger.info(f"🔧 Updated state code for {prop_info['code']}: {prop_info['state_code']}")
                     if existing_property.is_active != prop_info['is_active']:
                         existing_property.is_active = prop_info['is_active']
                         updated = True
@@ -263,11 +310,12 @@ class RMSService:
                         property_code=prop_info['code'],
                         property_name=prop_info['name'],
                         rms_property_id=prop_info['rms_id'],
+                        state_code=prop_info['state_code'],
                         is_active=prop_info['is_active']
                     )
                     db.add(new_property)
                     properties_created += 1
-                    logger.info(f"🔧 Created new property {prop_info['code']} with RMS ID: {prop_info['rms_id']}")
+                    logger.info(f"🔧 Created new property {prop_info['code']} with RMS ID: {prop_info['rms_id']}, State: {prop_info['state_code']}")
             
             # Commit changes
             db.commit()

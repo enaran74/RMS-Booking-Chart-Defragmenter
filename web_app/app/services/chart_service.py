@@ -37,13 +37,38 @@ class BookingChartService:
                 self.logger.warning(f"Property {property_code} not found in database")
                 return None
             
+            # Get move suggestions for highlighting only
+            latest_analysis = db.query(DefragMove).filter(
+                DefragMove.property_code == property_code.upper()
+            ).order_by(DefragMove.analysis_date.desc()).first()
+            
+            suggestions = []
+            if latest_analysis and latest_analysis.move_data:
+                suggestions = latest_analysis.move_data.get('moves', [])
+            
+            # Calculate chart date range - extend for holiday periods if holiday moves exist
+            constraint_start_date, constraint_end_date = self._calculate_chart_date_range(suggestions, property_obj)
+            
             # Get fresh RMS data (ALL reservations - like CLI does)
             rms_property_id = self.defrag_service._get_rms_property_id(property_obj)
             rms_client = self.defrag_service.rms_client
             
-            # Fetch fresh RMS data (use standard date range)
-            reservations_data = rms_client.get_property_reservations(rms_property_id)
-            inventory_data = rms_client.get_property_units(rms_property_id)
+            # Temporarily override RMS client date constraints for extended chart range
+            original_start = rms_client.constraint_start_date
+            original_end = rms_client.constraint_end_date
+            
+            # Set extended dates for chart data fetching
+            rms_client.constraint_start_date = constraint_start_date.date()
+            rms_client.constraint_end_date = constraint_end_date.date()
+            
+            try:
+                # Fetch fresh RMS data with extended date range
+                reservations_data = rms_client.get_property_reservations(rms_property_id)
+                inventory_data = rms_client.get_property_units(rms_property_id)
+            finally:
+                # Always restore original constraint dates
+                rms_client.constraint_start_date = original_start
+                rms_client.constraint_end_date = original_end
             
             if not reservations_data or not inventory_data:
                 self.logger.warning(f"No RMS data available for property {property_code}")
@@ -55,28 +80,6 @@ class BookingChartService:
             
             self.logger.info(f"Fresh RMS data: {len(reservations_df)} reservations, {len(inventory_df)} units")
             
-
-            
-            # Get move suggestions for highlighting only
-            latest_analysis = db.query(DefragMove).filter(
-                DefragMove.property_code == property_code.upper()
-            ).order_by(DefragMove.analysis_date.desc()).first()
-            
-            suggestions = []
-            if latest_analysis and latest_analysis.move_data:
-                suggestions = latest_analysis.move_data.get('moves', [])
-            
-            # Set time constraints for chart display (start from today in AEST)
-            # Container is UTC, so add 10 hours to get AEST, then take just the date part
-            now_utc = datetime.now()
-            now_aest = now_utc + timedelta(hours=10)
-            today_aest_date = now_aest.date()
-            
-            # Chart should start from AEST today at midnight (as UTC datetime)
-            constraint_start_date = datetime.combine(today_aest_date, datetime.min.time())
-            constraint_end_date = constraint_start_date + timedelta(days=30)
-            
-            self.logger.info(f"📅 AEST Date calculation: UTC={now_utc.date()}, AEST={today_aest_date}")
             self.logger.info(f"📅 Chart date range: {constraint_start_date.date()} to {constraint_end_date.date()}")
             
             # Generate chart data using CLI approach
@@ -522,3 +525,68 @@ class BookingChartService:
             elif isinstance(fixed_value, str):
                 return fixed_value.lower() in ['true', '1', 'yes']
         return False
+    
+    def _calculate_chart_date_range(self, suggestions: List[Dict], property_obj) -> tuple:
+        """Calculate chart date range, extending for holiday periods if holiday moves exist"""
+        # Default date range (31 days from today in AEST)
+        now_utc = datetime.now()
+        now_aest = now_utc + timedelta(hours=10)
+        today_aest_date = now_aest.date()
+        
+        default_start = datetime.combine(today_aest_date, datetime.min.time())
+        default_end = default_start + timedelta(days=30)
+        
+        # Check if we have holiday moves
+        holiday_moves = [s for s in suggestions if s.get('is_holiday_move', False)]
+        
+        if not holiday_moves or not property_obj.state_code:
+            self.logger.info(f"📅 Using default 31-day chart range: no holiday moves or state code")
+            return default_start, default_end
+        
+        self.logger.info(f"📅 Found {len(holiday_moves)} holiday moves, calculating extended range for {property_obj.state_code}")
+        
+        try:
+            # Get holiday periods that generated moves
+            from app.services.holiday_client import HolidayClient
+            from datetime import date
+            
+            holiday_client = HolidayClient()
+            holiday_periods = holiday_client.get_combined_holiday_periods_2month_forward(
+                property_obj.state_code, 
+                date.today()
+            )
+            
+            if not holiday_periods:
+                self.logger.info(f"📅 No holiday periods found, using default range")
+                return default_start, default_end
+            
+            # Find the earliest and latest dates from holiday periods that generated moves
+            # We only extend for periods that actually generated moves
+            holiday_period_names = set(move.get('holiday_period') for move in holiday_moves if move.get('holiday_period'))
+            relevant_periods = [p for p in holiday_periods if p['name'] in holiday_period_names]
+            
+            if not relevant_periods:
+                self.logger.info(f"📅 No relevant holiday periods found, using default range")
+                return default_start, default_end
+            
+            # Calculate extended range based on relevant holiday periods
+            earliest_start = min(period['extended_start'] for period in relevant_periods)
+            latest_end = max(period['extended_end'] for period in relevant_periods)
+            
+            # Convert to datetime objects
+            extended_start = datetime.combine(earliest_start, datetime.min.time())
+            extended_end = datetime.combine(latest_end, datetime.min.time())
+            
+            # Ensure we don't go backwards from today
+            final_start = min(default_start, extended_start)
+            final_end = max(default_end, extended_end)
+            
+            self.logger.info(f"📅 Extended chart range for holiday periods: {final_start.date()} to {final_end.date()}")
+            self.logger.info(f"📅 Relevant holiday periods: {[p['name'] for p in relevant_periods]}")
+            
+            return final_start, final_end
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating extended chart range: {e}")
+            self.logger.info(f"📅 Falling back to default range due to error")
+            return default_start, default_end

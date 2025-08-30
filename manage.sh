@@ -184,14 +184,21 @@ case "$1" in
         ;;
 
     fast-deploy)
-        # Fast deploy from local machine to VPS with bind mounts; requires sshpass
+        # Fast deploy - Full filesystem sync to VPS; requires sshpass and rsync
         VPS_IP=${VPS_IP:-100.78.0.44}
-        VPS_USER=${VPS_USER:-enaran}
-        VPS_PASSWORD=${VPS_PASSWORD:-Configur8&1}
+        VPS_USER=${VPS_USER:-root}
+        VPS_PASSWORD=${VPS_PASSWORD:-BLConfigur8&1}
         REMOTE_DIR=/opt/defrag-app
-        print_info "Syncing templates and app code to ${VPS_USER}@${VPS_IP}..."
+        
+        print_info "Syncing entire project to ${VPS_USER}@${VPS_IP}..."
+        
+        # Check dependencies
         if ! command -v sshpass >/dev/null 2>&1; then
             print_error "sshpass is required for fast-deploy"
+            exit 1
+        fi
+        if ! command -v rsync >/dev/null 2>&1; then
+            print_error "rsync is required for fast-deploy"
             exit 1
         fi
         
@@ -202,20 +209,60 @@ case "$1" in
         fi
         echo "$GIT_VERSION" > web_app/VERSION_INFO
         print_info "Generated version: $GIT_VERSION"
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/templates "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/static "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/utils "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/api "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/services "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/core "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/models "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/schemas "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r web_app/app/middleware "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no web_app/main.py "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/main.py" || true
-        sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no web_app/VERSION_INFO "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/app/VERSION_INFO" || true
+        
+        # Full project sync using rsync with smart exclusions
+        print_info "Performing full filesystem sync..."
+        rsync -avz --delete \
+            --rsh="sshpass -p '$VPS_PASSWORD' ssh -o StrictHostKeyChecking=no" \
+            --exclude='.git/' \
+            --exclude='__pycache__/' \
+            --exclude='*.pyc' \
+            --exclude='.pytest_cache/' \
+            --exclude='node_modules/' \
+            --exclude='.env' \
+            --exclude='logs/' \
+            --exclude='output/' \
+            --exclude='.DS_Store' \
+            --exclude='*.log' \
+            --exclude='.vscode/' \
+            --exclude='.idea/' \
+            ./ "${VPS_USER}@${VPS_IP}:${REMOTE_DIR}/" || {
+                print_warning "rsync failed, falling back to manual sync..."
+                
+                # Fallback: Create tar and transfer
+                print_info "Creating project archive..."
+                tar czf /tmp/fast-deploy-$$.tar.gz \
+                    --exclude='.git' \
+                    --exclude='__pycache__' \
+                    --exclude='*.pyc' \
+                    --exclude='.pytest_cache' \
+                    --exclude='node_modules' \
+                    --exclude='.env' \
+                    --exclude='logs' \
+                    --exclude='output' \
+                    --exclude='.DS_Store' \
+                    --exclude='*.log' \
+                    --exclude='.vscode' \
+                    --exclude='.idea' \
+                    ./
+                
+                print_info "Transferring archive..."
+                sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no \
+                    /tmp/fast-deploy-$$.tar.gz "${VPS_USER}@${VPS_IP}:/tmp/"
+                
+                print_info "Extracting on VPS..."
+                sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} \
+                    "cd ${REMOTE_DIR} && tar xzf /tmp/fast-deploy-$$.tar.gz && rm /tmp/fast-deploy-$$.tar.gz"
+                
+                # Cleanup local temp file
+                rm -f /tmp/fast-deploy-$$.tar.gz
+            }
+        
         print_info "Restarting app container on VPS..."
-        sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} 'docker-compose -f /opt/defrag-app/docker-compose.yml restart defrag-app'
-        print_status "Fast deploy complete"
+        sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} \
+            'cd /opt/defrag-app && docker-compose restart defrag-app'
+        
+        print_status "Fast deploy complete - full project synchronized"
         ;;
 
     *)
