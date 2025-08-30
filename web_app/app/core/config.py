@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = _generate_secure_key("dhp-jwt-")  # Secure fallback, overridden by environment variable  
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # Reduced for better security
     
+    # Admin User Configuration
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "WILL_BE_GENERATED_OR_SET_DURING_INSTALLATION"
+    
+    # ChatGPT Integration
+    OPENAI_API_KEY: str = ""
+    
     # RMS API Configuration - MUST be set via environment variables
     # These placeholder values clearly indicate setup is required
     AGENT_ID: str = "SETUP_REQUIRED_VIA_ENVIRONMENT_VARIABLE"

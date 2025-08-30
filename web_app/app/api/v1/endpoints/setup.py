@@ -179,12 +179,11 @@ async def restart_application_containers() -> None:
         logger.error(f"Error initiating application restart: {error}")
         # Don't raise the exception as this shouldn't fail the save operation
 
-def sync_env_files(primary_path: Path, content: str) -> None:
+def sync_env_files(primary_path: Path, content: str, create_missing: bool = False) -> None:
     """Synchronize .env file between host and container locations"""
     try:
-        # Define all required locations with their purposes
+        # Define all required locations with their purposes (from container perspective)
         sync_locations = [
-            (Path("/opt/defrag-app/.env"), "Host mount for docker-compose"),
             (Path("/app/.env"), "Container root location"),
             (Path("/app/web/.env"), "Working directory for Pydantic Settings")
         ]
@@ -238,6 +237,104 @@ def sync_env_files(primary_path: Path, content: str) -> None:
                     
     except Exception as error:
         logger.error(f"💥 Critical error during .env file synchronization: {error}")
+
+def validate_env_file_sync(primary_path: Path, content: str, required_variables: List[str] = None) -> Dict[str, Any]:
+    """Validate that .env files are properly synchronized and contain required variables"""
+    validation_result = {
+        "success": True,
+        "errors": [],
+        "warnings": [],
+        "sync_status": {},
+        "missing_variables": []
+    }
+    
+    # Define all required locations (from container perspective)
+    sync_locations = [
+        (Path("/app/.env"), "Container root location"),
+        (Path("/app/web/.env"), "Working directory for Pydantic Settings")
+    ]
+    
+    try:
+        # Check each location
+        for path, description in sync_locations:
+            location_status = {
+                "exists": False,
+                "readable": False,
+                "writable": False,
+                "content_matches": False,
+                "size": 0,
+                "permissions": None
+            }
+            
+            try:
+                # Check if file exists
+                if path.exists():
+                    location_status["exists"] = True
+                    location_status["size"] = path.stat().st_size
+                    location_status["permissions"] = oct(path.stat().st_mode)[-3:]
+                    
+                    # Check if readable
+                    try:
+                        file_content = path.read_text()
+                        location_status["readable"] = True
+                        
+                        # Check if content matches (ignore whitespace differences)
+                        if file_content.strip() == content.strip():
+                            location_status["content_matches"] = True
+                        else:
+                            validation_result["errors"].append(f"Content mismatch in {path} ({description})")
+                            validation_result["success"] = False
+                            
+                    except Exception as read_error:
+                        validation_result["errors"].append(f"Cannot read {path} ({description}): {read_error}")
+                        validation_result["success"] = False
+                    
+                    # Check if writable (try to open in append mode)
+                    try:
+                        with open(path, 'a'):
+                            location_status["writable"] = True
+                    except Exception:
+                        location_status["writable"] = False
+                        validation_result["warnings"].append(f"Cannot write to {path} ({description})")
+                        
+                else:
+                    validation_result["errors"].append(f"Missing .env file at {path} ({description})")
+                    validation_result["success"] = False
+                    
+            except Exception as check_error:
+                validation_result["errors"].append(f"Error checking {path} ({description}): {check_error}")
+                validation_result["success"] = False
+            
+            validation_result["sync_status"][str(path)] = location_status
+        
+        # Check for required variables if specified
+        if required_variables and primary_path.exists():
+            try:
+                primary_content = primary_path.read_text()
+                for var in required_variables:
+                    if f"{var}=" not in primary_content:
+                        validation_result["missing_variables"].append(var)
+                        validation_result["errors"].append(f"Required variable {var} not found in .env file")
+                        validation_result["success"] = False
+            except Exception as var_check_error:
+                validation_result["errors"].append(f"Error checking required variables: {var_check_error}")
+                validation_result["success"] = False
+        
+        # Log validation results
+        if validation_result["success"]:
+            logger.info("✅ .env file validation passed - all files synchronized properly")
+        else:
+            logger.error(f"❌ .env file validation failed: {validation_result['errors']}")
+            
+        if validation_result["warnings"]:
+            logger.warning(f"⚠️  .env file validation warnings: {validation_result['warnings']}")
+            
+    except Exception as validation_error:
+        validation_result["success"] = False
+        validation_result["errors"].append(f"Critical validation error: {validation_error}")
+        logger.error(f"💥 Critical error during .env file validation: {validation_error}")
+    
+    return validation_result
 
 def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
     """Write environment variables to .env file with proper formatting and defaults"""
@@ -443,7 +540,7 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         logger.info(f"Successfully wrote .env file to {file_path} with {len(final_variables)} variables")
         
         # Ensure synchronization between host and container locations
-        sync_env_files(file_path, '\n'.join(lines))
+        sync_env_files(file_path, '\n'.join(lines), create_missing=True)
         
     except Exception as error:
         logger.error(f"Error writing .env file: {error}")
@@ -519,6 +616,25 @@ async def update_environment_variables(
         # Write the new .env file
         write_env_file(env_path, variables)
         
+        # Validate that all .env files are properly synchronized
+        file_content = env_path.read_text() if env_path.exists() else ""
+        required_vars = ['AGENT_ID', 'AGENT_PASSWORD', 'CLIENT_ID', 'CLIENT_PASSWORD']
+        validation_result = validate_env_file_sync(env_path, file_content, required_vars)
+        
+        if not validation_result["success"]:
+            error_details = {
+                "message": "Environment variables were written but synchronization failed",
+                "errors": validation_result["errors"],
+                "warnings": validation_result["warnings"],
+                "sync_status": validation_result["sync_status"],
+                "missing_variables": validation_result["missing_variables"]
+            }
+            logger.error(f"Environment sync validation failed: {error_details}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Environment synchronization failed: {'; '.join(validation_result['errors'])}"
+            )
+        
         # Return the updated configuration
         variables = parse_env_file(env_path)
         
@@ -565,6 +681,42 @@ async def restart_application(current_user: User = Depends(get_current_user)):
     except Exception as error:
         logger.error(f"Failed to initiate restart: {error}")
         raise HTTPException(status_code=500, detail="Failed to initiate restart")
+
+@router.get("/validate-env")
+async def validate_environment_files(current_user: User = Depends(get_current_user)):
+    """Validate that all .env files are properly synchronized"""
+    try:
+        env_path = get_env_file_path()
+        
+        if not env_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="Primary .env file not found. Please configure environment variables first."
+            )
+        
+        # Read current content and validate
+        file_content = env_path.read_text()
+        required_vars = ['AGENT_ID', 'AGENT_PASSWORD', 'CLIENT_ID', 'CLIENT_PASSWORD']
+        validation_result = validate_env_file_sync(env_path, file_content, required_vars)
+        
+        return {
+            "success": validation_result["success"],
+            "message": "Environment files validation completed",
+            "errors": validation_result["errors"],
+            "warnings": validation_result["warnings"],
+            "sync_status": validation_result["sync_status"],
+            "missing_variables": validation_result["missing_variables"],
+            "primary_file": str(env_path)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.error(f"Error validating environment files: {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate environment files: {str(error)}"
+        )
 
 @router.get("/test-db")
 async def test_database_connection(

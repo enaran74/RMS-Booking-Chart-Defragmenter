@@ -88,6 +88,20 @@ fi
 log_info "Creating required directories..."
 mkdir -p /app/logs /app/output /app/backups /app/config
 
+# Ensure .env file synchronization between locations
+log_info "Setting up .env file synchronization..."
+if [ -f "/app/.env" ] && [ ! -L "/app/web/.env" ]; then
+    rm -f /app/web/.env  # Remove any existing regular file
+    ln -s /app/.env /app/web/.env
+    log_info "Created symlink: /app/web/.env -> /app/.env"
+elif [ ! -f "/app/.env" ] && [ -f "/app/web/.env" ]; then
+    # If web .env exists but main doesn't, copy it over
+    cp /app/web/.env /app/.env
+    rm -f /app/web/.env
+    ln -s /app/.env /app/web/.env
+    log_info "Copied /app/web/.env to /app/.env and created symlink"
+fi
+
 # Environment validation
 log_info "Validating environment configuration..."
 

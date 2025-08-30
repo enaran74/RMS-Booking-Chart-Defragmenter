@@ -3,6 +3,7 @@ Defragmentation moves endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -970,9 +971,15 @@ async def get_batch_application_status(
         raise HTTPException(status_code=500, detail=f"Failed to get batch status: {str(e)}")
 
 
+class ExplainRequest(BaseModel):
+    category_name: Optional[str] = None
+    category_index: Optional[int] = None
+    is_holiday_section: Optional[bool] = False
+
 @router.post("/explain/{property_code}")
 async def explain_moves(
     property_code: str,
+    request: ExplainRequest = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -985,45 +992,98 @@ async def explain_moves(
         if not property_obj:
             raise HTTPException(status_code=404, detail=f"Property {property_code} not found")
         
-        # Get recent moves for this property
-        moves = db.query(DefragMove).filter(
-            DefragMove.property_code == property_code.upper(),
-            DefragMove.status.in_(['pending', 'approved'])
-        ).order_by(DefragMove.created_at.desc()).limit(20).all()
+        # Get the most recent batch for this property (same logic as UI)
+        from app.models.move_batch import MoveBatch
+        latest_batch = db.query(MoveBatch).filter(
+            MoveBatch.property_code == property_code.upper()
+        ).order_by(MoveBatch.created_at.desc()).first()
         
-        if not moves:
+        if not latest_batch:
             raise HTTPException(
                 status_code=404, 
                 detail="No move suggestions found for this property. Please generate move suggestions first."
             )
         
-        # Convert moves to dictionary format
+        # Only get move suggestions from the most recent batch (same as UI)
+        moves = db.query(DefragMove).filter(
+            DefragMove.property_code == property_code.upper(),
+            DefragMove.batch_id == latest_batch.id,
+            DefragMove.is_processed == False,
+            DefragMove.is_rejected == False
+        ).order_by(DefragMove.analysis_date.desc(), DefragMove.created_at.desc()).all()
+        
+        if not moves:
+            raise HTTPException(
+                status_code=404, 
+                detail="No move suggestions found for this property in the latest batch. Please generate move suggestions first."
+            )
+        
+        logger.info(f"Using latest batch {latest_batch.id} for explanation - found {len(moves)} moves")
+        
+        # Convert moves to dictionary format, filtering by category and section if specified
         moves_data = []
+        target_category = request.category_name if request else None
+        is_holiday_section = request.is_holiday_section if request else False
+        
+        logger.info(f"Category filtering: target_category = '{target_category}', is_holiday_section = {is_holiday_section}")
+        
         for move in moves:
-            moves_data.append({
-                "guest_name": move.guest_name,
-                "from_unit_name": move.from_unit_name,
-                "to_unit_name": move.to_unit_name,
-                "check_in": move.check_in.isoformat() if move.check_in else "",
-                "check_out": move.check_out.isoformat() if move.check_out else "",
-                "nights": move.nights,
-                "nights_freed": move.nights_freed,
-                "strategic_importance_level": move.strategic_importance_level,
-                "reason": move.reason or "Defragmentation optimization"
-            })
+            # Access data from the JSON move_data field
+            move_json = move.move_data if isinstance(move.move_data, dict) else {}
+            
+            # Get the moves array from the move_data
+            move_suggestions = move_json.get("moves", [])
+            
+            # Process each individual move suggestion
+            for suggestion in move_suggestions:
+                # Filter by category if specified
+                if target_category:
+                    suggestion_category = suggestion.get("category", "")
+                    # Exact match for category filtering
+                    if target_category != suggestion_category:
+                        logger.debug(f"Skipping move: target='{target_category}' vs suggestion='{suggestion_category}'")
+                        continue  # Skip moves not in the target category
+                    else:
+                        logger.debug(f"Including move: target='{target_category}' matches suggestion='{suggestion_category}'")
+                
+                # Filter by section type (holiday vs regular)
+                suggestion_is_holiday = suggestion.get("is_holiday_move", False)
+                if suggestion_is_holiday != is_holiday_section:
+                    logger.debug(f"Skipping move: is_holiday_move={suggestion_is_holiday} != target_section_holiday={is_holiday_section}")
+                    continue  # Skip moves not in the target section
+                
+                moves_data.append({
+                    "guest_name": suggestion.get("guest", suggestion.get("guest_name", "Unknown")),
+                    "from_unit_name": suggestion.get("from_unit", suggestion.get("current_unit", "Unknown")),
+                    "to_unit_name": suggestion.get("to_unit", suggestion.get("target_unit", "Unknown")),
+                    "check_in": suggestion.get("check_in", ""),
+                    "check_out": suggestion.get("check_out", ""),
+                    "nights": suggestion.get("nights", 0),
+                    "nights_freed": suggestion.get("nights_freed", 0),
+                    "strategic_importance_level": suggestion.get("strategic_importance", "Unknown"),
+                    "reason": suggestion.get("reason", "Defragmentation optimization"),
+                    "is_holiday_move": suggestion.get("is_holiday_move", False),
+                    "holiday_period": suggestion.get("holiday_period"),
+                    "holiday_type": suggestion.get("holiday_type"),
+                    "holiday_importance": suggestion.get("holiday_importance"),
+                    "category": suggestion.get("category", "Unknown")
+                })
+        
+        logger.info(f"After filtering: {len(moves_data)} moves for category '{target_category}'")
         
         # Get chart data if available
-        from app.services.chart_service import chart_service
         try:
-            chart_result = await chart_service.get_booking_chart(property_code)
-            chart_data = chart_result.get("data", {}) if chart_result.get("success") else {}
+            from app.services.chart_service import BookingChartService
+            chart_service = BookingChartService()
+            chart_result = await chart_service.get_chart_data_for_property(property_code)
+            chart_data = chart_result if chart_result else {}
         except Exception as e:
             logger.warning(f"Could not load chart data for explanation: {e}")
             chart_data = {}
         
         # Generate explanation using ChatGPT
         from app.services.chatgpt_service import chatgpt_service
-        result = await chatgpt_service.explain_moves(moves_data, chart_data, property_code)
+        result = await chatgpt_service.explain_moves(moves_data, chart_data, property_code, target_category)
         
         return result
         

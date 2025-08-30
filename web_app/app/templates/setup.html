@@ -340,6 +340,9 @@
                                                             <button class="btn btn-outline-success btn-sm me-2" onclick="testChatGptConnectionFromConfig()">
                                                                 <i class="fas fa-robot me-1"></i>Test ChatGPT API
                                                             </button>
+                                                            <button class="btn btn-outline-warning btn-sm me-2" onclick="validateEnvironmentFiles()">
+                                                                <i class="fas fa-check-double me-1"></i>Validate .env Files
+                                                            </button>
                                                             <button class="btn btn-dhp-primary btn-sm" onclick="saveEnvironmentVariables()">
                                                                 <i class="fas fa-save me-1"></i>Save Configuration
                                                             </button>
@@ -1385,9 +1388,9 @@
             
             // Validation rules (client-side mirror of backend)
             const rules = {
-                'AGENT_ID': { required: true, type: 'numeric', minLength: 1 },
+                'AGENT_ID': { required: true, type: 'string', minLength: 1 },
                 'AGENT_PASSWORD': { required: true, type: 'string', minLength: 8 },
-                'CLIENT_ID': { required: true, type: 'numeric', minLength: 1 },
+                'CLIENT_ID': { required: true, type: 'string', minLength: 1 },
                 'CLIENT_PASSWORD': { required: true, type: 'string', minLength: 8 },
                 'DB_PORT': { type: 'port' },
                 'WEB_APP_PORT': { type: 'port' },
@@ -1447,18 +1450,22 @@
                     }
                 }
                 
-                // Security checks
-                const dangerousPatterns = [
-                    { pattern: /[;&|`$()]/, description: 'contains shell injection characters' },
-                    { pattern: /<script/i, description: 'contains script tags' },
-                    { pattern: /javascript:/i, description: 'contains javascript protocol' },
-                    { pattern: /file:\/\//i, description: 'contains file protocol' },
-                    { pattern: /\.\.\//g, description: 'contains directory traversal' }
-                ];
+                // Security checks (skip for certain fields that legitimately use special characters)
+                const skipSecurityCheck = ['CRON_SCHEDULE', 'OPENAI_API_KEY']; // CRON uses *, spaces; API keys may have special chars
                 
-                for (const { pattern, description } of dangerousPatterns) {
-                    if (pattern.test(value)) {
-                        errors.push(`${key} ${description}`);
+                if (!skipSecurityCheck.includes(key)) {
+                    const dangerousPatterns = [
+                        { pattern: /[;&|`$()]/, description: 'contains shell injection characters' },
+                        { pattern: /<script/i, description: 'contains script tags' },
+                        { pattern: /javascript:/i, description: 'contains javascript protocol' },
+                        { pattern: /file:\/\//i, description: 'contains file protocol' },
+                        { pattern: /\.\.\//g, description: 'contains directory traversal' }
+                    ];
+                    
+                    for (const { pattern, description } of dangerousPatterns) {
+                        if (pattern.test(value)) {
+                            errors.push(`${key} ${description}`);
+                        }
                     }
                 }
             }
@@ -1748,6 +1755,11 @@
                         showAlert('success', 'Environment configuration saved successfully!');
                         showAlert('warning', 'Please restart the application to apply all configuration changes.');
                     }
+                    
+                    // Automatically validate .env files after successful save
+                    setTimeout(() => {
+                        validateEnvironmentFiles();
+                    }, 2000);
                 } else {
                     const error = await response.json();
                     showAlert('danger', `Failed to save configuration: ${error.detail}`);
@@ -1922,6 +1934,69 @@
             } catch (error) {
                 console.error('Error testing ChatGPT connection:', error);
                 showAlert('danger', `Error testing ChatGPT connection: ${error.message}`);
+            }
+        }
+        
+        async function validateEnvironmentFiles() {
+            if (!authToken) {
+                showAlert('danger', 'Authentication required');
+                return;
+            }
+            
+            try {
+                showAlert('info', 'Validating .env file synchronization...');
+                
+                const response = await fetch('/api/v1/setup/validate-env', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.success) {
+                        showAlert('success', '✅ All .env files are properly synchronized!');
+                        
+                        // Show detailed status if available
+                        if (result.sync_status) {
+                            let statusMessage = '<div class="mt-2 small"><strong>File Status:</strong><br>';
+                            for (const [path, status] of Object.entries(result.sync_status)) {
+                                const statusIcon = status.exists && status.readable && status.content_matches ? '✅' : '❌';
+                                statusMessage += `${statusIcon} ${path}: ${status.exists ? 'exists' : 'missing'}, ${status.readable ? 'readable' : 'unreadable'}, ${status.content_matches ? 'synchronized' : 'out of sync'}<br>`;
+                            }
+                            statusMessage += '</div>';
+                            showAlert('info', statusMessage);
+                        }
+                    } else {
+                        let errorMessage = '❌ .env file validation failed:<br>';
+                        if (result.errors && result.errors.length > 0) {
+                            errorMessage += '<ul class="mb-0 ms-3">';
+                            result.errors.forEach(error => {
+                                errorMessage += `<li>${error}</li>`;
+                            });
+                            errorMessage += '</ul>';
+                        }
+                        
+                        if (result.warnings && result.warnings.length > 0) {
+                            errorMessage += '<br><strong>Warnings:</strong><ul class="mb-0 ms-3">';
+                            result.warnings.forEach(warning => {
+                                errorMessage += `<li>${warning}</li>`;
+                            });
+                            errorMessage += '</ul>';
+                        }
+                        
+                        showAlert('danger', errorMessage);
+                    }
+                } else {
+                    showAlert('danger', result.detail || '.env file validation failed');
+                }
+                
+            } catch (error) {
+                console.error('Error validating environment files:', error);
+                showAlert('danger', `Error validating .env files: ${error.message}`);
             }
         }
 

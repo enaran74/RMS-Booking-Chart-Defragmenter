@@ -62,7 +62,59 @@
       function renderStamp(version, isoTimestamp){
         // Prefer server-provided build timestamp (from VERSION_INFO mtime); fallback to lastModified
         var ts = isoTimestamp ? new Date(isoTimestamp) : new Date(document.lastModified || Date.now());
+        
+        // Preserve any existing badges before updating text
+        var existingBadges = el.querySelectorAll('.badge');
+        var badgeNodes = Array.from(existingBadges);
+        
         el.textContent = 'RMS Defragmenter ' + version + ' • loaded ' + ts.toLocaleString();
+        
+        // Re-append preserved badges
+        badgeNodes.forEach(function(badge) {
+          el.appendChild(badge);
+        });
+      }
+      
+      // Function to add training/live badge
+      function addTrainingBadge() {
+        // Remove any existing badges first
+        var existingBadges = el.querySelectorAll('.badge');
+        existingBadges.forEach(function(badge) { badge.remove(); });
+        
+        // Determine training status
+        var training = (window.APP_USE_TRAINING_DB === true);
+        console.log('[Footer] Initial training flag:', training);
+        
+        try{
+          var meta = document.querySelector('meta[name="use-training-db"]');
+          console.log('[Footer] Meta tag found:', meta);
+          if(meta){
+            var c = (meta.content || '').toString().trim().toLowerCase();
+            training = (c === 'true' || c === '1' || c === 'yes');
+            console.log('[Footer] Meta content:', meta.content, 'parsed as training:', training);
+            // expose for any other scripts
+            window.APP_USE_TRAINING_DB = training;
+          } else {
+            console.log('[Footer] No meta tag found for use-training-db');
+          }
+        }catch(e){
+          console.error('[Footer] Error reading meta tag:', e);
+        }
+        
+        console.log('[Footer] Final training flag:', training);
+        if(training){
+          var b = document.createElement('span');
+          b.className = 'badge bg-warning text-dark';
+          b.textContent = 'TRAINING';
+          el.appendChild(b);
+          console.log('[Footer] Added TRAINING badge');
+        } else {
+          var b = document.createElement('span');
+          b.className = 'badge bg-success';
+          b.textContent = 'LIVE';
+          el.appendChild(b);
+          console.log('[Footer] Added LIVE badge');
+        }
       }
 
       // Prefer raw version (reads VERSION_INFO) for accuracy, zero dependencies
@@ -77,44 +129,36 @@
           // Try to fetch stable build timestamp from static JSON endpoint
           fetch('/api/v1/version/static')
             .then(r => r.ok ? r.json() : Promise.reject('static meta ' + r.status))
-            .then(meta => { renderStamp(version, meta && meta.timestamp); })
-            .catch(() => { renderStamp(version); });
-          
-          // Append TRAINING indicator if present on window or meta
-          var training = (window.APP_USE_TRAINING_DB === true);
-          try{
-            var meta = document.querySelector('meta[name="use-training-db"]');
-            if(meta){
-              var c = (meta.content || '').toString().trim().toLowerCase();
-              training = (c === 'true' || c === '1' || c === 'yes');
-              // expose for any other scripts
-              window.APP_USE_TRAINING_DB = training;
-            }
-          }catch(e){}
-          
-          if(training){
-            var b = document.createElement('span');
-            b.className = 'badge bg-warning text-dark';
-            b.textContent = 'TRAINING';
-            el.appendChild(b);
-          } else {
-            var b = document.createElement('span');
-            b.className = 'badge bg-success';
-            b.textContent = 'LIVE';
-            el.appendChild(b);
-          }
+            .then(meta => { 
+              renderStamp(version, meta && meta.timestamp);
+              addTrainingBadge();
+            })
+            .catch(() => { 
+              renderStamp(version);
+              addTrainingBadge();
+            });
         })
         .catch(err => {
           // Try plain text fallback
           fetch('/version.txt')
             .then(r => r.ok ? r.text() : Promise.reject('version.txt ' + r.status))
-            .then(text => { renderStamp((text||'').trim() || 'v1.0.0-unknown'); })
+            .then(text => { 
+              renderStamp((text||'').trim() || 'v1.0.0-unknown');
+              addTrainingBadge();
+            })
             .catch(() => {
               // Fallback to dynamic API; still render client-local time
               fetch('/api/v1/version')
                 .then(r => r.ok ? r.json() : Promise.reject('version api ' + r.status))
-                .then(data => { renderStamp(data.version || 'v1.0.0-unknown'); })
-                .catch(err2 => { renderStamp('v1.0.0-unknown'); console.warn('Version fetch fallback used:', err, err2); });
+                .then(data => { 
+                  renderStamp(data.version || 'v1.0.0-unknown');
+                  addTrainingBadge();
+                })
+                .catch(err2 => { 
+                  renderStamp('v1.0.0-unknown');
+                  addTrainingBadge();
+                  console.warn('Version fetch fallback used:', err, err2);
+                });
             });
         });
         

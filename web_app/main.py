@@ -135,25 +135,25 @@ app.include_router(api_router, prefix="/api/v1")
 async def read_root(request: Request):
     """Serve the main application page"""
     # Expose training flag to templates for footer badge
-    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    use_training = app_config.settings.USE_TRAINING_DB
     return templates.TemplateResponse("index.html", {"request": request, "active_page": "dashboard", "use_training_db": use_training})
 
 @app.get("/setup")
 async def read_setup(request: Request):
     """Serve the admin setup page"""
-    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    use_training = app_config.settings.USE_TRAINING_DB
     return templates.TemplateResponse("setup.html", {"request": request, "active_page": "setup", "use_training_db": use_training})
 
 @app.get("/setup-wizard")
 async def read_setup_wizard(request: Request):
     """Serve the first-time setup wizard page"""
-    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    use_training = app_config.settings.USE_TRAINING_DB
     return templates.TemplateResponse("setup_wizard.html", {"request": request, "use_training_db": use_training})
 
 @app.get("/move-history")
 async def read_move_history(request: Request):
     """Serve the move history page"""
-    use_training = getattr(app_config.settings, 'USE_TRAINING_DB', True)
+    use_training = app_config.settings.USE_TRAINING_DB
     return templates.TemplateResponse("move_history.html", {"request": request, "active_page": "move_history", "use_training_db": use_training})
 
 @app.get("/health")
