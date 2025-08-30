@@ -182,24 +182,62 @@ async def restart_application_containers() -> None:
 def sync_env_files(primary_path: Path, content: str) -> None:
     """Synchronize .env file between host and container locations"""
     try:
-        # Define all required locations
-        host_path = Path("/opt/defrag-app/.env")        # For docker-compose variable substitution
-        container_path = Path("/app/.env")              # Container root location
-        working_dir_path = Path("/app/web/.env")        # Working directory for Pydantic Settings
+        # Define all required locations with their purposes
+        sync_locations = [
+            (Path("/opt/defrag-app/.env"), "Host mount for docker-compose"),
+            (Path("/app/.env"), "Container root location"),
+            (Path("/app/web/.env"), "Working directory for Pydantic Settings")
+        ]
+        
+        sync_success_count = 0
         
         # Ensure all locations have the same content
-        for path in [host_path, container_path, working_dir_path]:
+        for path, description in sync_locations:
             if path != primary_path:  # Don't write to the same file we just wrote
                 try:
+                    # Create parent directory if needed
                     path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Try to write the file
                     with open(path, 'w', encoding='utf-8') as f:
                         f.write(content)
-                    logger.info(f"Synchronized .env file to {path}")
+                    
+                    # Verify the write was successful
+                    if path.exists() and path.stat().st_size > 0:
+                        logger.info(f"✅ Synchronized .env file to {path} ({description})")
+                        sync_success_count += 1
+                    else:
+                        logger.warning(f"⚠️  File written but appears empty: {path}")
+                        
+                except PermissionError as error:
+                    logger.warning(f"🔒 Permission denied syncing to {path} ({description}): {error}")
+                    # For host mount permission issues, try to fix ownership
+                    if "/opt/defrag-app" in str(path):
+                        try:
+                            import subprocess
+                            # Try to fix ownership via docker exec (if we're in container)
+                            subprocess.run([
+                                "docker", "exec", "-u", "root", "defrag-app", 
+                                "chown", "enaran:enaran", str(path)
+                            ], check=False, capture_output=True)
+                            logger.info(f"🔧 Attempted to fix ownership for {path}")
+                        except Exception:
+                            pass  # Ignore if this fails
+                            
                 except Exception as error:
-                    logger.warning(f"Could not sync to {path}: {error}")
+                    logger.warning(f"❌ Could not sync to {path} ({description}): {error}")
+        
+        # Log summary
+        total_locations = len(sync_locations) - 1  # Exclude primary path
+        if sync_success_count == total_locations:
+            logger.info(f"🎉 Successfully synchronized .env to all {total_locations} locations")
+        elif sync_success_count > 0:
+            logger.warning(f"⚠️  Partially synchronized .env to {sync_success_count}/{total_locations} locations")
+        else:
+            logger.error(f"❌ Failed to synchronize .env to any secondary locations")
                     
     except Exception as error:
-        logger.warning(f"Error during .env file synchronization: {error}")
+        logger.error(f"💥 Critical error during .env file synchronization: {error}")
 
 def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
     """Write environment variables to .env file with proper formatting and defaults"""
@@ -255,7 +293,10 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
         'OUTPUT_DIR': '/app/output',
         
         # Container settings - use production defaults
-        'TZ': 'Australia/Sydney'
+        'TZ': 'Australia/Sydney',
+        
+        # ChatGPT Integration - optional
+        'OPENAI_API_KEY': ''
     }
     
     # Override defaults with user-provided values (only for non-empty values)
@@ -379,6 +420,12 @@ def write_env_file(file_path: Path, variables: Dict[str, str]) -> None:
             "# ==============================================================================",
             "# Directory where Excel reports and analysis files are saved",
             f"OUTPUT_DIR={final_variables['OUTPUT_DIR']}",
+            "",
+            "# ==============================================================================",
+            "# CHATGPT INTEGRATION",
+            "# ==============================================================================",
+            "# OpenAI API key for move explanation features (optional)",
+            f"OPENAI_API_KEY={final_variables['OPENAI_API_KEY']}",
             "",
             "# ==============================================================================",
             "# CONTAINER CONFIGURATION",
